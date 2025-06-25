@@ -80,7 +80,7 @@
             font-weight: bold;
             color: white;
             margin: 2px;
-            cursor: help;
+            cursor: pointer;
         }
         .word-mastered, .letter-mastered { background-color: #22c55e; } /* green-600 */
         .word-practicing, .letter-practicing { background-color: #f59e0b; } /* amber-500 */
@@ -149,6 +149,7 @@
                     <button id="tab-letter-knowledge" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Letter Knowledge</button>
                 </nav>
             </div>
+
             <div id="summary-content-words">
                 <div id="word-status-counts" class="flex justify-around space-x-4 mb-4 text-lg"></div>
                 <div id="full-word-list" class="flex flex-wrap justify-center gap-2 max-h-80 overflow-y-auto p-2 bg-gray-100 rounded-lg"></div>
@@ -172,6 +173,15 @@
                     <button id="confirm-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Yes, Reset</button>
                     <button id="cancel-reset-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancel</button>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Stats Detail Modal -->
+        <div id="stats-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+             <div class="bg-white p-8 rounded-xl shadow-2xl text-center w-full max-w-sm relative">
+                <button id="close-stats-modal" class="absolute top-2 right-4 text-3xl font-bold text-gray-500 hover:text-gray-800">&times;</button>
+                <h3 id="stats-modal-title" class="text-4xl font-bold mb-4"></h3>
+                <p id="stats-modal-content" class="text-xl text-gray-700"></p>
             </div>
         </div>
     </div>
@@ -228,6 +238,10 @@
         const tabLetterKnowledge = document.getElementById('tab-letter-knowledge');
         const summaryContentWords = document.getElementById('summary-content-words');
         const summaryContentLetters = document.getElementById('summary-content-letters');
+        const statsModal = document.getElementById('stats-modal');
+        const statsModalTitle = document.getElementById('stats-modal-title');
+        const statsModalContent = document.getElementById('stats-modal-content');
+        const closeStatsModalBtn = document.getElementById('close-stats-modal');
         
         // --- Sound Synthesis ---
         let synth;
@@ -238,7 +252,7 @@
         
         // --- Local Storage & Data Initialization ---
         function initializeWordData() { return { consecutiveCorrect: 0, correct: 0, incorrect: 0, status: 'untested' }; }
-        function initializeLetterData() { return { partial: 0, incorrect: 0 }; }
+        function initializeLetterData() { return { correct: 0, incorrect: 0 }; }
         function loadMasteryData() {
             const savedWordData = localStorage.getItem('sightWordMastery');
             wordMasteryData = savedWordData ? JSON.parse(savedWordData) : {};
@@ -251,7 +265,7 @@
             const savedLetterData = localStorage.getItem('sightWordLetterMastery');
             letterMasteryData = savedLetterData ? JSON.parse(savedLetterData) : {};
             ALPHABET.forEach(letter => {
-                if (!letterMasteryData[letter] || !letterMasteryData[letter].hasOwnProperty('partial')) {
+                if (!letterMasteryData[letter] || !letterMasteryData[letter].hasOwnProperty('correct')) {
                     letterMasteryData[letter] = initializeLetterData();
                 }
             });
@@ -349,7 +363,7 @@
                 } else if (responseType === 'partial') {
                     playPartialSound();
                      uniqueLetters.forEach(letter => {
-                        if (letterMasteryData[letter]) letterMasteryData[letter].partial++;
+                        if (letterMasteryData[letter]) letterMasteryData[letter].correct++;
                     });
                     barStatus = 'yellow';
                 }
@@ -389,7 +403,7 @@
                 if (wordData.status === 'mastered') mastered++;
                 else if (wordData.status === 'practicing') practicing++;
                 else untested++;
-                return `<div class="summary-tag word-${wordData.status}" title="Correct: ${wordData.correct} | Incorrect: ${wordData.incorrect}">${word}</div>`;
+                return `<div class="summary-tag word-${wordData.status}" title="Correct: ${wordData.correct} | Incorrect: ${wordData.incorrect}" data-word="${word}">${word}</div>`;
             }).join('');
             fullWordListContainer.innerHTML = wordElements;
             wordStatusCounts.innerHTML = `<span class="font-bold">Mastered: <span class="text-green-600">${mastered}</span></span> <span class="font-bold">Practicing: <span class="text-amber-500">${practicing}</span></span> <span class="font-bold">Untested: <span class="text-slate-500">${untested}</span></span>`;
@@ -400,18 +414,18 @@
             const letterElements = ALPHABET.map(letter => {
                 const letterData = letterMasteryData[letter];
                 let statusClass = 'letter-untested';
-                if (letterData.partial > 0 || letterData.incorrect > 0) {
+                if (letterData.correct > 0 || letterData.incorrect > 0) {
                     statusClass = 'letter-practicing';
                     practicing++;
                 } else {
                     untested++;
                 }
-                if (letterData.partial >= LETTER_MASTERY_THRESHOLD && letterData.incorrect === 0) {
+                if (letterData.correct >= LETTER_MASTERY_THRESHOLD && letterData.incorrect === 0) {
                     statusClass = 'letter-mastered';
                     practicing--;
                     mastered++;
                 }
-                return `<div class="summary-tag text-2xl ${statusClass}" title="Correct: ${letterData.partial} | Incorrect: ${letterData.incorrect}">${letter.toUpperCase()}</div>`;
+                return `<div class="summary-tag text-2xl ${statusClass}" title="Correct: ${letterData.correct} | Incorrect: ${letterData.incorrect}" data-letter="${letter}">${letter.toUpperCase()}</div>`;
             }).join('');
             fullLetterListContainer.innerHTML = letterElements;
             letterStatusCounts.innerHTML = `<span class="font-bold">Mastered: <span class="text-green-600">${mastered}</span></span> <span class="font-bold">Practicing: <span class="text-amber-500">${practicing}</span></span> <span class="font-bold">Untested: <span class="text-slate-500">${untested}</span></span>`;
@@ -429,6 +443,34 @@
         cancelResetBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
         confirmResetBtn.addEventListener('click', resetProgress);
         levelButtonsContainer.addEventListener('click', e => { if (e.target.matches('[data-level]')) { startGame(parseInt(e.target.dataset.level)); } });
+        
+        fullWordListContainer.addEventListener('click', e => {
+            if(e.target.matches('[data-word]')) {
+                const word = e.target.dataset.word;
+                const wordData = wordMasteryData[word];
+                statsModalTitle.textContent = `"${word}"`;
+                statsModalContent.innerHTML = `Correct: <span class="text-green-600 font-bold">${wordData.correct}</span><br>Incorrect: <span class="text-red-500 font-bold">${wordData.incorrect}</span>`;
+                statsModal.classList.remove('hidden');
+            }
+        });
+
+        fullLetterListContainer.addEventListener('click', e => {
+             if(e.target.matches('[data-letter]')) {
+                const letter = e.target.dataset.letter;
+                const letterData = letterMasteryData[letter];
+                statsModalTitle.textContent = letter.toUpperCase();
+                statsModalContent.innerHTML = `Correct: <span class="text-green-600 font-bold">${letterData.correct}</span><br>Incorrect: <span class="text-red-500 font-bold">${letterData.incorrect}</span>`;
+                statsModal.classList.remove('hidden');
+            }
+        });
+
+        closeStatsModalBtn.addEventListener('click', () => statsModal.classList.add('hidden'));
+        statsModal.addEventListener('click', (e) => {
+            if (e.target.id === 'stats-modal') {
+                statsModal.classList.add('hidden');
+            }
+        });
+        
         tabWordMastery.addEventListener('click', () => {
             summaryContentWords.classList.remove('hidden'); summaryContentLetters.classList.add('hidden');
             tabWordMastery.className = "whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg border-indigo-500 text-indigo-600";
