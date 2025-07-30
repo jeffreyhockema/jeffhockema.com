@@ -1,401 +1,453 @@
-import React, { useState, useEffect, useRef } from 'react';
-
-// --- HELPER COMPONENTS ---
-
-// Map Component
-const Map = ({ world, currentPos, onCommand, isLoading }) => {
-    const [mapData, setMapData] = useState({ grid: [], exits: [] });
-
-    const getExits = (x, y, z, w) => {
-        const room = w[`${x}_${y}_${z}`];
-        if (!room || !room.description) return [];
-        const exitMatch = room.description.match(/Exits: (.*)/i);
-        if (!exitMatch) return [];
-        return exitMatch[1].split(',').map(exit => exit.trim().toLowerCase());
-    };
-
-    useEffect(() => {
-        const exits = getExits(currentPos.x, currentPos.y, currentPos.z, world);
-        const currentLevelKeys = Object.keys(world).filter(key => key.endsWith(`_${currentPos.z}`));
-
-        if (currentLevelKeys.length === 0) {
-            const singleRoomGrid = [[{ x: currentPos.x, y: currentPos.y, isExplored: true, isCurrent: true, connections: {}, clickArrow: null, isClickable: false }]];
-            setMapData({ grid: singleRoomGrid, exits });
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-Based Adventure Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto Mono', monospace;
         }
-
-        const coords = currentLevelKeys.map(key => {
-            const [x, y] = key.split('_').map(Number);
-            return { x, y };
-        });
-
-        const minX = Math.min(...coords.map(c => c.x)) - 1;
-        const maxX = Math.max(...coords.map(c => c.x)) + 1;
-        const minY = Math.min(...coords.map(c => c.y)) - 1;
-        const maxY = Math.max(...coords.map(c => c.y)) + 1;
-
-        const grid = [];
-        for (let y = maxY; y >= minY; y--) {
-            const row = [];
-            for (let x = minX; x <= maxX; x++) {
-                const isExplored = world[`${x}_${y}_${currentPos.z}`] !== undefined;
-                const isCurrent = x === currentPos.x && y === currentPos.y;
-                
-                let connections = {};
-                if(isExplored) {
-                    const roomExits = getExits(x, y, currentPos.z, world);
-                    const northExits = getExits(x, y + 1, currentPos.z, world);
-                    const southExits = getExits(x, y - 1, currentPos.z, world);
-                    const eastExits = getExits(x + 1, y, currentPos.z, world);
-                    const westExits = getExits(x - 1, y, currentPos.z, world);
-                    connections.north = roomExits.includes('north') && northExits.includes('south');
-                    connections.south = roomExits.includes('south') && southExits.includes('north');
-                    connections.east = roomExits.includes('east') && westExits.includes('west');
-                    connections.west = roomExits.includes('west') && eastExits.includes('east');
-                }
-                
-                let clickArrow = null;
-                let isClickable = false;
-                let moveDirection = null;
-
-                if (!isExplored) {
-                    if (exits.includes('north') && x === currentPos.x && y === currentPos.y + 1) clickArrow = 'north';
-                    else if (exits.includes('south') && x === currentPos.x && y === currentPos.y - 1) clickArrow = 'south';
-                    else if (exits.includes('east') && x === currentPos.x + 1 && y === currentPos.y) clickArrow = 'east';
-                    else if (exits.includes('west') && x === currentPos.x - 1 && y === currentPos.y) clickArrow = 'west';
-                } else if (!isCurrent) {
-                    if (exits.includes('north') && x === currentPos.x && y === currentPos.y + 1) { isClickable = true; moveDirection = 'north'; }
-                    else if (exits.includes('south') && x === currentPos.x && y === currentPos.y - 1) { isClickable = true; moveDirection = 'south'; }
-                    else if (exits.includes('east') && x === currentPos.x + 1 && y === currentPos.y) { isClickable = true; moveDirection = 'east'; }
-                    else if (exits.includes('west') && x === currentPos.x - 1 && y === currentPos.y) { isClickable = true; moveDirection = 'west'; }
-                }
-
-                row.push({ x, y, isExplored, isCurrent, connections, clickArrow, isClickable, moveDirection });
-            }
-            grid.push(row);
+        /* Custom scrollbar for webkit browsers */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
         }
-        setMapData({ grid, exits });
-    }, [world, currentPos]);
-    
-    const getUpDownArrowClasses = (direction) => {
-        let base = "absolute text-3xl text-white hover:text-amber-400 transition cursor-pointer";
-        if (isLoading || !mapData.exits.includes(direction)) {
-            base += " hidden";
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
         }
-        switch(direction) {
-            case 'up': return `${base} top-0 right-0 -translate-y-1/2 translate-x-1/2 text-green-400`;
-            case 'down': return `${base} bottom-0 right-0 translate-y-1/2 translate-x-1/2 text-red-400`;
-            default: return "hidden";
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 4px;
         }
-    };
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
 
-    return (
-        <div className="bg-gray-800 p-4 rounded-lg shadow-inner">
-            <h2 className="text-lg font-bold text-emerald-400 mb-4 text-center">Map (Level {currentPos.z})</h2>
-            <div className="relative flex flex-col items-center justify-center p-8">
-                <div onClick={() => onCommand('go up')} className={getUpDownArrowClasses('up')}>▲</div>
-                <div onClick={() => onCommand('go down')} className={getUpDownArrowClasses('down')}>▼</div>
-                
-                {mapData.grid.map((row, rowIndex) => (
-                    <div key={rowIndex} className="flex">
-                        {row.map(({x, y, isExplored, isCurrent, connections, clickArrow, isClickable, moveDirection}) => {
-                            const cellClasses = ['w-8', 'h-8', 'flex', 'items-center', 'justify-center', 'border-2', 'transition-colors'];
-                            let clickHandler = null;
-
-                            if (isExplored) {
-                                cellClasses.push(isCurrent ? 'bg-amber-400' : 'bg-sky-700');
-                                if (isClickable) {
-                                    cellClasses.push('cursor-pointer', 'hover:bg-sky-500');
-                                    clickHandler = () => onCommand(`go ${moveDirection}`);
-                                }
-                                cellClasses.push(connections.north ? 'border-t-transparent' : 'border-t-gray-600');
-                                cellClasses.push(connections.south ? 'border-b-transparent' : 'border-b-gray-600');
-                                cellClasses.push(connections.east ? 'border-r-transparent' : 'border-r-gray-600');
-                                cellClasses.push(connections.west ? 'border-l-transparent' : 'border-l-gray-600');
-                            } else if (clickArrow) {
-                                cellClasses.push('bg-black', 'bg-opacity-25', 'border-dashed', 'border-gray-700', 'cursor-pointer', 'hover:bg-gray-700');
-                                clickHandler = () => onCommand(`go ${clickArrow}`);
-                            } else {
-                                cellClasses.push('bg-black', 'bg-opacity-25', 'border-transparent');
-                            }
-                            
-                            const arrowMap = { north: '↑', south: '↓', east: '→', west: '←' };
-
-                            return (
-                                <div key={`${x}_${y}`} className={cellClasses.join(' ')} onClick={!isLoading ? clickHandler : null}>
-                                    {isCurrent && <span className="text-gray-900 font-bold">@</span>}
-                                    {clickArrow && <span className="text-amber-400 text-2xl">{arrowMap[clickArrow]}</span>}
-                                </div>
-                            );
-                        })}
-                    </div>
-                ))}
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-gray-800 rounded-lg shadow-2xl p-8">
+            <h1 class="text-4xl font-bold text-center text-emerald-400 mb-4">Text Adventure</h1>
+            <p class="text-center text-gray-400 mb-6">Describe the setting and story for your adventure, or generate an idea.</p>
+            <textarea id="game-setting-input" class="w-full bg-gray-900 border border-gray-700 rounded-md p-3 h-40 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="Describe your game's setting and main goal..."></textarea>
+            <div class="my-6">
+                <label for="complexity" class="block text-center text-gray-400 mb-2">Narrative Complexity: <span id="complexity-label" class="font-bold text-emerald-400">5</span></label>
+                <input type="range" id="complexity-slider" min="0" max="10" step="1" value="5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <div class="flex gap-4 mt-4">
+                <button id="generate-idea-btn" class="w-full bg-sky-700 hover:bg-sky-600 text-white font-bold py-3 rounded-md transition-transform transform hover:scale-105 disabled:bg-gray-600">Generate Idea</button>
+                <button id="start-game-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-md transition-transform transform hover:scale-105 disabled:bg-gray-600">Begin Adventure</button>
             </div>
         </div>
-    );
-};
+    </div>
 
-const PlayerStats = ({ player }) => {
-    if (!player) return null;
-    const hpPercentage = (player.hp / player.maxHp) * 100;
-    const mpPercentage = (player.mp / player.maxMp) * 100;
-
-    return (
-        <div className="bg-gray-800 p-4 rounded-lg shadow-inner">
-            <h2 className="text-lg font-bold text-emerald-400 mb-4 text-center">Stats</h2>
-            <div>
-                <div className="flex justify-between items-center mb-1">
-                    <span className="font-bold text-green-400">HP</span>
-                    <span>{player.hp} / {player.maxHp}</span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-4">
-                    <div className="bg-green-500 h-4 rounded-full" style={{ width: `${hpPercentage}%` }}></div>
-                </div>
-            </div>
-            <div className="mt-4">
-                <div className="flex justify-between items-center mb-1">
-                    <span className="font-bold text-blue-400">MP</span>
-                    <span>{player.mp} / {player.maxMp}</span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-4">
-                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: `${mpPercentage}%` }}></div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-// Inventory Component
-const Inventory = ({ items }) => {
-    return (
-        <div className="bg-gray-800 p-4 rounded-lg shadow-inner h-full">
-            <h2 className="text-lg font-bold text-emerald-400 mb-4 text-center">Inventory</h2>
-            {items.length === 0 ? (
-                <p className="text-gray-400 text-center italic">Your pockets are empty.</p>
-            ) : (
-                <ul>
-                    {items.map((item, index) => (
-                        <li key={index} className="text-gray-300 list-disc list-inside ml-2">
-                            {item}
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-};
-
-// Current Room Description Component
-const CurrentRoom = ({ roomDescription }) => {
-    const [parsed, setParsed] = useState({ description: '' });
-
-    useEffect(() => {
-        if (!roomDescription) {
-            setParsed({ description: 'You are in a featureless void.' });
-            return;
-        }
-        const exitRegex = /Exits: (.*)/i;
-        const description = roomDescription.replace(exitRegex, '').trim();
-        setParsed({ description });
-    }, [roomDescription]);
-
-    const renderDescription = (text) => {
-        const textWithBold = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        return <p className="text-gray-300" dangerouslySetInnerHTML={{ __html: textWithBold }} />;
-    };
-
-    return (
-        <div className="bg-black bg-opacity-20 rounded-lg p-4 h-full overflow-y-auto">
-            <h2 className="text-lg font-bold text-emerald-400 mb-2">Current Location</h2>
-            {renderDescription(parsed.description)}
-        </div>
-    );
-};
-
-// Combat UI Component
-const CombatUI = ({ player, enemy, onCommand, isLoading }) => {
-    if (!enemy) return null;
-    return (
-        <div className="bg-red-900 bg-opacity-50 border-2 border-red-500 rounded-lg p-4 h-full">
-            <h2 className="text-2xl font-bold text-red-400 text-center mb-4">COMBAT!</h2>
-            <div className="flex justify-around mb-4">
-                <div className="text-center">
-                    <h3 className="text-lg text-green-400">You</h3>
-                    <p className="text-2xl font-bold">{player.hp} HP</p>
-                </div>
-                <div className="text-center">
-                    <h3 className="text-lg text-red-400">{enemy.name}</h3>
-                    <p className="text-2xl font-bold">{enemy.hp} HP</p>
-                </div>
-            </div>
-            <div className="flex justify-center gap-4">
-                <button onClick={() => onCommand('attack')} disabled={isLoading} className="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Attack</button>
-                <button onClick={() => onCommand('defend')} disabled={isLoading} className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Defend</button>
-                <button onClick={() => onCommand('flee')} disabled={isLoading} className="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">Flee</button>
-            </div>
-        </div>
-    );
-};
-
-// Main App Component
-const App = () => {
-    // --- STATE MANAGEMENT ---
-    const [gameState, setGameState] = useState('setup'); // 'setup', 'playing'
-    const [gameSetting, setGameSetting] = useState('');
-    const [complexity, setComplexity] = useState('5'); // '0' to '10'
-    const [world, setWorld] = useState({}); // { 'x_y_z': {description: '...'}, ... }
-    const [position, setPosition] = useState({ x: 0, y: 0, z: 0 });
-    const [inventory, setInventory] = useState([]);
-    const [log, setLog] = useState([]);
-    const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
-    const [combatState, setCombatState] = useState(null); // null or { player: {hp, maxHp, mp, maxMp}, enemy: {name, hp} }
-    const logEndRef = useRef(null);
-
-    const complexityLevels = {
-        '0': 'at a preschool reading level, using extremely simple words and very short sentences',
-        '1': 'at a kindergarten reading level, using very simple vocabulary and basic sentences',
-        '2': 'at a 1st-grade reading level, using simple words and short sentences',
-        '3': 'at a 3rd-grade reading level, with simple vocabulary and clear sentence structures',
-        '4': 'at a 4th-grade reading level, with straightforward language',
-        '5': 'at a 6th-grade reading level, using clear and accessible language',
-        '6': 'at a middle school (7th-8th grade) reading level',
-        '7': 'at a high school (9th-10th grade) reading level, with engaging and varied language',
-        '8': 'at an upper high school (11th-12th grade) reading level, with more complex sentences',
-        '9': 'at a college-level reading level, using sophisticated vocabulary and complex sentence structures',
-        '10': 'at a post-graduate or academic reading level, using advanced, technical, and nuanced language'
-    };
-
-    // --- EFFECTS ---
-
-    // Load game from localStorage
-    useEffect(() => {
-        try {
-            const savedState = localStorage.getItem('mud_gamestate');
-            if (savedState) {
-                const { world, setting, position: savedPosition, log, inventory, complexity: savedComplexity, combat: savedCombat } = JSON.parse(savedState);
-                if (world && setting && savedPosition && log && inventory) {
-                    setWorld(world);
-                    setGameSetting(setting);
-                    setPosition({ x: savedPosition.x, y: savedPosition.y, z: savedPosition.z || 0 });
-                    setLog(log);
-                    setInventory(inventory);
-                    setComplexity(savedComplexity || '5');
-                    setCombatState(savedCombat || { player: { hp: 20, maxHp: 20, mp: 10, maxMp: 10 }, enemy: null });
-                    setGameState('playing');
-                }
-            }
-        } catch (error) {
-            console.error("Failed to load saved game:", error);
-            clearGameData(false);
-        }
-    }, []);
-
-    // Save game to localStorage
-    useEffect(() => {
-        if (gameState === 'playing') {
-            try {
-                const gameStateToSave = { world, setting: gameSetting, position, log, inventory, complexity, combat: combatState };
-                localStorage.setItem('mud_gamestate', JSON.stringify(gameStateToSave));
-            } catch (error) {
-                console.error("Failed to save game:", error);
-            }
-        }
-    }, [world, gameSetting, position, log, inventory, gameState, complexity, combatState]);
-
-    // Scroll log to bottom on new entry
-    useEffect(() => {
-        logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [log]);
-
-    // --- API CALLS & GAME LOGIC ---
-
-    const callGeminiAPI = async (prompt) => {
-        const apiKey = ""; // Injected by environment
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-            if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-            const result = await response.json();
-            return result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        } catch (error) {
-            console.error("Gemini API call failed:", error);
-            if (gameState === 'playing') {
-                addToLog({text: "The air shimmers and reality feels unstable. Try again.", type: 'error'});
-            }
-            return null;
-        }
-    };
-
-    const generateGameIdea = async () => {
-        setIsGeneratingIdea(true);
-        const complexityText = complexityLevels[complexity];
-        const prompt = `Generate a creative and compelling concept for a text-based adventure game. Provide a setting and a brief storyline or goal in a single paragraph. The concept should be written ${complexityText}.`;
-        const idea = await callGeminiAPI(prompt);
-        if (idea) {
-            setGameSetting(idea);
-        }
-        setIsGeneratingIdea(false);
-    };
-
-    const generateStartingRoom = async () => {
-        setIsLoading(true);
-        const complexityText = complexityLevels[complexity];
-        const prompt = `You are a text-based adventure game engine. The user has defined the game setting and story as: "${gameSetting}". Describe the starting room of the adventure ${complexityText}. Be evocative. Bold key interactive objects using **word**. At the end of the description, on a new line, list the obvious exits like this: Exits: north, south, east, west, up, down`;
-        const newDescription = await callGeminiAPI(prompt);
-        if (newDescription) {
-            const startPosition = { x: 0, y: 0, z: 0 };
-            const startKey = `${startPosition.x}_${startPosition.y}_${startPosition.z}`;
-            const newRoom = { description: newDescription };
-            setWorld({ [startKey]: newRoom });
-            setPosition(startPosition);
-            setLog([]);
-            setCombatState({ player: { hp: 20, maxHp: 20, mp: 10, maxMp: 10 }, enemy: null });
-            setGameState('playing');
-        }
-        setIsLoading(false);
-    };
-
-    const processPlayerAction = async (command) => {
-        if (isLoading || !command.trim()) return;
+    <!-- Main Game Screen -->
+    <div id="game-screen" class="h-screen flex flex-col font-mono hidden">
+        <header class="flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-700 shadow-lg">
+            <h1 class="text-xl font-bold text-emerald-400">Text Adventure</h1>
+            <button id="reset-world-btn" class="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md text-sm transition">Reset World</button>
+        </header>
         
-        setIsLoading(true);
-        if (!command.startsWith('go ')) {
-            addToLog({ text: `> ${command}`, type: 'command' });
+        <div class="flex-grow flex flex-col md:flex-row p-4 gap-4 min-h-0">
+            <!-- Center Panel: Game -->
+            <main class="flex-grow w-full md:w-3/5 flex flex-col min-h-0">
+                <div id="description-container" class="h-1/2 overflow-y-auto mb-4 custom-scrollbar">
+                    <!-- CurrentRoom or CombatUI will be rendered here -->
+                </div>
+                <div class="h-1/2 flex flex-col min-h-0">
+                    <div id="log-container" class="flex-grow p-4 bg-black bg-opacity-20 rounded-lg overflow-y-auto mb-4 custom-scrollbar">
+                        <!-- Log entries will be rendered here -->
+                    </div>
+                    <form id="command-form" class="flex-shrink-0">
+                        <div class="flex items-center bg-gray-800 border border-gray-700 rounded-md p-2">
+                            <span class="text-amber-300 mr-2">&gt;</span>
+                            <input type="text" id="command-input" class="flex-grow bg-transparent focus:outline-none" placeholder="What do you do?">
+                        </div>
+                    </form>
+                </div>
+            </main>
+
+            <!-- Right Panel: Map and Inventory -->
+            <aside class="w-full md:w-2/5 flex flex-col gap-4 min-h-0">
+               <div id="map-container" class="flex-shrink-0"></div>
+               <div id="stats-container" class="flex-shrink-0"></div>
+               <div id="inventory-container" class="flex-grow overflow-y-auto custom-scrollbar"></div>
+            </aside>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- DOM Elements ---
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gameSettingInput = document.getElementById('game-setting-input');
+        const complexitySlider = document.getElementById('complexity-slider');
+        const complexityLabel = document.getElementById('complexity-label');
+        const generateIdeaBtn = document.getElementById('generate-idea-btn');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const resetWorldBtn = document.getElementById('reset-world-btn');
+        const descriptionContainer = document.getElementById('description-container');
+        const logContainer = document.getElementById('log-container');
+        const commandForm = document.getElementById('command-form');
+        const commandInput = document.getElementById('command-input');
+        const mapContainer = document.getElementById('map-container');
+        const statsContainer = document.getElementById('stats-container');
+        const inventoryContainer = document.getElementById('inventory-container');
+
+        // --- State Management ---
+        let gameState = 'setup';
+        let gameSetting = '';
+        let complexity = '5';
+        let world = {};
+        let position = { x: 0, y: 0, z: 0 };
+        let inventory = [];
+        let log = [];
+        let combatState = null;
+        let isLoading = false;
+        let isGeneratingIdea = false;
+
+        const complexityLevels = {
+            '0': 'at a preschool reading level, using extremely simple words and very short sentences',
+            '1': 'at a kindergarten reading level, using very simple vocabulary and basic sentences',
+            '2': 'at a 1st-grade reading level, using simple words and short sentences',
+            '3': 'at a 3rd-grade reading level, with simple vocabulary and clear sentence structures',
+            '4': 'at a 4th-grade reading level, with straightforward language',
+            '5': 'at a 6th-grade reading level, using clear and accessible language',
+            '6': 'at a middle school (7th-8th grade) reading level',
+            '7': 'at a high school (9th-10th grade) reading level, with engaging and varied language',
+            '8': 'at an upper high school (11th-12th grade) reading level, with more complex sentences',
+            '9': 'at a college-level reading level, using sophisticated vocabulary and complex sentence structures',
+            '10': 'at a post-graduate or academic reading level, using advanced, technical, and nuanced language'
+        };
+
+        // --- RENDER FUNCTIONS ---
+        
+        function renderMap() {
+            const getExits = (x, y, z, w) => {
+                const room = w[`${x}_${y}_${z}`];
+                if (!room || !room.description) return [];
+                const exitMatch = room.description.match(/Exits: (.*)/i);
+                if (!exitMatch) return [];
+                return exitMatch[1].split(',').map(exit => exit.trim().toLowerCase());
+            };
+
+            const exits = getExits(position.x, position.y, position.z, world);
+            const currentLevelKeys = Object.keys(world).filter(key => key.endsWith(`_${position.z}`));
+            let grid = [];
+
+            if (currentLevelKeys.length === 0) {
+                grid = [[{ x: position.x, y: position.y, isExplored: true, isCurrent: true, connections: {}, clickArrow: null, isClickable: false }]];
+            } else {
+                const coords = currentLevelKeys.map(key => {
+                    const [x, y] = key.split('_').map(Number);
+                    return { x, y };
+                });
+                const minX = Math.min(...coords.map(c => c.x)) - 1;
+                const maxX = Math.max(...coords.map(c => c.x)) + 1;
+                const minY = Math.min(...coords.map(c => c.y)) - 1;
+                const maxY = Math.max(...coords.map(c => c.y)) + 1;
+
+                for (let y = maxY; y >= minY; y--) {
+                    const row = [];
+                    for (let x = minX; x <= maxX; x++) {
+                         const isExplored = world[`${x}_${y}_${position.z}`] !== undefined;
+                        const isCurrent = x === position.x && y === position.y;
+                        
+                        let connections = {};
+                        if(isExplored) {
+                            const roomExits = getExits(x, y, position.z, world);
+                            const northExits = getExits(x, y + 1, position.z, world);
+                            const southExits = getExits(x, y - 1, position.z, world);
+                            const eastExits = getExits(x + 1, y, position.z, world);
+                            const westExits = getExits(x - 1, y, position.z, world);
+                            connections.north = roomExits.includes('north') && northExits.includes('south');
+                            connections.south = roomExits.includes('south') && southExits.includes('north');
+                            connections.east = roomExits.includes('east') && westExits.includes('west');
+                            connections.west = roomExits.includes('west') && eastExits.includes('east');
+                        }
+                        
+                        let clickArrow = null;
+                        let isClickable = false;
+                        let moveDirection = null;
+
+                        if (!isExplored) {
+                            if (exits.includes('north') && x === position.x && y === position.y + 1) clickArrow = 'north';
+                            else if (exits.includes('south') && x === position.x && y === position.y - 1) clickArrow = 'south';
+                            else if (exits.includes('east') && x === position.x + 1 && y === position.y) clickArrow = 'east';
+                            else if (exits.includes('west') && x === position.x - 1 && y === position.y) clickArrow = 'west';
+                        } else if (!isCurrent) {
+                            if (exits.includes('north') && x === position.x && y === position.y + 1) { isClickable = true; moveDirection = 'north'; }
+                            else if (exits.includes('south') && x === position.x && y === position.y - 1) { isClickable = true; moveDirection = 'south'; }
+                            else if (exits.includes('east') && x === position.x + 1 && y === position.y) { isClickable = true; moveDirection = 'east'; }
+                            else if (exits.includes('west') && x === position.x - 1 && y === position.y) { isClickable = true; moveDirection = 'west'; }
+                        }
+                        row.push({ x, y, isExplored, isCurrent, connections, clickArrow, isClickable, moveDirection });
+                    }
+                    grid.push(row);
+                }
+            }
+            
+            const getUpDownArrowClasses = (direction) => `absolute text-3xl text-white hover:text-amber-400 transition cursor-pointer ${isLoading || !exits.includes(direction) ? 'hidden' : ''} ${direction === 'up' ? 'top-0 right-0 -translate-y-1/2 translate-x-1/2 text-green-400' : 'bottom-0 right-0 translate-y-1/2 translate-x-1/2 text-red-400'}`;
+            const arrowMap = { north: '↑', south: '↓', east: '→', west: '←' };
+
+            mapContainer.innerHTML = `
+                <div class="bg-gray-800 p-4 rounded-lg shadow-inner">
+                    <h2 class="text-lg font-bold text-emerald-400 mb-4 text-center">Map (Level ${position.z})</h2>
+                    <div class="relative flex flex-col items-center justify-center p-8">
+                        <div class="up-arrow ${getUpDownArrowClasses('up')}">▲</div>
+                        <div class="down-arrow ${getUpDownArrowClasses('down')}">▼</div>
+                        ${grid.map(row => `
+                            <div class="flex">
+                                ${row.map(({x, y, isExplored, isCurrent, connections, clickArrow, isClickable, moveDirection}) => {
+                                    const cellClasses = ['w-8', 'h-8', 'flex', 'items-center', 'justify-center', 'border-2', 'transition-colors'];
+                                    if (isExplored) {
+                                        cellClasses.push(isCurrent ? 'bg-amber-400' : 'bg-sky-700');
+                                        if (isClickable) cellClasses.push('cursor-pointer', 'hover:bg-sky-500');
+                                        cellClasses.push(connections.north ? 'border-t-transparent' : 'border-t-gray-600');
+                                        cellClasses.push(connections.south ? 'border-b-transparent' : 'border-b-gray-600');
+                                        cellClasses.push(connections.east ? 'border-r-transparent' : 'border-r-gray-600');
+                                        cellClasses.push(connections.west ? 'border-l-transparent' : 'border-l-gray-600');
+                                    } else if (clickArrow) {
+                                        cellClasses.push('bg-black', 'bg-opacity-25', 'border-dashed', 'border-gray-700', 'cursor-pointer', 'hover:bg-gray-700');
+                                    } else {
+                                        cellClasses.push('bg-black', 'bg-opacity-25', 'border-transparent');
+                                    }
+                                    return `<div class="${cellClasses.join(' ')}" data-move="${clickArrow || moveDirection || ''}">
+                                                ${isCurrent ? '<span class="text-gray-900 font-bold">@</span>' : ''}
+                                                ${clickArrow ? `<span class="text-amber-400 text-2xl pointer-events-none">${arrowMap[clickArrow]}</span>` : ''}
+                                            </div>`;
+                                }).join('')}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            // Add event listeners after rendering
+            mapContainer.querySelectorAll('[data-move]').forEach(el => {
+                const move = el.dataset.move;
+                if (move && !isLoading) {
+                    el.onclick = () => processPlayerAction(`go ${move}`);
+                }
+            });
+            mapContainer.querySelector('.up-arrow').onclick = () => processPlayerAction('go up');
+            mapContainer.querySelector('.down-arrow').onclick = () => processPlayerAction('go down');
         }
 
-        const currentRoomKey = `${position.x}_${position.y}_${position.z}`;
-        const currentRoomDescription = world[currentRoomKey]?.description;
-        const inventoryList = inventory.length > 0 ? inventory.join(', ') : 'nothing';
-        const complexityText = complexityLevels[complexity];
-
-        // Instant move for explored rooms
-        if (command.startsWith('go ')) {
-            const direction = command.split(' ')[1];
-            let newPos = { ...position };
-            if (direction === 'north') newPos.y += 1;
-            else if (direction === 'south') newPos.y -= 1;
-            else if (direction === 'east') newPos.x += 1;
-            else if (direction === 'west') newPos.x -= 1;
-            else if (direction === 'up') newPos.z += 1;
-            else if (direction === 'down') newPos.z -= 1;
-            const newRoomKey = `${newPos.x}_${newPos.y}_${newPos.z}`;
-            if (world[newRoomKey]) {
-                setPosition(newPos);
-                setIsLoading(false);
+        function renderPlayerStats() {
+            if (!combatState || !combatState.player) {
+                statsContainer.innerHTML = '';
                 return;
             }
+            const player = combatState.player;
+            const hpPercentage = (player.hp / player.maxHp) * 100;
+            const mpPercentage = (player.mp / player.maxMp) * 100;
+            statsContainer.innerHTML = `
+                <div class="bg-gray-800 p-4 rounded-lg shadow-inner">
+                    <h2 class="text-lg font-bold text-emerald-400 mb-4 text-center">Stats</h2>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-green-400">HP</span>
+                            <span>${player.hp} / ${player.maxHp}</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-4">
+                            <div class="bg-green-500 h-4 rounded-full" style="width: ${hpPercentage}%"></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-blue-400">MP</span>
+                            <span>${player.mp} / ${player.maxMp}</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-4">
+                            <div class="bg-blue-500 h-4 rounded-full" style="width: ${mpPercentage}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        let prompt;
-        if (combatState && combatState.enemy) {
-            prompt = `You are a D&D Dungeon Master. The player is in combat. All your descriptions must be written ${complexityText}.
+        function renderInventory() {
+            inventoryContainer.innerHTML = `
+                <div class="bg-gray-800 p-4 rounded-lg shadow-inner h-full">
+                    <h2 class="text-lg font-bold text-emerald-400 mb-4 text-center">Inventory</h2>
+                    ${inventory.length === 0 ? '<p class="text-gray-400 text-center italic">Your pockets are empty.</p>' : `<ul>${inventory.map(item => `<li class="text-gray-300 list-disc list-inside ml-2">${item}</li>`).join('')}</ul>`}
+                </div>
+            `;
+        }
+
+        function renderDescription() {
+            const currentRoomKey = `${position.x}_${position.y}_${position.z}`;
+            const roomDescription = world[currentRoomKey]?.description || 'You are in a featureless void.';
+            const exitRegex = /Exits: (.*)/i;
+            const description = roomDescription.replace(exitRegex, '').trim();
+            const descriptionHTML = description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            if (combatState && combatState.enemy) {
+                const player = combatState.player;
+                const enemy = combatState.enemy;
+                descriptionContainer.innerHTML = `
+                    <div class="bg-red-900 bg-opacity-50 border-2 border-red-500 rounded-lg p-4 h-full">
+                        <h2 class="text-2xl font-bold text-red-400 text-center mb-4">COMBAT!</h2>
+                        <div class="flex justify-around mb-4">
+                            <div class="text-center">
+                                <h3 class="text-lg text-green-400">You</h3>
+                                <p class="text-2xl font-bold">${player.hp} HP</p>
+                            </div>
+                            <div class="text-center">
+                                <h3 class="text-lg text-red-400">${enemy.name}</h3>
+                                <p class="text-2xl font-bold">${enemy.hp} HP</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-center gap-4">
+                            <button id="attack-btn" class="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Attack</button>
+                            <button id="defend-btn" class="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Defend</button>
+                            <button id="flee-btn" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">Flee</button>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('attack-btn').onclick = () => processPlayerAction('attack');
+                document.getElementById('defend-btn').onclick = () => processPlayerAction('defend');
+                document.getElementById('flee-btn').onclick = () => processPlayerAction('flee');
+            } else {
+                descriptionContainer.innerHTML = `
+                    <div class="bg-black bg-opacity-20 rounded-lg p-4 h-full overflow-y-auto custom-scrollbar">
+                        <h2 class="text-lg font-bold text-emerald-400 mb-2">Current Location</h2>
+                        <p class="text-gray-300">${descriptionHTML}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderLog() {
+            logContainer.innerHTML = log.map(entry => {
+                let style = '';
+                switch (entry.type) {
+                    case 'command': style = 'text-amber-300 italic'; break;
+                    case 'action': style = 'text-sky-300'; break;
+                    case 'error': style = 'text-red-400 font-bold'; break;
+                    default: style = 'text-gray-400';
+                }
+                const textWithBold = entry.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                return `<p class="mb-2 ${style}">${textWithBold}</p>`;
+            }).join('');
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function render() {
+            if (gameState === 'setup') {
+                setupScreen.classList.remove('hidden');
+                gameScreen.classList.add('hidden');
+            } else {
+                setupScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+                renderMap();
+                renderPlayerStats();
+                renderInventory();
+                renderDescription();
+                renderLog();
+                commandForm.style.display = (combatState && combatState.enemy) ? 'none' : 'block';
+                commandInput.disabled = isLoading;
+                commandInput.placeholder = isLoading ? "The world is changing..." : "What do you do?";
+            }
+            generateIdeaBtn.disabled = isGeneratingIdea || isLoading;
+            startGameBtn.disabled = isGeneratingIdea || isLoading;
+            generateIdeaBtn.textContent = isGeneratingIdea ? 'Generating...' : 'Generate Idea';
+            startGameBtn.textContent = isLoading && !isGeneratingIdea ? 'Building World...' : 'Begin Adventure';
+        }
+
+        // --- GAME LOGIC ---
+        
+        async function callGeminiAPI(prompt) {
+            const apiKey = ""; // Injected by environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+                const result = await response.json();
+                return result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                if (gameState === 'playing') {
+                    addToLog({text: "The air shimmers and reality feels unstable. Try again.", type: 'error'});
+                }
+                return null;
+            }
+        }
+
+        async function generateGameIdea() {
+            isGeneratingIdea = true;
+            render();
+            const complexityText = complexityLevels[complexity];
+            const prompt = `Generate a creative and compelling concept for a text-based adventure game. Provide a setting and a brief storyline or goal in a single paragraph. The concept should be written ${complexityText}.`;
+            const idea = await callGeminiAPI(prompt);
+            if (idea) {
+                gameSettingInput.value = idea;
+            }
+            isGeneratingIdea = false;
+            render();
+        }
+
+        async function generateStartingRoom() {
+            isLoading = true;
+            render();
+            const complexityText = complexityLevels[complexity];
+            const prompt = `You are a text-based adventure game engine. The user has defined the game setting and story as: "${gameSetting}". Describe the starting room of the adventure ${complexityText}. Be evocative. Bold key interactive objects using **word**. At the end of the description, on a new line, list the obvious exits like this: Exits: north, south, east, west, up, down`;
+            const newDescription = await callGeminiAPI(prompt);
+            if (newDescription) {
+                position = { x: 0, y: 0, z: 0 };
+                const startKey = `${position.x}_${position.y}_${position.z}`;
+                world = { [startKey]: { description: newDescription } };
+                log = [];
+                combatState = { player: { hp: 20, maxHp: 20, mp: 10, maxMp: 10 }, enemy: null };
+                gameState = 'playing';
+            }
+            isLoading = false;
+            render();
+        }
+
+        async function processPlayerAction(command) {
+            if (isLoading || !command.trim()) return;
+            
+            isLoading = true;
+            if (!command.startsWith('go ')) {
+                addToLog({ text: `> ${command}`, type: 'command' });
+            }
+            render();
+
+            const currentRoomKey = `${position.x}_${position.y}_${position.z}`;
+            const currentRoomDescription = world[currentRoomKey]?.description;
+            const inventoryList = inventory.length > 0 ? inventory.join(', ') : 'nothing';
+            const complexityText = complexityLevels[complexity];
+
+            if (command.startsWith('go ')) {
+                const direction = command.split(' ')[1];
+                let newPos = { ...position };
+                if (direction === 'north') newPos.y += 1;
+                else if (direction === 'south') newPos.y -= 1;
+                else if (direction === 'east') newPos.x += 1;
+                else if (direction === 'west') newPos.x -= 1;
+                else if (direction === 'up') newPos.z += 1;
+                else if (direction === 'down') newPos.z -= 1;
+                const newRoomKey = `${newPos.x}_${newPos.y}_${newPos.z}`;
+                if (world[newRoomKey]) {
+                    position = newPos;
+                    isLoading = false;
+                    render();
+                    return;
+                }
+            }
+
+            let prompt;
+            if (combatState && combatState.enemy) {
+                prompt = `You are a D&D Dungeon Master. The player is in combat. All your descriptions must be written ${complexityText}.
 Combat State: Player HP is ${combatState.player.hp}/${combatState.player.maxHp}, Player MP is ${combatState.player.mp}/${combatState.player.maxMp}, Enemy (${combatState.enemy.name}) HP is ${combatState.enemy.hp}.
 Player Action: "${command}".
 Describe the outcome of this round of combat. The player and enemy attack each other. Calculate damage (e.g., 1d6) and update HP/MP.
@@ -409,8 +461,8 @@ Respond with ONE of the following formats, using "|" as a separator:
    Example: LOSE|The goblin's rusty dagger finds a gap in your armor. Your vision fades to black.
 4. If the player successfully flees: FLEE|direction|description of escape
    Example: FLEE|north|You turn and run, scrambling through the north door just as the goblin's attack whistles past your ear.`;
-        } else {
-            prompt = `You are a text-based adventure game master. All your descriptions must be written ${complexityText}.
+            } else {
+                prompt = `You are a text-based adventure game master. All your descriptions must be written ${complexityText}.
 Theme: "${gameSetting}".
 Current Location: "${currentRoomDescription}".
 Player Inventory: [${inventoryList}].
@@ -424,258 +476,192 @@ Respond with ONE of the following formats, using "|" as a separator. Bold key in
    Example: FIGHT|Goblin|12|A foul-smelling **goblin** leaps from the shadows, brandishing a rusty dagger!
 4. For any other action, just describe the outcome.
    Example: You try the handle, but the **door** is locked.`;
+            }
+
+            const responseText = await callGeminiAPI(prompt);
+
+            if (responseText) {
+                const parts = responseText.split('|');
+                const tag = parts[0];
+
+                switch (tag) {
+                    case 'MOVE': {
+                        const direction = parts[1];
+                        const description = parts.slice(2).join('|');
+                        let newPos = { ...position };
+                        if (direction === 'north') newPos.y += 1;
+                        else if (direction === 'south') newPos.y -= 1;
+                        else if (direction === 'east') newPos.x += 1;
+                        else if (direction === 'west') newPos.x -= 1;
+                        else if (direction === 'up') newPos.z += 1;
+                        else if (direction === 'down') newPos.z -= 1;
+                        
+                        const newRoomKey = `${newPos.x}_${newPos.y}_${newPos.z}`;
+                        if (!world[newRoomKey]) {
+                            world[newRoomKey] = { description: description };
+                        }
+                        position = newPos;
+                        break;
+                    }
+                    case 'TAKE': {
+                        const item = parts[1];
+                        const description = parts.slice(2).join('|');
+                        inventory.push(item);
+                        addToLog({ text: description, type: 'action' });
+                        break;
+                    }
+                    case 'FIGHT': {
+                        const enemyName = parts[1];
+                        const enemyHp = parseInt(parts[2], 10);
+                        const description = parts.slice(3).join('|');
+                        if (!isNaN(enemyHp)) {
+                            combatState.enemy = { name: enemyName, hp: enemyHp };
+                            addToLog({ text: description, type: 'action' });
+                        } else {
+                            addToLog({ text: "A strange energy prevents the fight from starting.", type: 'error' });
+                        }
+                        break;
+                    }
+                    case 'COMBAT': {
+                        const playerHp = parseInt(parts[1], 10);
+                        const playerMp = parseInt(parts[2], 10);
+                        const enemyHp = parseInt(parts[3], 10);
+                        const description = parts.slice(4).join('|');
+                        if (!isNaN(playerHp) && !isNaN(playerMp) && !isNaN(enemyHp)) {
+                            combatState.player.hp = playerHp;
+                            combatState.player.mp = playerMp;
+                            combatState.enemy.hp = enemyHp;
+                            addToLog({ text: description, type: 'action' });
+                        } else {
+                            addToLog({ text: "A strange energy disrupts the battle...", type: 'error' });
+                        }
+                        break;
+                    }
+                    case 'WIN': {
+                        const description = parts.slice(1).join('|');
+                        combatState.enemy = null;
+                        addToLog({ text: description, type: 'action' });
+                        break;
+                    }
+                    case 'LOSE': {
+                        const description = parts.slice(1).join('|');
+                        addToLog({ text: description, type: 'error' });
+                        combatState.enemy = null; 
+                        break;
+                    }
+                    case 'FLEE': {
+                        const direction = parts[1];
+                        const description = parts.slice(2).join('|');
+                        let newPos = { ...position };
+                        if (direction === 'north') newPos.y += 1;
+                        else if (direction === 'south') newPos.y -= 1;
+                        else if (direction === 'east') newPos.x += 1;
+                        else if (direction === 'west') newPos.x -= 1;
+                        
+                        const newRoomKey = `${newPos.x}_${newPos.y}_${newPos.z}`;
+                        if (!world[newRoomKey]) {
+                            world[newRoomKey] = { description: "You fled to this area." };
+                        }
+                        position = newPos;
+                        combatState.enemy = null;
+                        addToLog({ text: description, type: 'action' });
+                        break;
+                    }
+                    default:
+                         addToLog({ text: responseText, type: 'action' });
+                }
+            }
+            isLoading = false;
+            saveState();
+            render();
         }
 
-        const responseText = await callGeminiAPI(prompt);
+        function addToLog(logEntry) {
+            log.push(logEntry);
+        }
 
-        if (responseText) {
-            const parts = responseText.split('|');
-            const tag = parts[0];
-
-            switch (tag) {
-                case 'MOVE': {
-                    const direction = parts[1];
-                    const description = parts.slice(2).join('|');
-                    let newPos = { ...position };
-                    if (direction === 'north') newPos.y += 1;
-                    else if (direction === 'south') newPos.y -= 1;
-                    else if (direction === 'east') newPos.x += 1;
-                    else if (direction === 'west') newPos.x -= 1;
-                    else if (direction === 'up') newPos.z += 1;
-                    else if (direction === 'down') newPos.z -= 1;
-                    
-                    const newRoomKey = `${newPos.x}_${newPos.y}_${newPos.z}`;
-                    if (!world[newRoomKey]) {
-                        setWorld(prev => ({ ...prev, [newRoomKey]: { description: description } }));
-                    }
-                    setPosition(newPos);
-                    break;
+        function saveState() {
+            if (gameState === 'playing') {
+                try {
+                    const gameStateToSave = { world, setting: gameSetting, position, log, inventory, complexity, combat: combatState };
+                    localStorage.setItem('mud_gamestate', JSON.stringify(gameStateToSave));
+                } catch (error) {
+                    console.error("Failed to save game:", error);
                 }
-                case 'TAKE': {
-                    const item = parts[1];
-                    const description = parts.slice(2).join('|');
-                    setInventory(prev => [...prev, item]);
-                    addToLog({ text: description, type: 'action' });
-                    break;
-                }
-                case 'FIGHT': {
-                    const enemyName = parts[1];
-                    const enemyHp = parseInt(parts[2], 10);
-                    const description = parts.slice(3).join('|');
-                    if (!isNaN(enemyHp)) {
-                        setCombatState(prev => ({ ...prev, enemy: { name: enemyName, hp: enemyHp } }));
-                        addToLog({ text: description, type: 'action' });
-                    } else {
-                        addToLog({ text: "A strange energy prevents the fight from starting.", type: 'error' });
-                    }
-                    break;
-                }
-                case 'COMBAT': {
-                    const playerHp = parseInt(parts[1], 10);
-                    const playerMp = parseInt(parts[2], 10);
-                    const enemyHp = parseInt(parts[3], 10);
-                    const description = parts.slice(4).join('|');
-                    if (!isNaN(playerHp) && !isNaN(playerMp) && !isNaN(enemyHp)) {
-                        setCombatState(prev => ({ 
-                            player: { ...prev.player, hp: playerHp, mp: playerMp }, 
-                            enemy: { ...prev.enemy, hp: enemyHp } 
-                        }));
-                        addToLog({ text: description, type: 'action' });
-                    } else {
-                        addToLog({ text: "A strange energy disrupts the battle...", type: 'error' });
-                    }
-                    break;
-                }
-                case 'WIN': {
-                    const description = parts.slice(1).join('|');
-                    setCombatState(prev => ({ ...prev, enemy: null }));
-                    addToLog({ text: description, type: 'action' });
-                    break;
-                }
-                case 'LOSE': {
-                    const description = parts.slice(1).join('|');
-                    addToLog({ text: description, type: 'error' });
-                    setCombatState(null); 
-                    break;
-                }
-                case 'FLEE': {
-                    const direction = parts[1];
-                    const description = parts.slice(2).join('|');
-                    let newPos = { ...position };
-                    if (direction === 'north') newPos.y += 1;
-                    else if (direction === 'south') newPos.y -= 1;
-                    else if (direction === 'east') newPos.x += 1;
-                    else if (direction === 'west') newPos.x -= 1;
-                    
-                    const newRoomKey = `${newPos.x}_${newPos.y}_${newPos.z}`;
-                    if (!world[newRoomKey]) {
-                        setWorld(prev => ({ ...prev, [newRoomKey]: { description: "You fled to this area." } }));
-                    }
-                    setPosition(newPos);
-                    setCombatState(prev => ({ ...prev, enemy: null }));
-                    addToLog({ text: description, type: 'action' });
-                    break;
-                }
-                default:
-                     addToLog({ text: responseText, type: 'action' });
             }
         }
-        setIsLoading(false);
-    };
 
-    const startGame = () => {
-        if (!gameSetting.trim()) {
-            alert("Please describe your adventure!");
-            return;
+        function loadState() {
+            try {
+                const savedState = localStorage.getItem('mud_gamestate');
+                if (savedState) {
+                    const loaded = JSON.parse(savedState);
+                    if (loaded.world && loaded.setting && loaded.position && loaded.log && loaded.inventory) {
+                        world = loaded.world;
+                        gameSetting = loaded.setting;
+                        position = { x: loaded.position.x, y: loaded.position.y, z: loaded.position.z || 0 };
+                        log = loaded.log;
+                        inventory = loaded.inventory;
+                        complexity = loaded.complexity || '5';
+                        combatState = loaded.combat || { player: { hp: 20, maxHp: 20, mp: 10, maxMp: 10 }, enemy: null };
+                        gameState = 'playing';
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to load saved game:", error);
+                clearGameData(false);
+            }
         }
-        generateStartingRoom();
-    };
 
-    const addToLog = (logEntry) => {
-        setLog(prevLog => [...prevLog, logEntry]);
-    };
-
-    const handleCommandSubmit = (e) => {
-        e.preventDefault();
-        processPlayerAction(input);
-        setInput('');
-    };
-
-    const clearGameData = (confirm = true) => {
-        if (confirm && !window.confirm("Are you sure? This will erase your entire adventure.")) {
-            return;
+        function clearGameData(confirm = true) {
+            if (confirm && !window.confirm("Are you sure? This will erase your entire adventure.")) {
+                return;
+            }
+            localStorage.removeItem('mud_gamestate');
+            world = {};
+            gameSetting = '';
+            position = { x: 0, y: 0, z: 0 };
+            inventory = [];
+            log = [];
+            combatState = null;
+            gameState = 'setup';
+            gameSettingInput.value = '';
+            complexitySlider.value = '5';
+            complexityLabel.textContent = '5';
+            render();
         }
-        localStorage.removeItem('mud_gamestate');
-        setWorld({});
-        setGameSetting('');
-        setPosition({ x: 0, y: 0, z: 0 });
-        setInventory([]);
-        setLog([]);
-        setCombatState(null);
-        setGameState('setup');
-    };
 
-    // --- RENDER LOGIC ---
-    const renderLogEntry = (entry, index) => {
-        let style = '';
-        switch (entry.type) {
-            case 'command': style = 'text-amber-300 italic'; break;
-            case 'action': style = 'text-sky-300'; break;
-            case 'error': style = 'text-red-400 font-bold'; break;
-            default: style = 'text-gray-400';
-        }
-        const textWithBold = entry.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        return <p key={index} className={`mb-2 ${style}`} dangerouslySetInnerHTML={{ __html: textWithBold }} />;
-    };
+        // --- Event Listeners ---
+        complexitySlider.oninput = (e) => {
+            complexity = e.target.value;
+            complexityLabel.textContent = complexity;
+        };
 
-    if (gameState === 'setup') {
-        return (
-            <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center font-mono p-4">
-                <div className="w-full max-w-lg bg-gray-800 rounded-lg shadow-2xl p-8">
-                    <h1 className="text-4xl font-bold text-center text-emerald-400 mb-4">Text Adventure</h1>
-                    <p className="text-center text-gray-400 mb-6">Describe the setting and story for your adventure, or generate an idea.</p>
-                    <textarea
-                        className="w-full bg-gray-900 border border-gray-700 rounded-md p-3 h-40 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-                        placeholder="Describe your game's setting and main goal..."
-                        value={gameSetting}
-                        onChange={(e) => setGameSetting(e.target.value)}
-                    />
-                    <div className="my-6">
-                        <label htmlFor="complexity" className="block text-center text-gray-400 mb-2">Narrative Complexity: <span className="font-bold text-emerald-400">{complexity}</span></label>
-                        <input
-                            type="range"
-                            id="complexity"
-                            min="0"
-                            max="10"
-                            step="1"
-                            value={complexity}
-                            onChange={(e) => setComplexity(e.target.value)}
-                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        />
-                    </div>
-                    <div className="flex gap-4 mt-4">
-                        <button
-                            className="w-full bg-sky-700 hover:bg-sky-600 text-white font-bold py-3 rounded-md transition-transform transform hover:scale-105 disabled:bg-gray-600"
-                            onClick={generateGameIdea}
-                            disabled={isGeneratingIdea || isLoading}
-                        >
-                            {isGeneratingIdea ? 'Generating...' : 'Generate Idea'}
-                        </button>
-                        <button
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-md transition-transform transform hover:scale-105 disabled:bg-gray-600"
-                            onClick={startGame}
-                            disabled={isGeneratingIdea || isLoading}
-                        >
-                            {isLoading ? 'Building World...' : 'Begin Adventure'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+        generateIdeaBtn.onclick = generateGameIdea;
 
-    const currentRoomKey = `${position.x}_${position.y}_${position.z}`;
-    const currentRoomDescription = world[currentRoomKey]?.description;
+        startGameBtn.onclick = () => {
+            gameSetting = gameSettingInput.value;
+            if (!gameSetting.trim()) {
+                alert("Please describe your adventure!");
+                return;
+            }
+            generateStartingRoom();
+        };
 
-    return (
-        <div className="bg-gray-900 text-white h-screen flex flex-col font-mono">
-            <header className="flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-700 shadow-lg">
-                <h1 className="text-xl font-bold text-emerald-400">Text Adventure</h1>
-                <button onClick={() => clearGameData()} className="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md text-sm transition">
-                    Reset World
-                </button>
-            </header>
-            
-            <div className="flex-grow flex flex-col md:flex-row p-4 gap-4 min-h-0">
-                {/* Center Panel: Game */}
-                <main className="flex-grow w-full md:w-3/5 flex flex-col min-h-0">
-                    <div className="h-1/2 overflow-y-auto mb-4">
-                        {combatState && combatState.enemy ? (
-                            <CombatUI player={combatState.player} enemy={combatState.enemy} onCommand={processPlayerAction} isLoading={isLoading} />
-                        ) : (
-                            <CurrentRoom 
-                                roomDescription={currentRoomDescription}
-                            />
-                        )}
-                    </div>
-                    <div className="h-1/2 flex flex-col min-h-0">
-                        <div className="flex-grow p-4 bg-black bg-opacity-20 rounded-lg overflow-y-auto mb-4">
-                            {log.map(renderLogEntry)}
-                            <div ref={logEndRef} />
-                        </div>
-                        {!combatState?.enemy && (
-                            <form onSubmit={handleCommandSubmit} className="flex-shrink-0">
-                                <div className="flex items-center bg-gray-800 border border-gray-700 rounded-md p-2">
-                                    <span className="text-amber-300 mr-2">{'>'}</span>
-                                    <input
-                                        type="text"
-                                        className="flex-grow bg-transparent focus:outline-none"
-                                        placeholder={isLoading ? "The world is changing..." : "What do you do?"}
-                                        value={input}
-                                        onChange={(e) => setInput(e.target.value)}
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </form>
-                        )}
-                    </div>
-                </main>
+        resetWorldBtn.onclick = () => clearGameData();
 
-                {/* Right Panel: Map and Inventory */}
-                <aside className="w-full md:w-2/5 flex flex-col gap-4 min-h-0">
-                   <div className="flex-shrink-0">
-                     <Map world={world} currentPos={position} onCommand={processPlayerAction} isLoading={isLoading} />
-                   </div>
-                   <div className="flex-shrink-0">
-                     <PlayerStats player={combatState?.player} />
-                   </div>
-                   <div className="flex-grow overflow-y-auto">
-                     <Inventory items={inventory} />
-                   </div>
-                </aside>
-            </div>
-        </div>
-    );
-};
+        commandForm.onsubmit = (e) => {
+            e.preventDefault();
+            processPlayerAction(commandInput.value);
+            commandInput.value = '';
+        };
 
-export default App;
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            render();
+        });
+
+    </script>
+</body>
+</html>
