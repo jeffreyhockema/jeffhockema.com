@@ -1,0 +1,271 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    cursor: crosshair;
+    width: 100vw;
+    height: calc(100vh - 140px);
+}
+
+/* Doom-style HUD */
+.doom-hud {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 140px;
+    background: linear-gradient(to bottom, #4a4a4a 0%, #2a2a2a 50%, #1a1a1a 100%);
+    border-top: 3px solid #8B7D6B;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 10px 20px;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
+    overflow: visible;
+}
+
+.hud-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hud-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.hud-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 200px;
+}
+
+.weapons-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px;
+    margin-top: 5px;
+    font-size: 9px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.weapon-slot {
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    border: 1px solid #444;
+    background: rgba(0,0,0,0.3);
+    min-height: 20px;
+}
+
+.weapon-slot.owned {
+    border-color: #0f0;
+    color: #0f0;
+}
+
+.weapon-slot.active {
+    border-color: #ff0;
+    background: rgba(255,255,0,0.1);
+    color: #ff0;
+}
+
+.weapon-slot.not-owned {
+    border-color: #666;
+    color: #666;
+}
+
+.weapon-icon {
+    width: 16px;
+    height: 12px;
+    margin-right: 4px;
+    text-align: center;
+    font-family: monospace;
+    font-size: 8px;
+    line-height: 12px;
+}
+
+.doom-face {
+    width: 60px;
+    height: 60px;
+    background: #8B4513;
+    border: 2px solid #654321;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.health-display {
+    color: #ff0;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px #000;
+    margin: 5px 0;
+}
+
+.ammo-display {
+    color: #ff0;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px #000;
+    margin: 5px 0;
+}
+
+.weapon-display {
+    color: #0f0;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px #000;
+    margin: 5px 0;
+}
+
+.keys-display {
+    display: flex;
+    gap: 10px;
+    margin: 5px 0;
+}
+
+.key-indicator {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.key-red { background: #8B0000; color: #fff; }
+.key-yellow { background: #FFD700; color: #000; }
+.key-blue { background: #0000FF; color: #fff; }
+
+.level-info {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    color: #ff0;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px #000;
+    z-index: 1001;
+}
+
+.score-info {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    color: #ff0;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px #000;
+    z-index: 1001;
+}
+
+/* Mobile controls */
+.mobile-controls {
+    position: fixed;
+    bottom: 150px;
+    left: 10px;
+    right: 10px;
+    display: none;
+    z-index: 1002;
+}
+
+.mobile-dpad {
+    position: absolute;
+    left: 10px;
+    width: 120px;
+    height: 120px;
+}
+
+.mobile-btn {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.3);
+    border: 2px solid #fff;
+    border-radius: 20px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 36px;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.mobile-btn:active {
+    background: rgba(255,255,255,0.6);
+}
+
+.mobile-actions {
+    position: absolute;
+    right: 10px;
+    width: 120px;
+    height: 120px;
+}
+
+@media (max-width: 768px) {
+    .mobile-controls {
+        display: block;
+    }
+}
+
+/* Settings overlay */
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-panel {
+    background: #333;
+    border: 2px solid #666;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 400px;
+    width: 90%;
+}
+
+.setting-item {
+    margin: 15px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.setting-item label {
+    color: #fff;
+    font-weight: bold;
+}
+
+.setting-item input,
+.setting-item select {
+    background: #222;
+    border: 1px solid #666;
+    color: #fff;
+    padding: 5px;
+}
