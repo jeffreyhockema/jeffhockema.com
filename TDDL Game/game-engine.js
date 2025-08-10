@@ -523,8 +523,8 @@ export class GameEngine {
                     continue;
                 }
                 
-                // Get base color
-                const baseColor = this.getCellColor(cell);
+                // Get base color using texture information
+                const baseColor = this.getCellColor(cell, this.textureMap[y][x]);
                 
                 // Apply fog of war effect
                 const isVisible = this.visibilityMap[y]?.[x];
@@ -538,12 +538,8 @@ export class GameEngine {
                 
                 this.ctx.fillRect(screenX, screenY, GAME_CONFIG.GRID.SIZE, GAME_CONFIG.GRID.SIZE);
                 
-                // Add subtle border for walls to improve visibility
-                if (cell === 1) {
-                    this.ctx.strokeStyle = isVisible ? '#9B8D7B' : this.dimColor('#9B8D7B', 0.4);
-                    this.ctx.lineWidth = 1;
-                    this.ctx.strokeRect(screenX, screenY, GAME_CONFIG.GRID.SIZE, GAME_CONFIG.GRID.SIZE);
-                }
+                // Add texture details and borders
+                this.renderTextureDetails(cell, this.textureMap[y][x], screenX, screenY, isVisible);
             }
         }
     }
@@ -560,13 +556,124 @@ export class GameEngine {
         return color; // Fallback for non-hex colors
     }
 
-    getCellColor(cell) {
+    getCellColor(cell, theme) {
         switch (cell) {
-            case 0: return GAME_CONFIG.COLORS.FLOOR;
-            case 1: return GAME_CONFIG.COLORS.WALL;
-            case 2: return GAME_CONFIG.COLORS.DOOR;
-            default: return GAME_CONFIG.COLORS.FLOOR;
+            case 0: // Floor
+                switch (theme) {
+                    case 'BROWN': return GAME_CONFIG.COLORS.FLOOR_GREY;
+                    case 'GREY': return GAME_CONFIG.COLORS.FLOOR_METAL;
+                    case 'RED': return GAME_CONFIG.COLORS.FLOOR_STONE;
+                    case 'METAL': return GAME_CONFIG.COLORS.FLOOR_METAL;
+                    case 'TECH': return GAME_CONFIG.COLORS.FLOOR_TECH;
+                    default: return GAME_CONFIG.COLORS.FLOOR_GREY;
+                }
+            case 1: // Wall
+                switch (theme) {
+                    case 'BROWN': return GAME_CONFIG.COLORS.WALL_BROWN;
+                    case 'GREY': return GAME_CONFIG.COLORS.WALL_GREY;
+                    case 'RED': return GAME_CONFIG.COLORS.WALL_RED;
+                    case 'METAL': return GAME_CONFIG.COLORS.WALL_METAL;
+                    case 'TECH': return GAME_CONFIG.COLORS.WALL_TECH;
+                    default: return GAME_CONFIG.COLORS.WALL_BROWN;
+                }
+            case 2: // Door
+                switch (theme) {
+                    case 'BROWN': return GAME_CONFIG.COLORS.DOOR_BROWN;
+                    case 'GREY': case 'METAL': return GAME_CONFIG.COLORS.DOOR_METAL;
+                    case 'RED': return GAME_CONFIG.COLORS.DOOR_BROWN;
+                    case 'TECH': return GAME_CONFIG.COLORS.DOOR_TECH;
+                    default: return GAME_CONFIG.COLORS.DOOR_BROWN;
+                }
+            default: 
+                return GAME_CONFIG.COLORS.FLOOR_GREY;
         }
+    }
+
+    renderTextureDetails(cell, theme, x, y, isVisible) {
+        const size = GAME_CONFIG.GRID.SIZE;
+        const alpha = isVisible ? 1.0 : 0.4;
+        
+        this.ctx.save();
+        this.ctx.globalAlpha = alpha;
+        
+        if (cell === 1) { // Walls
+            // Add texture-specific wall details
+            switch (theme) {
+                case 'BROWN':
+                    // Stone brick lines
+                    this.ctx.strokeStyle = '#6B5D4B';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(x, y, size, size);
+                    // Horizontal mortar line
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, y + size/2);
+                    this.ctx.lineTo(x + size, y + size/2);
+                    this.ctx.stroke();
+                    break;
+                    
+                case 'GREY':
+                    // Stone block pattern
+                    this.ctx.strokeStyle = '#4A4A4A';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(x, y, size, size);
+                    break;
+                    
+                case 'RED':
+                    // Brick pattern
+                    this.ctx.strokeStyle = '#6B2B13';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(x, y, size, size);
+                    // Brick divisions
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x + size/2, y);
+                    this.ctx.lineTo(x + size/2, y + size);
+                    this.ctx.stroke();
+                    break;
+                    
+                case 'METAL':
+                    // Metal panel lines
+                    this.ctx.strokeStyle = '#3A3A3A';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(x, y, size, size);
+                    // Rivets
+                    this.ctx.fillStyle = '#2A2A2A';
+                    this.ctx.beginPath();
+                    this.ctx.arc(x + 4, y + 4, 1, 0, Math.PI * 2);
+                    this.ctx.arc(x + size - 4, y + 4, 1, 0, Math.PI * 2);
+                    this.ctx.arc(x + 4, y + size - 4, 1, 0, Math.PI * 2);
+                    this.ctx.arc(x + size - 4, y + size - 4, 1, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    break;
+                    
+                case 'TECH':
+                    // Tech panel with lines
+                    this.ctx.strokeStyle = '#2A4A6A';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(x, y, size, size);
+                    // Circuit pattern
+                    this.ctx.strokeStyle = '#1A3A5A';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x + size/4, y);
+                    this.ctx.lineTo(x + size/4, y + size);
+                    this.ctx.moveTo(x + 3*size/4, y);
+                    this.ctx.lineTo(x + 3*size/4, y + size);
+                    this.ctx.stroke();
+                    break;
+            }
+        } else if (cell === 2) { // Doors
+            // Door frame
+            this.ctx.strokeStyle = isVisible ? '#8A7A6A' : this.dimColor('#8A7A6A', 0.4);
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(x, y, size, size);
+            
+            // Door handle
+            this.ctx.fillStyle = isVisible ? '#FFD700' : this.dimColor('#FFD700', 0.4);
+            this.ctx.beginPath();
+            this.ctx.arc(x + size - 6, y + size/2, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        
+        this.ctx.restore();
     }
 
     renderPlayer() {
@@ -896,6 +1003,7 @@ export class GameEngine {
         
         // Initialize level with walls
         this.levelData = Array(LEVEL_HEIGHT).fill().map(() => Array(LEVEL_WIDTH).fill(1));
+        this.textureMap = Array(LEVEL_HEIGHT).fill().map(() => Array(LEVEL_WIDTH).fill('BROWN')); // Texture themes
         this.exploredMap = Array(LEVEL_HEIGHT).fill().map(() => Array(LEVEL_WIDTH).fill(false));
         this.visibilityMap = Array(LEVEL_HEIGHT).fill().map(() => Array(LEVEL_WIDTH).fill(false));
         
@@ -925,19 +1033,23 @@ export class GameEngine {
                 }
                 
                 if (!overlaps) {
-                    room = { x, y, w, h, type: i === 0 ? 'start' : 'normal' };
+                    // Assign texture theme to room
+                    const themes = ['BROWN', 'GREY', 'RED', 'METAL', 'TECH'];
+                    const theme = i === 0 ? 'BROWN' : themes[Math.floor(Math.random() * themes.length)];
+                    room = { x, y, w, h, type: i === 0 ? 'start' : 'normal', theme };
                     rooms.push(room);
                 }
                 attempts++;
             }
         }
         
-        // Carve out rooms
+        // Carve out rooms and apply textures
         for (let room of rooms) {
             for (let y = room.y; y < room.y + room.h; y++) {
                 for (let x = room.x; x < room.x + room.w; x++) {
                     if (x >= 0 && x < LEVEL_WIDTH && y >= 0 && y < LEVEL_HEIGHT) {
                         this.levelData[y][x] = 0; // Floor
+                        this.textureMap[y][x] = room.theme; // Apply room's texture theme
                     }
                 }
             }
@@ -960,8 +1072,12 @@ export class GameEngine {
             for (let x = minX; x <= maxX; x++) {
                 if (x >= 0 && x < LEVEL_WIDTH && startY >= 0 && startY < LEVEL_HEIGHT) {
                     this.levelData[startY][x] = 0;
+                    this.textureMap[startY][x] = 'GREY'; // Hallways are grey
                     // Make hallway 2 tiles wide
-                    if (startY + 1 < LEVEL_HEIGHT) this.levelData[startY + 1][x] = 0;
+                    if (startY + 1 < LEVEL_HEIGHT) {
+                        this.levelData[startY + 1][x] = 0;
+                        this.textureMap[startY + 1][x] = 'GREY';
+                    }
                 }
             }
             
@@ -971,11 +1087,18 @@ export class GameEngine {
             for (let y = minY; y <= maxY; y++) {
                 if (endX >= 0 && endX < LEVEL_WIDTH && y >= 0 && y < LEVEL_HEIGHT) {
                     this.levelData[y][endX] = 0;
+                    this.textureMap[y][endX] = 'GREY';
                     // Make hallway 2 tiles wide
-                    if (endX + 1 < LEVEL_WIDTH) this.levelData[y][endX + 1] = 0;
+                    if (endX + 1 < LEVEL_WIDTH) {
+                        this.levelData[y][endX + 1] = 0;
+                        this.textureMap[y][endX + 1] = 'GREY';
+                    }
                 }
             }
         }
+        
+        // Add doors to rooms (except the starting room)
+        this.placeDoors(rooms);
         
         // Add some interior obstacles and variety
         for (let room of rooms) {
@@ -1099,6 +1222,73 @@ export class GameEngine {
         console.log(`Total enemies generated: ${this.enemies.length}`);
     }
 
+    placeDoors(rooms) {
+        // Place doors in room entrances (skip first room which is player start)
+        for (let i = 1; i < rooms.length; i++) {
+            const room = rooms[i];
+            const doorPositions = [];
+            
+            // Find potential door positions on room perimeter
+            // Top wall
+            for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
+                if (room.y - 1 >= 0 && this.levelData[room.y - 1][x] === 0) { // hallway above
+                    doorPositions.push({ x, y: room.y, dir: 'horizontal' });
+                }
+            }
+            
+            // Bottom wall  
+            for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
+                if (room.y + room.h < this.levelData.length && 
+                    this.levelData[room.y + room.h][x] === 0) { // hallway below
+                    doorPositions.push({ x, y: room.y + room.h - 1, dir: 'horizontal' });
+                }
+            }
+            
+            // Left wall
+            for (let y = room.y + 1; y < room.y + room.h - 1; y++) {
+                if (room.x - 1 >= 0 && this.levelData[y][room.x - 1] === 0) { // hallway to left
+                    doorPositions.push({ x: room.x, y, dir: 'vertical' });
+                }
+            }
+            
+            // Right wall
+            for (let y = room.y + 1; y < room.y + room.h - 1; y++) {
+                if (room.x + room.w < this.levelData[0].length && 
+                    this.levelData[y][room.x + room.w] === 0) { // hallway to right
+                    doorPositions.push({ x: room.x + room.w - 1, y, dir: 'vertical' });
+                }
+            }
+            
+            // Place 1-2 doors per room randomly
+            const numDoors = Math.min(doorPositions.length, 1 + Math.floor(Math.random() * 2));
+            for (let d = 0; d < numDoors && doorPositions.length > 0; d++) {
+                const doorIndex = Math.floor(Math.random() * doorPositions.length);
+                const door = doorPositions.splice(doorIndex, 1)[0];
+                
+                // Set door tile type (2 = door)
+                this.levelData[door.y][door.x] = 2;
+                
+                // Set door texture to match room theme
+                const roomTheme = room.theme || 'BROWN';
+                this.textureMap[door.y][door.x] = roomTheme;
+                
+                // Store door info for interaction
+                if (!this.doors) this.doors = [];
+                this.doors.push({
+                    x: door.x,
+                    y: door.y,
+                    direction: door.dir,
+                    theme: roomTheme,
+                    locked: false, // Start with unlocked doors for now
+                    keyType: ['red', 'yellow', 'blue'][Math.floor(Math.random() * 3)],
+                    opened: false
+                });
+            }
+        }
+        
+        console.log(`Placed ${this.doors?.length || 0} doors`);
+    }
+
     generateItems() {
         this.items = [];
         if (!this.rooms || this.rooms.length === 0) return;
@@ -1202,8 +1392,11 @@ export class GameEngine {
             ammoElement.textContent = ammo === -1 ? '∞' : ammo;
         }
         
-        // Update gun info display
-        this.updateGunInfo();
+        // Update weapon grid
+        this.updateWeaponGrid();
+        
+        // Update key indicators
+        this.updateKeyIndicators();
         
         // Update level and score display
         document.querySelector('.level-info').textContent = `Level ${this.gameState.level}`;
@@ -1213,45 +1406,54 @@ export class GameEngine {
         this.updateHUDVisibility();
     }
 
-    updateGunInfo() {
-        const gunNumberElement = document.getElementById('gunNumber');
-        const gunNameElement = document.getElementById('gunName');
-        const gunIconElement = document.getElementById('gunIcon');
-        const gunAmmoElement = document.getElementById('gunAmmo');
-
-        const currentWeaponIndex = this.player.currentWeapon;
-        const currentWeapon = this.player.weapons[currentWeaponIndex];
-        const weaponConfig = GAME_CONFIG.WEAPONS[currentWeapon?.toUpperCase()];
+    updateWeaponGrid() {
+        const weaponSlots = document.querySelectorAll('.weapon-slot');
         
-        if (gunNumberElement) {
-            gunNumberElement.textContent = (currentWeaponIndex + 1).toString();
-        }
-        
-        if (gunNameElement) {
-            gunNameElement.textContent = currentWeapon?.toUpperCase() || 'FIST';
-        }
-        
-        if (gunIconElement) {
-            const weaponIcons = {
-                'fist': '✊',
-                'pistol': '🔫', 
-                'shotgun': '💥',
-                'chaingun': '🔥',
-                'rocket': '🚀',
-                'plasma': '⚡'
-            };
-            gunIconElement.textContent = weaponIcons[currentWeapon] || '✊';
-        }
-        
-        if (gunAmmoElement && currentWeapon) {
-            const currentAmmo = this.player.ammo[currentWeapon];
-            const maxAmmo = this.getMaxAmmo(currentWeapon);
+        weaponSlots.forEach((slot, index) => {
+            const weaponName = this.player.weapons[index];
+            const isOwned = weaponName !== undefined;
+            const isActive = index === this.player.currentWeapon;
+            const ammoElement = slot.querySelector('.weapon-ammo');
             
-            if (currentAmmo === -1) {
-                gunAmmoElement.textContent = '∞';
+            // Update ownership status
+            slot.classList.remove('owned', 'not-owned', 'active');
+            if (isActive && isOwned) {
+                slot.classList.add('active');
+            } else if (isOwned) {
+                slot.classList.add('owned');
             } else {
-                gunAmmoElement.textContent = `${currentAmmo}/${maxAmmo}`;
+                slot.classList.add('not-owned');
             }
+            
+            // Update ammo display
+            if (ammoElement && weaponName) {
+                const currentAmmo = this.player.ammo[weaponName];
+                const maxAmmo = this.getMaxAmmo(weaponName);
+                
+                if (currentAmmo === -1) {
+                    ammoElement.textContent = '∞';
+                } else {
+                    ammoElement.textContent = `${currentAmmo}/${maxAmmo}`;
+                }
+            } else if (ammoElement) {
+                ammoElement.textContent = '-';
+            }
+        });
+    }
+
+    updateKeyIndicators() {
+        const redKey = document.getElementById('redKey');
+        const yellowKey = document.getElementById('yellowKey');
+        const blueKey = document.getElementById('blueKey');
+        
+        if (redKey) {
+            redKey.style.opacity = this.player.keys.red > 0 ? '1' : '0.3';
+        }
+        if (yellowKey) {
+            yellowKey.style.opacity = this.player.keys.yellow > 0 ? '1' : '0.3';
+        }
+        if (blueKey) {
+            blueKey.style.opacity = this.player.keys.blue > 0 ? '1' : '0.3';
         }
     }
 
@@ -1271,7 +1473,6 @@ export class GameEngine {
         const hud = document.querySelector('.doom-hud');
         const levelInfo = document.querySelector('.level-info');
         const scoreInfo = document.querySelector('.score-info');
-        const gunInfo = document.getElementById('gunInfo');
         
         const shouldShowHUD = this.gameState.current === GAME_STATES.PLAYING || 
                              this.gameState.current === GAME_STATES.PAUSED;
@@ -1279,7 +1480,6 @@ export class GameEngine {
         if (hud) hud.style.display = shouldShowHUD ? 'flex' : 'none';
         if (levelInfo) levelInfo.style.display = shouldShowHUD ? 'block' : 'none';
         if (scoreInfo) scoreInfo.style.display = shouldShowHUD ? 'block' : 'none';
-        if (gunInfo) gunInfo.style.display = shouldShowHUD ? 'flex' : 'none';
     }
 
     setupCheats() {

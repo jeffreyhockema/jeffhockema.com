@@ -53,22 +53,25 @@ canvas {
 }
 
 .weapons-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     margin-top: 5px;
-    font-size: 9px;
-    max-height: 100px;
+    font-size: 10px;
+    max-height: 120px;
     overflow-y: auto;
+    min-width: 200px;
 }
 
 .weapon-slot {
     display: flex;
     align-items: center;
-    padding: 3px;
+    justify-content: space-between;
+    padding: 4px 6px;
     border: 1px solid #444;
     background: rgba(0,0,0,0.3);
-    min-height: 20px;
+    min-height: 24px;
+    gap: 8px;
 }
 
 .weapon-slot.owned {
@@ -78,8 +81,9 @@ canvas {
 
 .weapon-slot.active {
     border-color: #ff0;
-    background: rgba(255,255,0,0.1);
+    background: rgba(255,255,0,0.15);
     color: #ff0;
+    font-weight: bold;
 }
 
 .weapon-slot.not-owned {
@@ -87,14 +91,37 @@ canvas {
     color: #666;
 }
 
-.weapon-icon {
-    width: 16px;
-    height: 12px;
-    margin-right: 4px;
+.weapon-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.weapon-number {
+    font-weight: bold;
+    min-width: 12px;
     text-align: center;
-    font-family: monospace;
-    font-size: 8px;
-    line-height: 12px;
+}
+
+.weapon-icon {
+    font-size: 12px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.weapon-name {
+    font-size: 10px;
+    font-weight: bold;
+    flex: 1;
+}
+
+.weapon-ammo {
+    font-size: 9px;
+    font-weight: bold;
+    color: #ff0;
+    min-width: 40px;
+    text-align: right;
 }
 
 .doom-face {
@@ -270,51 +297,3 @@ canvas {
     padding: 5px;
 }
 
-/* Gun info display in bottom right */
-.gun-info {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    border: 2px solid #8B7D6B;
-    padding: 15px;
-    border-radius: 5px;
-    z-index: 1001;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 200px;
-    font-family: 'Courier New', monospace;
-}
-
-.gun-info-icon {
-    font-size: 24px;
-    width: 30px;
-    text-align: center;
-}
-
-.gun-info-details {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.gun-info-weapon {
-    color: #0f0;
-    font-size: 14px;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px #000;
-}
-
-.gun-info-number {
-    color: #ff0;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.gun-info-ammo {
-    color: #ff0;
-    font-size: 16px;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px #000;
-}
