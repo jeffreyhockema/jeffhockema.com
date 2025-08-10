@@ -269,3 +269,52 @@ canvas {
     color: #fff;
     padding: 5px;
 }
+
+/* Gun info display in bottom right */
+.gun-info {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #8B7D6B;
+    padding: 15px;
+    border-radius: 5px;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 200px;
+    font-family: 'Courier New', monospace;
+}
+
+.gun-info-icon {
+    font-size: 24px;
+    width: 30px;
+    text-align: center;
+}
+
+.gun-info-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gun-info-weapon {
+    color: #0f0;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.gun-info-number {
+    color: #ff0;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.gun-info-ammo {
+    color: #ff0;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+}

@@ -132,26 +132,30 @@ export class Enemy {
     update(deltaTime, player, levelData) {
         if (!this.active) return;
 
-        // Simple AI: move towards player if close enough
+        // Calculate distance and direction to player
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Only move if player is within detection range and not too close
-        if (distance > 30 && distance < 300) {
+        // Check if player is within detection range and line of sight
+        const canSeePlayer = distance < 300 && this.hasLineOfSight(player, levelData);
+        
+        // Only move if player is visible and not too close
+        if (canSeePlayer && distance > 30) {
             this.targetAngle = Math.atan2(dy, dx);
             const moveSpeed = this.speed * (deltaTime / 16); // Normalize for framerate
             const moveX = Math.cos(this.targetAngle) * moveSpeed;
             const moveY = Math.sin(this.targetAngle) * moveSpeed;
 
-            // Basic collision detection with level geometry
+            // Improved collision detection with level geometry
             const newX = this.x + moveX;
             const newY = this.y + moveY;
             
-            if (this.isValidPosition(newX, this.y, levelData)) {
+            // Check collision with buffer zone to prevent clipping
+            if (this.isValidPosition(newX, this.y, levelData, this.size / 2)) {
                 this.x = newX;
             }
-            if (this.isValidPosition(this.x, newY, levelData)) {
+            if (this.isValidPosition(this.x, newY, levelData, this.size / 2)) {
                 this.y = newY;
             }
         }
@@ -162,22 +166,73 @@ export class Enemy {
         }
     }
 
-    isValidPosition(x, y, levelData) {
+    isValidPosition(x, y, levelData, buffer = 0) {
         if (!levelData || levelData.length === 0) return false;
         
         const CELL_SIZE = 32; // Should match GAME_CONFIG.GRID.SIZE
-        const gridX = Math.floor(x / CELL_SIZE);
-        const gridY = Math.floor(y / CELL_SIZE);
         
-        // Check bounds
-        if (gridY < 0 || gridY >= levelData.length || 
-            gridX < 0 || gridX >= levelData[0]?.length) {
-            return false;
+        // Check collision for enemy's bounding box with buffer
+        const corners = [
+            { x: x - buffer, y: y - buffer }, // top-left
+            { x: x + buffer, y: y - buffer }, // top-right
+            { x: x - buffer, y: y + buffer }, // bottom-left
+            { x: x + buffer, y: y + buffer }  // bottom-right
+        ];
+        
+        for (let corner of corners) {
+            const gridX = Math.floor(corner.x / CELL_SIZE);
+            const gridY = Math.floor(corner.y / CELL_SIZE);
+            
+            // Check bounds
+            if (gridY < 0 || gridY >= levelData.length || 
+                gridX < 0 || gridX >= levelData[0]?.length) {
+                return false;
+            }
+            
+            // Check if position is wall
+            const cell = levelData[gridY][gridX];
+            if (cell === 1 || cell === 2) { // 0 = floor, 1 = wall, 2 = door
+                return false;
+            }
         }
         
-        // Check if position is floor (not wall)
-        const cell = levelData[gridY][gridX];
-        return cell === 0; // 0 = floor, 1 = wall
+        return true;
+    }
+
+    hasLineOfSight(player, levelData) {
+        if (!levelData || levelData.length === 0) return false;
+        
+        const CELL_SIZE = 32;
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Cast ray from enemy to player
+        const steps = Math.max(Math.abs(dx), Math.abs(dy)) / (CELL_SIZE / 4); // Quarter-cell precision
+        const stepX = dx / steps;
+        const stepY = dy / steps;
+        
+        for (let i = 1; i < steps; i++) {
+            const rayX = this.x + stepX * i;
+            const rayY = this.y + stepY * i;
+            
+            const gridX = Math.floor(rayX / CELL_SIZE);
+            const gridY = Math.floor(rayY / CELL_SIZE);
+            
+            // Check bounds
+            if (gridY < 0 || gridY >= levelData.length || 
+                gridX < 0 || gridX >= levelData[0]?.length) {
+                return false;
+            }
+            
+            // If ray hits a wall, no line of sight
+            const cell = levelData[gridY][gridX];
+            if (cell === 1 || cell === 2) { // wall or door blocks sight
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     takeDamage(amount) {
@@ -353,8 +408,8 @@ export class InputManager {
         document.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
             
-            // Handle cheat codes
-            this.handleCheatInput(e.key);
+            // Handle single-key cheats
+            this.handleCheatInput(e.key.toLowerCase());
         });
 
         document.addEventListener('keyup', (e) => {
@@ -414,26 +469,20 @@ export class InputManager {
     }
 
     handleCheatInput(key) {
-        // Only handle letter keys for cheat codes
-        if (key.length === 1 && /[a-zA-Z0-9]/.test(key)) {
-            this.cheatBuffer += key.toLowerCase();
-            
-            // Keep buffer manageable
-            if (this.cheatBuffer.length > 20) {
-                this.cheatBuffer = this.cheatBuffer.slice(-20);
-            }
-            
-            // Check for cheat codes
-            for (let cheat in this.cheatCodes) {
-                if (this.cheatBuffer.includes(cheat)) {
-                    this.triggerCheat(this.cheatCodes[cheat]);
-                    this.cheatBuffer = ''; // Clear buffer after successful cheat
-                    break;
-                }
-            }
-        } else if (key === 'Escape') {
-            // Clear cheat buffer on escape
-            this.cheatBuffer = '';
+        // Simple single-key cheat system
+        switch (key) {
+            case 'k': // All keys
+                this.triggerCheat('all_keys');
+                break;
+            case 'i': // Invincibility
+                this.triggerCheat('invincibility');
+                break;
+            case 'g': // All guns
+                this.triggerCheat('all_guns');
+                break;
+            case 'c': // No clipping mode
+                this.triggerCheat('no_clip');
+                break;
         }
     }
 
