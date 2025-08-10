@@ -43,9 +43,25 @@ export const GAME_CONFIG = {
     },
     
     COLORS: {
-        WALL: '#8B7D6B',
-        FLOOR: '#2F2F2F',
-        DOOR: '#654321',
+        // Doom-inspired wall textures
+        WALL_BROWN: '#8B7D6B',      // Original brown stone
+        WALL_GREY: '#666666',       // Grey stone
+        WALL_RED: '#8B4513',        // Red brick
+        WALL_METAL: '#5A5A5A',      // Metal panels
+        WALL_TECH: '#4A6B8A',       // Tech blue panels
+        
+        // Doom-inspired floor textures  
+        FLOOR_GREY: '#2F2F2F',      // Original dark grey
+        FLOOR_METAL: '#3A3A3A',     // Metal grating
+        FLOOR_STONE: '#4A4A3A',     // Stone tiles
+        FLOOR_TECH: '#2A3A4A',      // Tech floor
+        
+        // Door colors (match wall themes)
+        DOOR_BROWN: '#654321',      // Brown door
+        DOOR_METAL: '#4A4A4A',      // Metal door
+        DOOR_TECH: '#3A5A7A',       // Tech door
+        
+        // Game objects
         PLAYER: '#00FF00',
         ENEMY: '#FF0000',
         BULLET: '#FFFF00',

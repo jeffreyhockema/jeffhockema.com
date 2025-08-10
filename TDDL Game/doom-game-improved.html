@@ -61,16 +61,6 @@
         Loading...
     </div>
 
-    <!-- Gun Info Display -->
-    <div class="gun-info" id="gunInfo">
-        <div class="gun-info-icon" id="gunIcon">🔫</div>
-        <div class="gun-info-details">
-            <div class="gun-info-number" id="gunNumber">2</div>
-            <div class="gun-info-weapon" id="gunName">PISTOL</div>
-            <div class="gun-info-ammo" id="gunAmmo">∞/∞</div>
-        </div>
-    </div>
-
     <!-- Error display container -->
     <div id="errorContainer" aria-live="polite"></div>
 
@@ -169,8 +159,12 @@
                     <div class="weapon-slot ${index < 2 ? 'owned' : 'not-owned'}" 
                          data-weapon="${index}" 
                          title="${weapon.name} (${weapon.key})">
-                        <div class="weapon-icon">${weapon.icon}</div>
-                        <span>${weapon.key}</span>
+                        <div class="weapon-info">
+                            <span class="weapon-number">${weapon.key}</span>
+                            <span class="weapon-icon">${weapon.icon}</span>
+                            <span class="weapon-name">${weapon.name}</span>
+                        </div>
+                        <span class="weapon-ammo">∞</span>
                     </div>
                 `).join('');
 
