@@ -132,29 +132,52 @@ export class Enemy {
     update(deltaTime, player, levelData) {
         if (!this.active) return;
 
-        // Simple AI: move towards player
+        // Simple AI: move towards player if close enough
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance > 20) {
+        
+        // Only move if player is within detection range and not too close
+        if (distance > 30 && distance < 300) {
             this.targetAngle = Math.atan2(dy, dx);
-            const moveX = Math.cos(this.targetAngle) * this.speed;
-            const moveY = Math.sin(this.targetAngle) * this.speed;
+            const moveSpeed = this.speed * (deltaTime / 16); // Normalize for framerate
+            const moveX = Math.cos(this.targetAngle) * moveSpeed;
+            const moveY = Math.sin(this.targetAngle) * moveSpeed;
 
-            // Basic collision detection
-            if (this.isValidPosition(this.x + moveX, this.y, levelData)) {
-                this.x += moveX;
+            // Basic collision detection with level geometry
+            const newX = this.x + moveX;
+            const newY = this.y + moveY;
+            
+            if (this.isValidPosition(newX, this.y, levelData)) {
+                this.x = newX;
             }
-            if (this.isValidPosition(this.x, this.y + moveY, levelData)) {
-                this.y += moveY;
+            if (this.isValidPosition(this.x, newY, levelData)) {
+                this.y = newY;
             }
+        }
+        
+        // Update visual angle
+        if (distance > 0) {
+            this.angle = Math.atan2(dy, dx);
         }
     }
 
     isValidPosition(x, y, levelData) {
-        // Simple bounds check - implement proper collision detection
-        return x > 0 && x < 1000 && y > 0 && y < 1000;
+        if (!levelData || levelData.length === 0) return false;
+        
+        const CELL_SIZE = 32; // Should match GAME_CONFIG.GRID.SIZE
+        const gridX = Math.floor(x / CELL_SIZE);
+        const gridY = Math.floor(y / CELL_SIZE);
+        
+        // Check bounds
+        if (gridY < 0 || gridY >= levelData.length || 
+            gridX < 0 || gridX >= levelData[0]?.length) {
+            return false;
+        }
+        
+        // Check if position is floor (not wall)
+        const cell = levelData[gridY][gridX];
+        return cell === 0; // 0 = floor, 1 = wall
     }
 
     takeDamage(amount) {
