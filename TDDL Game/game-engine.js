@@ -1202,6 +1202,9 @@ export class GameEngine {
             ammoElement.textContent = ammo === -1 ? '∞' : ammo;
         }
         
+        // Update gun info display
+        this.updateGunInfo();
+        
         // Update level and score display
         document.querySelector('.level-info').textContent = `Level ${this.gameState.level}`;
         document.querySelector('.score-info').textContent = `Score: ${this.gameState.score}`;
@@ -1210,10 +1213,65 @@ export class GameEngine {
         this.updateHUDVisibility();
     }
 
+    updateGunInfo() {
+        const gunNumberElement = document.getElementById('gunNumber');
+        const gunNameElement = document.getElementById('gunName');
+        const gunIconElement = document.getElementById('gunIcon');
+        const gunAmmoElement = document.getElementById('gunAmmo');
+
+        const currentWeaponIndex = this.player.currentWeapon;
+        const currentWeapon = this.player.weapons[currentWeaponIndex];
+        const weaponConfig = GAME_CONFIG.WEAPONS[currentWeapon?.toUpperCase()];
+        
+        if (gunNumberElement) {
+            gunNumberElement.textContent = (currentWeaponIndex + 1).toString();
+        }
+        
+        if (gunNameElement) {
+            gunNameElement.textContent = currentWeapon?.toUpperCase() || 'FIST';
+        }
+        
+        if (gunIconElement) {
+            const weaponIcons = {
+                'fist': '✊',
+                'pistol': '🔫', 
+                'shotgun': '💥',
+                'chaingun': '🔥',
+                'rocket': '🚀',
+                'plasma': '⚡'
+            };
+            gunIconElement.textContent = weaponIcons[currentWeapon] || '✊';
+        }
+        
+        if (gunAmmoElement && currentWeapon) {
+            const currentAmmo = this.player.ammo[currentWeapon];
+            const maxAmmo = this.getMaxAmmo(currentWeapon);
+            
+            if (currentAmmo === -1) {
+                gunAmmoElement.textContent = '∞';
+            } else {
+                gunAmmoElement.textContent = `${currentAmmo}/${maxAmmo}`;
+            }
+        }
+    }
+
+    getMaxAmmo(weaponType) {
+        const maxAmmoMap = {
+            'fist': -1,
+            'pistol': -1,
+            'shotgun': 50,
+            'chaingun': 300,
+            'rocket': 20,
+            'plasma': 100
+        };
+        return maxAmmoMap[weaponType] || 0;
+    }
+
     updateHUDVisibility() {
         const hud = document.querySelector('.doom-hud');
         const levelInfo = document.querySelector('.level-info');
         const scoreInfo = document.querySelector('.score-info');
+        const gunInfo = document.getElementById('gunInfo');
         
         const shouldShowHUD = this.gameState.current === GAME_STATES.PLAYING || 
                              this.gameState.current === GAME_STATES.PAUSED;
@@ -1221,6 +1279,7 @@ export class GameEngine {
         if (hud) hud.style.display = shouldShowHUD ? 'flex' : 'none';
         if (levelInfo) levelInfo.style.display = shouldShowHUD ? 'block' : 'none';
         if (scoreInfo) scoreInfo.style.display = shouldShowHUD ? 'block' : 'none';
+        if (gunInfo) gunInfo.style.display = shouldShowHUD ? 'flex' : 'none';
     }
 
     setupCheats() {
@@ -1239,13 +1298,20 @@ export class GameEngine {
 
     handleCheat(cheatType) {
         switch (cheatType) {
-            case 'god_mode':
-                this.cheatEffects.godMode = !this.cheatEffects.godMode;
-                this.player.invulnerable = this.cheatEffects.godMode;
-                this.showCheatMessage(`God Mode: ${this.cheatEffects.godMode ? 'ON' : 'OFF'}`);
+            case 'all_keys':
+                this.player.keys.red = 1;
+                this.player.keys.yellow = 1;
+                this.player.keys.blue = 1;
+                this.showCheatMessage('All Keys Acquired');
                 break;
                 
-            case 'all_weapons':
+            case 'invincibility':
+                this.cheatEffects.invulnerable = !this.cheatEffects.invulnerable;
+                this.player.invulnerable = this.cheatEffects.invulnerable;
+                this.showCheatMessage(`Invincibility: ${this.cheatEffects.invulnerable ? 'ON' : 'OFF'}`);
+                break;
+                
+            case 'all_guns':
                 this.player.weapons = ['fist', 'pistol', 'shotgun', 'chaingun', 'rocket', 'plasma'];
                 for (let weapon in this.player.ammo) {
                     if (weapon !== 'fist' && weapon !== 'pistol') {
@@ -1258,38 +1324,6 @@ export class GameEngine {
             case 'no_clip':
                 this.cheatEffects.noClip = !this.cheatEffects.noClip;
                 this.showCheatMessage(`No Clip: ${this.cheatEffects.noClip ? 'ON' : 'OFF'}`);
-                break;
-                
-            case 'map_reveal':
-                this.cheatEffects.mapRevealed = !this.cheatEffects.mapRevealed;
-                if (this.cheatEffects.mapRevealed) {
-                    // Reveal entire map
-                    for (let y = 0; y < this.levelData.length; y++) {
-                        if (!this.exploredMap[y]) this.exploredMap[y] = [];
-                        if (!this.visibilityMap[y]) this.visibilityMap[y] = [];
-                        for (let x = 0; x < this.levelData[y].length; x++) {
-                            this.exploredMap[y][x] = true;
-                            this.visibilityMap[y][x] = true;
-                        }
-                    }
-                }
-                this.showCheatMessage(`Map Reveal: ${this.cheatEffects.mapRevealed ? 'ON' : 'OFF'}`);
-                break;
-                
-            case 'health_boost':
-                this.player.health = this.player.maxHealth;
-                this.showCheatMessage('Health Restored');
-                break;
-                
-            case 'invulnerability':
-                this.cheatEffects.invulnerable = !this.cheatEffects.invulnerable;
-                this.player.invulnerable = this.cheatEffects.invulnerable;
-                this.showCheatMessage(`Invulnerability: ${this.cheatEffects.invulnerable ? 'ON' : 'OFF'}`);
-                break;
-                
-            case 'invisibility':
-                this.cheatEffects.invisible = !this.cheatEffects.invisible;
-                this.showCheatMessage(`Invisibility: ${this.cheatEffects.invisible ? 'ON' : 'OFF'}`);
                 break;
         }
     }
