@@ -212,6 +212,11 @@ export class GameEngine {
     movePlayer(moveX, moveY) {
         if (moveX === 0 && moveY === 0) return;
         
+        // Prevent movement during door opening
+        if (this.player.doorOpening !== null) {
+            return;
+        }
+        
         const newX = this.player.x + moveX * this.player.speed;
         const newY = this.player.y + moveY * this.player.speed;
         
@@ -235,6 +240,24 @@ export class GameEngine {
 
     updatePlayer(deltaTime) {
         this.player.update(deltaTime);
+        
+        // Update door opening timer
+        if (this.player.doorOpening && this.player.doorOpeningTime > 0) {
+            this.player.doorOpeningTime -= deltaTime;
+            if (this.player.doorOpeningTime <= 0) {
+                // Open the door
+                const door = this.player.doorOpening;
+                door.opened = true;
+                
+                // Convert door cell to floor
+                this.levelData[door.cellY][door.cellX] = 0;
+                
+                // Reset door opening state
+                this.player.doorOpening = null;
+                
+                console.log(`Door opened at (${door.cellX}, ${door.cellY})`);
+            }
+        }
         
         // Check item collection
         this.checkItemCollection();
@@ -442,6 +465,19 @@ export class GameEngine {
         }
         
         const cell = this.levelData[gridY][gridX];
+        
+        // Check for locked doors
+        if (cell === 2) { // Door cell
+            const door = this.doors?.find(d => 
+                Math.abs(d.cellX - gridX) <= 1 && Math.abs(d.cellY - gridY) <= 1
+            );
+            
+            // Block movement through locked doors
+            if (door && door.locked) {
+                return true;
+            }
+        }
+        
         return this.isSolidWallType(cell);
     }
 
@@ -1055,49 +1091,16 @@ export class GameEngine {
             }
         }
         
-        // Create hallways to connect rooms
+        // Create hallways to connect rooms using improved system
+        this.hallways = [];
         for (let i = 0; i < rooms.length - 1; i++) {
             const roomA = rooms[i];
             const roomB = rooms[i + 1];
-            
-            // Create L-shaped hallway
-            const startX = Math.floor(roomA.x + roomA.w / 2);
-            const startY = Math.floor(roomA.y + roomA.h / 2);
-            const endX = Math.floor(roomB.x + roomB.w / 2);
-            const endY = Math.floor(roomB.y + roomB.h / 2);
-            
-            // Horizontal segment
-            const minX = Math.min(startX, endX);
-            const maxX = Math.max(startX, endX);
-            for (let x = minX; x <= maxX; x++) {
-                if (x >= 0 && x < LEVEL_WIDTH && startY >= 0 && startY < LEVEL_HEIGHT) {
-                    this.levelData[startY][x] = 0;
-                    this.textureMap[startY][x] = 'GREY'; // Hallways are grey
-                    // Make hallway 2 tiles wide
-                    if (startY + 1 < LEVEL_HEIGHT) {
-                        this.levelData[startY + 1][x] = 0;
-                        this.textureMap[startY + 1][x] = 'GREY';
-                    }
-                }
-            }
-            
-            // Vertical segment
-            const minY = Math.min(startY, endY);
-            const maxY = Math.max(startY, endY);
-            for (let y = minY; y <= maxY; y++) {
-                if (endX >= 0 && endX < LEVEL_WIDTH && y >= 0 && y < LEVEL_HEIGHT) {
-                    this.levelData[y][endX] = 0;
-                    this.textureMap[y][endX] = 'GREY';
-                    // Make hallway 2 tiles wide
-                    if (endX + 1 < LEVEL_WIDTH) {
-                        this.levelData[y][endX + 1] = 0;
-                        this.textureMap[y][endX + 1] = 'GREY';
-                    }
-                }
-            }
+            const hallway = this.createHallway(roomA, roomB, LEVEL_WIDTH, LEVEL_HEIGHT);
+            this.hallways.push(hallway);
         }
         
-        // Add doors to rooms (except the starting room)
+        // Place doors strategically in hallway segments
         this.placeDoors(rooms);
         
         // Add some interior obstacles and variety
@@ -1223,70 +1226,254 @@ export class GameEngine {
     }
 
     placeDoors(rooms) {
-        // Place doors in room entrances (skip first room which is player start)
-        for (let i = 1; i < rooms.length; i++) {
-            const room = rooms[i];
-            const doorPositions = [];
-            
-            // Find potential door positions on room perimeter
-            // Top wall
-            for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
-                if (room.y - 1 >= 0 && this.levelData[room.y - 1][x] === 0) { // hallway above
-                    doorPositions.push({ x, y: room.y, dir: 'horizontal' });
-                }
-            }
-            
-            // Bottom wall  
-            for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
-                if (room.y + room.h < this.levelData.length && 
-                    this.levelData[room.y + room.h][x] === 0) { // hallway below
-                    doorPositions.push({ x, y: room.y + room.h - 1, dir: 'horizontal' });
-                }
-            }
-            
-            // Left wall
-            for (let y = room.y + 1; y < room.y + room.h - 1; y++) {
-                if (room.x - 1 >= 0 && this.levelData[y][room.x - 1] === 0) { // hallway to left
-                    doorPositions.push({ x: room.x, y, dir: 'vertical' });
-                }
-            }
-            
-            // Right wall
-            for (let y = room.y + 1; y < room.y + room.h - 1; y++) {
-                if (room.x + room.w < this.levelData[0].length && 
-                    this.levelData[y][room.x + room.w] === 0) { // hallway to right
-                    doorPositions.push({ x: room.x + room.w - 1, y, dir: 'vertical' });
-                }
-            }
-            
-            // Place 1-2 doors per room randomly
-            const numDoors = Math.min(doorPositions.length, 1 + Math.floor(Math.random() * 2));
-            for (let d = 0; d < numDoors && doorPositions.length > 0; d++) {
-                const doorIndex = Math.floor(Math.random() * doorPositions.length);
-                const door = doorPositions.splice(doorIndex, 1)[0];
-                
-                // Set door tile type (2 = door)
-                this.levelData[door.y][door.x] = 2;
-                
-                // Set door texture to match room theme
-                const roomTheme = room.theme || 'BROWN';
-                this.textureMap[door.y][door.x] = roomTheme;
-                
-                // Store door info for interaction
-                if (!this.doors) this.doors = [];
-                this.doors.push({
-                    x: door.x,
-                    y: door.y,
-                    direction: door.dir,
-                    theme: roomTheme,
-                    locked: false, // Start with unlocked doors for now
-                    keyType: ['red', 'yellow', 'blue'][Math.floor(Math.random() * 3)],
-                    opened: false
+        this.doors = [];
+        const doorTypes = ['red', 'yellow', 'blue'];
+        
+        if (!this.hallways || this.hallways.length === 0) {
+            console.log('No hallways found for door placement');
+            return;
+        }
+        
+        console.log(`Placing doors in ${this.hallways.length} hallways`);
+        
+        // Get valid hallway segments for door placement
+        const validSegments = [];
+        this.hallways.forEach((hallway, hallwayIndex) => {
+            if (hallway.segments && hallway.segments.length > 0) {
+                // Use middle segments preferentially
+                hallway.segments.forEach((segment, segmentIndex) => {
+                    const centerX = segment.centerX;
+                    const centerY = segment.centerY;
+                    
+                    // Verify this segment is actually in a hallway by checking distance from rooms
+                    let isInHallway = true;
+                    let minDistanceFromRoom = 999;
+                    
+                    rooms.forEach(room => {
+                        // Check if this position is inside or too close to any room
+                        if (centerX >= room.x && centerX < room.x + room.w && 
+                            centerY >= room.y && centerY < room.y + room.h) {
+                            isInHallway = false;
+                        }
+                        
+                        // Calculate minimum distance from room edges
+                        const distX = Math.max(0, Math.max(room.x - centerX, centerX - (room.x + room.w - 1)));
+                        const distY = Math.max(0, Math.max(room.y - centerY, centerY - (room.y + room.h - 1)));
+                        const distance = Math.sqrt(distX * distX + distY * distY);
+                        minDistanceFromRoom = Math.min(minDistanceFromRoom, distance);
+                    });
+                    
+                    // Only add if it's in a hallway and reasonably far from rooms
+                    if (isInHallway && minDistanceFromRoom >= 2) {
+                        const priority = (segmentIndex > 0 && segmentIndex < hallway.segments.length - 1) ? 1 : 0;
+                        validSegments.push({
+                            ...segment, 
+                            hallwayIndex, 
+                            segmentIndex, 
+                            priority
+                        });
+                    }
                 });
+            }
+        });
+        
+        // Sort by priority (middle segments first)
+        validSegments.sort((a, b) => b.priority - a.priority);
+        
+        let numDoors = Math.min(doorTypes.length, validSegments.length, 2); // Limit to 2 doors for simplicity
+        console.log(`Placing ${numDoors} doors in ${validSegments.length} valid hallway segments`);
+        
+        // Place doors in valid hallway segments
+        for (let i = 0; i < numDoors; i++) {
+            if (i >= validSegments.length) break;
+            
+            const segment = validSegments[i];
+            const doorType = doorTypes[i % doorTypes.length];
+            const segmentWidth = segment.width || 1;
+            
+            console.log(`Placing ${doorType} door in ${segment.type} hallway segment`);
+            
+            if (segment.type === 'horizontal') {
+                // Block horizontal hallway - place doors vertically across the path
+                const doorX = segment.centerX;
+                
+                // Place doors matching hallway width
+                for (let w = 0; w < segmentWidth; w++) {
+                    const doorY = segment.centerY + w;
+                    
+                    if (doorX >= 0 && doorX < this.levelData[0].length && 
+                        doorY >= 0 && doorY < this.levelData.length &&
+                        this.levelData[doorY][doorX] === 0) { // Is floor
+                        
+                        this.doors.push({
+                            x: doorX * GAME_CONFIG.GRID.SIZE + GAME_CONFIG.GRID.SIZE/2,
+                            y: doorY * GAME_CONFIG.GRID.SIZE + GAME_CONFIG.GRID.SIZE/2,
+                            locked: false, // Start unlocked for simplicity
+                            type: doorType,
+                            cellX: doorX,
+                            cellY: doorY,
+                            opened: false,
+                            theme: 'GREY'
+                        });
+                        
+                        console.log(`🚪 Created ${doorType} door at (${doorX}, ${doorY})`);
+                        this.levelData[doorY][doorX] = 2; // Door cell type
+                        this.textureMap[doorY][doorX] = 'GREY';
+                    }
+                }
+            } else if (segment.type === 'vertical') {
+                // Block vertical hallway - place doors horizontally across the path
+                const doorY = segment.centerY;
+                
+                // Place doors matching hallway width
+                for (let w = 0; w < segmentWidth; w++) {
+                    const doorX = segment.centerX + w;
+                    
+                    if (doorX >= 0 && doorX < this.levelData[0].length && 
+                        doorY >= 0 && doorY < this.levelData.length &&
+                        this.levelData[doorY][doorX] === 0) { // Is floor
+                        
+                        this.doors.push({
+                            x: doorX * GAME_CONFIG.GRID.SIZE + GAME_CONFIG.GRID.SIZE/2,
+                            y: doorY * GAME_CONFIG.GRID.SIZE + GAME_CONFIG.GRID.SIZE/2,
+                            locked: false, // Start unlocked for simplicity
+                            type: doorType,
+                            cellX: doorX,
+                            cellY: doorY,
+                            opened: false,
+                            theme: 'GREY'
+                        });
+                        
+                        console.log(`🚪 Created ${doorType} door at (${doorX}, ${doorY})`);
+                        this.levelData[doorY][doorX] = 2; // Door cell type
+                        this.textureMap[doorY][doorX] = 'GREY';
+                    }
+                }
             }
         }
         
         console.log(`Placed ${this.doors?.length || 0} doors`);
+    }
+
+    createHallway(room1, room2, levelWidth, levelHeight) {
+        // Find connection points at room centers
+        const x1 = room1.x + Math.floor(room1.w / 2);
+        const y1 = room1.y + Math.floor(room1.h / 2);
+        const x2 = room2.x + Math.floor(room2.w / 2);
+        const y2 = room2.y + Math.floor(room2.h / 2);
+        
+        const cells = [];
+        const segments = [];
+        
+        // Determine hallway width (mostly 1-2 tiles)
+        const widthRoll = Math.random();
+        let hallwayWidth;
+        if (widthRoll < 0.8) {
+            hallwayWidth = 1; // 80% chance for 1-wide
+        } else {
+            hallwayWidth = 2; // 20% chance for 2-wide
+        }
+        
+        // Create L-shaped hallway with clear segments
+        if (Math.random() < 0.5) {
+            // Horizontal first, then vertical
+            const minX = Math.min(x1, x2);
+            const maxX = Math.max(x1, x2);
+            
+            // Horizontal segment
+            const hSegment = [];
+            for (let x = minX; x <= maxX; x++) {
+                for (let w = 0; w < hallwayWidth; w++) {
+                    const drawY = y1 + w;
+                    if (x >= 0 && x < levelWidth && drawY >= 0 && drawY < levelHeight) {
+                        this.levelData[drawY][x] = 0;
+                        this.textureMap[drawY][x] = 'GREY';
+                        cells.push({x: x, y: drawY});
+                        hSegment.push({x: x, y: drawY});
+                    }
+                }
+            }
+            segments.push({
+                type: 'horizontal', 
+                cells: hSegment, 
+                centerX: Math.floor((minX + maxX) / 2), 
+                centerY: y1,
+                width: hallwayWidth
+            });
+            
+            // Vertical segment
+            const vSegment = [];
+            const minY = Math.min(y1, y2);
+            const maxY = Math.max(y1, y2);
+            for (let y = minY; y <= maxY; y++) {
+                for (let w = 0; w < hallwayWidth; w++) {
+                    const drawX = x2 + w;
+                    if (drawX >= 0 && drawX < levelWidth && y >= 0 && y < levelHeight) {
+                        this.levelData[y][drawX] = 0;
+                        this.textureMap[y][drawX] = 'GREY';
+                        cells.push({x: drawX, y: y});
+                        vSegment.push({x: drawX, y: y});
+                    }
+                }
+            }
+            segments.push({
+                type: 'vertical', 
+                cells: vSegment, 
+                centerX: x2, 
+                centerY: Math.floor((minY + maxY) / 2),
+                width: hallwayWidth
+            });
+        } else {
+            // Vertical first, then horizontal
+            const minY = Math.min(y1, y2);
+            const maxY = Math.max(y1, y2);
+            
+            // Vertical segment
+            const vSegment = [];
+            for (let y = minY; y <= maxY; y++) {
+                for (let w = 0; w < hallwayWidth; w++) {
+                    const drawX = x1 + w;
+                    if (drawX >= 0 && drawX < levelWidth && y >= 0 && y < levelHeight) {
+                        this.levelData[y][drawX] = 0;
+                        this.textureMap[y][drawX] = 'GREY';
+                        cells.push({x: drawX, y: y});
+                        vSegment.push({x: drawX, y: y});
+                    }
+                }
+            }
+            segments.push({
+                type: 'vertical', 
+                cells: vSegment, 
+                centerX: x1, 
+                centerY: Math.floor((minY + maxY) / 2),
+                width: hallwayWidth
+            });
+            
+            // Horizontal segment
+            const hSegment = [];
+            const minX = Math.min(x1, x2);
+            const maxX = Math.max(x1, x2);
+            for (let x = minX; x <= maxX; x++) {
+                for (let w = 0; w < hallwayWidth; w++) {
+                    const drawY = y2 + w;
+                    if (x >= 0 && x < levelWidth && drawY >= 0 && drawY < levelHeight) {
+                        this.levelData[drawY][x] = 0;
+                        this.textureMap[drawY][x] = 'GREY';
+                        cells.push({x: x, y: drawY});
+                        hSegment.push({x: x, y: drawY});
+                    }
+                }
+            }
+            segments.push({
+                type: 'horizontal', 
+                cells: hSegment, 
+                centerX: Math.floor((minX + maxX) / 2), 
+                centerY: y2,
+                width: hallwayWidth
+            });
+        }
+        
+        return { cells: cells, segments: segments, from: room1, to: room2, width: hallwayWidth };
     }
 
     generateItems() {
@@ -1364,7 +1551,49 @@ export class GameEngine {
     }
 
     checkDoorInteraction() {
-        // Implement door interaction logic
+        // Don't check for new door interactions if already opening a door
+        if (this.player.doorOpening) return;
+
+        if (!this.doors) return;
+
+        this.doors.forEach(door => {
+            // Skip doors that are already opened
+            if (door.opened) return;
+
+            const dist = Math.sqrt((door.x - this.player.x) ** 2 + (door.y - this.player.y) ** 2);
+
+            if (dist < 50) {
+                console.log(`🚪 Near ${door.type} door at distance ${dist.toFixed(1)}`);
+                console.log(`Door type: "${door.type}"`);
+                console.log(`Door locked: ${door.locked}`);
+                console.log(`Door opened: ${door.opened}`);
+
+                if (door.locked) {
+                    // Locked door - requires key
+                    if (this.player.keys[door.type] > 0) {
+                        console.log(`✅ Can open ${door.type} door, have ${this.player.keys[door.type]} keys`);
+                    } else {
+                        console.log(`❌ Cannot open ${door.type} door, have ${this.player.keys[door.type] || 0} keys`);
+                        return;
+                    }
+                } else {
+                    // Unlocked door - can always open
+                    console.log(`✅ Opening unlocked door`);
+                }
+
+                // Start door opening process
+                this.player.doorOpening = door;
+                this.player.doorOpeningTime = 400; // 400ms delay
+                this.audioManager.playSound('DOOR');
+                console.log(`Starting to open ${door.type} door at (${door.cellX}, ${door.cellY})`);
+
+                // Use key if door was locked
+                if (door.locked) {
+                    this.player.keys[door.type]--;
+                    door.locked = false;
+                }
+            }
+        });
     }
 
     checkExit() {
