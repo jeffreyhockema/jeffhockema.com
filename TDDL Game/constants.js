@@ -67,6 +67,7 @@ export const GAME_CONFIG = {
 
 export const GAME_STATES = {
     MENU: 'menu',
+    INSTRUCTIONS: 'instructions',
     PLAYING: 'playing',
     PAUSED: 'paused',
     GAME_OVER: 'game_over',

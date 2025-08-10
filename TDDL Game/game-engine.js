@@ -43,17 +43,25 @@ export class GameEngine {
         // Generate initial level
         this.generateLevel();
         
+        // Set up cheat code handling
+        this.setupCheats();
+        
         // Start game loop
         this.start();
     }
 
     resizeCanvas() {
         this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight - GAME_CONFIG.CANVAS.HUD_HEIGHT;
+        
+        // Full height for menu states, reduced for gameplay
+        const isGameplay = this.gameState?.current === GAME_STATES.PLAYING || 
+                          this.gameState?.current === GAME_STATES.PAUSED;
+        
+        this.canvas.height = window.innerHeight - (isGameplay ? GAME_CONFIG.CANVAS.HUD_HEIGHT : 0);
     }
 
     start() {
-        this.gameState.setState(GAME_STATES.PLAYING);
+        this.gameState.setState(GAME_STATES.MENU);
         this.gameLoop(0);
     }
 
@@ -73,6 +81,9 @@ export class GameEngine {
         // Update FPS counter
         this.updateFPS(currentTime);
         
+        // Handle input for all states
+        this.handleGlobalInput();
+        
         // Update game based on current state
         switch (this.gameState.current) {
             case GAME_STATES.PLAYING:
@@ -91,6 +102,10 @@ export class GameEngine {
             case GAME_STATES.SETTINGS:
                 this.renderSettingsScreen();
                 break;
+            case GAME_STATES.INSTRUCTIONS:
+                this.renderInstructionsScreen();
+                break;
+            case GAME_STATES.MENU:
             default:
                 this.renderMenuScreen();
         }
@@ -102,6 +117,35 @@ export class GameEngine {
             this.fps = this.frameCount;
             this.frameCount = 0;
             this.lastFpsTime = currentTime;
+        }
+    }
+
+    handleGlobalInput() {
+        const input = this.inputManager;
+        
+        // Menu navigation
+        if (this.gameState.current === GAME_STATES.MENU) {
+            if (input.isKeyPressed('SHOOT') || input.keys['Enter']) {
+                this.gameState.setState(GAME_STATES.PLAYING);
+                this.inputManager.keys['Space'] = false;
+                this.inputManager.keys['Enter'] = false;
+            } else if (input.keys['KeyI']) {
+                this.gameState.setState(GAME_STATES.INSTRUCTIONS);
+                this.inputManager.keys['KeyI'] = false;
+            }
+        } else if (this.gameState.current === GAME_STATES.INSTRUCTIONS) {
+            if (input.keys['Escape'] || input.keys['Enter']) {
+                this.gameState.setState(GAME_STATES.MENU);
+                this.inputManager.keys['Escape'] = false;
+                this.inputManager.keys['Enter'] = false;
+            }
+        } else if (this.gameState.current === GAME_STATES.GAME_OVER) {
+            if (input.keys['Enter'] || input.isKeyPressed('SHOOT')) {
+                this.resetGame();
+                this.gameState.setState(GAME_STATES.MENU);
+                this.inputManager.keys['Enter'] = false;
+                this.inputManager.keys['Space'] = false;
+            }
         }
     }
 
@@ -237,19 +281,49 @@ export class GameEngine {
     }
 
     updateVisibility() {
-        // Implement fog of war / line of sight
-        // This is a simplified version
-        const playerGridX = Math.floor(this.player.x / GAME_CONFIG.GRID.SIZE);
-        const playerGridY = Math.floor(this.player.y / GAME_CONFIG.GRID.SIZE);
+        if (!this.levelData || this.levelData.length === 0) return;
         
-        // Mark areas around player as explored
-        for (let dy = -3; dy <= 3; dy++) {
-            for (let dx = -3; dx <= 3; dx++) {
-                const gx = playerGridX + dx;
-                const gy = playerGridY + dy;
-                if (gx >= 0 && gx < this.levelData[0]?.length && gy >= 0 && gy < this.levelData.length) {
-                    if (!this.exploredMap[gy]) this.exploredMap[gy] = [];
-                    this.exploredMap[gy][gx] = true;
+        const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
+        const playerGridX = Math.floor(this.player.x / CELL_SIZE);
+        const playerGridY = Math.floor(this.player.y / CELL_SIZE);
+        const viewDistance = 15; // Maximum view distance
+        
+        // Reset current visibility
+        for (let y = 0; y < this.levelData.length; y++) {
+            if (!this.visibilityMap[y]) this.visibilityMap[y] = [];
+            for (let x = 0; x < this.levelData[y].length; x++) {
+                this.visibilityMap[y][x] = false;
+            }
+        }
+        
+        // Cast rays in all directions for line of sight
+        for (let angle = 0; angle < 360; angle += 1) {
+            const radians = (angle * Math.PI) / 180;
+            const dx = Math.cos(radians);
+            const dy = Math.sin(radians);
+            
+            // Cast ray step by step
+            for (let step = 0; step < viewDistance; step++) {
+                const rayX = playerGridX + dx * step;
+                const rayY = playerGridY + dy * step;
+                
+                const gridX = Math.floor(rayX);
+                const gridY = Math.floor(rayY);
+                
+                // Check bounds
+                if (gridX < 0 || gridX >= this.levelData[0].length || 
+                    gridY < 0 || gridY >= this.levelData.length) {
+                    break;
+                }
+                
+                // Mark as visible and explored
+                this.visibilityMap[gridY][gridX] = true;
+                if (!this.exploredMap[gridY]) this.exploredMap[gridY] = [];
+                this.exploredMap[gridY][gridX] = true;
+                
+                // Stop ray if it hits a wall
+                if (this.isSolidWallType(this.levelData[gridY][gridX])) {
+                    break;
                 }
             }
         }
@@ -313,6 +387,11 @@ export class GameEngine {
     }
 
     checkWallCollision(x, y, size) {
+        // No collision if no-clip cheat is active
+        if (this.cheatEffects?.noClip) {
+            return false;
+        }
+        
         const gridX = Math.floor(x / GAME_CONFIG.GRID.SIZE);
         const gridY = Math.floor(y / GAME_CONFIG.GRID.SIZE);
         
@@ -387,7 +466,6 @@ export class GameEngine {
     }
 
     renderLevel() {
-        // Simplified level rendering - implement full tilemap rendering
         for (let y = 0; y < this.levelData.length; y++) {
             for (let x = 0; x < this.levelData[y].length; x++) {
                 const cell = this.levelData[y][x];
@@ -399,15 +477,46 @@ export class GameEngine {
                     continue;
                 }
                 
-                // Only render explored areas
+                // Skip unexplored areas
                 if (!this.exploredMap[y]?.[x]) {
                     continue;
                 }
                 
-                this.ctx.fillStyle = this.getCellColor(cell);
+                // Get base color
+                const baseColor = this.getCellColor(cell);
+                
+                // Apply fog of war effect
+                const isVisible = this.visibilityMap[y]?.[x];
+                if (isVisible) {
+                    // Fully visible - normal color
+                    this.ctx.fillStyle = baseColor;
+                } else {
+                    // Explored but not currently visible - dimmed
+                    this.ctx.fillStyle = this.dimColor(baseColor, 0.4);
+                }
+                
                 this.ctx.fillRect(screenX, screenY, GAME_CONFIG.GRID.SIZE, GAME_CONFIG.GRID.SIZE);
+                
+                // Add subtle border for walls to improve visibility
+                if (cell === 1) {
+                    this.ctx.strokeStyle = isVisible ? '#9B8D7B' : this.dimColor('#9B8D7B', 0.4);
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(screenX, screenY, GAME_CONFIG.GRID.SIZE, GAME_CONFIG.GRID.SIZE);
+                }
             }
         }
+    }
+
+    dimColor(color, factor) {
+        // Convert hex color to RGB and dim it
+        if (color.startsWith('#')) {
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+            
+            return `rgb(${Math.floor(r * factor)}, ${Math.floor(g * factor)}, ${Math.floor(b * factor)})`;
+        }
+        return color; // Fallback for non-hex colors
     }
 
     getCellColor(cell) {
@@ -444,10 +553,20 @@ export class GameEngine {
     }
 
     renderEnemies() {
+        const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
+        
         for (let enemy of this.enemies) {
             if (!enemy.active) continue;
             if (!this.camera.isVisible(enemy.x, enemy.y, enemy.size, this.canvas.width, this.canvas.height)) {
                 continue;
+            }
+            
+            // Check if enemy is in visible area
+            const enemyGridX = Math.floor(enemy.x / CELL_SIZE);
+            const enemyGridY = Math.floor(enemy.y / CELL_SIZE);
+            
+            if (!this.visibilityMap[enemyGridY]?.[enemyGridX]) {
+                continue; // Don't render enemies not in line of sight
             }
             
             this.ctx.fillStyle = enemy.isBoss ? '#FF6666' : GAME_CONFIG.COLORS.ENEMY;
@@ -490,7 +609,44 @@ export class GameEngine {
     }
 
     renderItems() {
-        // Implement item rendering
+        const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
+        
+        for (let item of this.items) {
+            if (item.collected) continue;
+            if (!this.camera.isVisible(item.x, item.y, 16, this.canvas.width, this.canvas.height)) {
+                continue;
+            }
+            
+            // Check if item is in visible or explored area
+            const itemGridX = Math.floor(item.x / CELL_SIZE);
+            const itemGridY = Math.floor(item.y / CELL_SIZE);
+            
+            if (!this.exploredMap[itemGridY]?.[itemGridX]) {
+                continue;
+            }
+            
+            // Dim items not currently visible
+            const isVisible = this.visibilityMap[itemGridY]?.[itemGridX];
+            const alpha = isVisible ? 1.0 : 0.4;
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = alpha;
+            
+            if (item.type === 'health') {
+                this.ctx.fillStyle = GAME_CONFIG.COLORS.HEALTH;
+                this.ctx.fillRect(item.x - 8, item.y - 8, 16, 16);
+                
+                // Draw cross
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.fillRect(item.x - 2, item.y - 6, 4, 12);
+                this.ctx.fillRect(item.x - 6, item.y - 2, 12, 4);
+            } else if (item.type === 'ammo') {
+                this.ctx.fillStyle = GAME_CONFIG.COLORS.AMMO;
+                this.ctx.fillRect(item.x - 6, item.y - 4, 12, 8);
+            }
+            
+            this.ctx.restore();
+        }
     }
 
     renderDebugInfo() {
@@ -509,13 +665,91 @@ export class GameEngine {
         this.ctx.fillStyle = '#000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // Title
         this.ctx.fillStyle = '#FF0';
-        this.ctx.font = '48px monospace';
+        this.ctx.font = 'bold 48px monospace';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('DOOM GAME', this.canvas.width / 2, this.canvas.height / 2 - 50);
+        this.ctx.fillText('DOOM GAME', this.canvas.width / 2, this.canvas.height / 2 - 120);
         
-        this.ctx.font = '24px monospace';
-        this.ctx.fillText('Press any key to start', this.canvas.width / 2, this.canvas.height / 2 + 50);
+        // Subtitle
+        this.ctx.fillStyle = '#FFF';
+        this.ctx.font = '16px monospace';
+        this.ctx.fillText('Top-Down Action Game', this.canvas.width / 2, this.canvas.height / 2 - 80);
+        
+        // Menu options
+        this.ctx.font = 'bold 24px monospace';
+        this.ctx.fillStyle = '#0F0';
+        this.ctx.fillText('PRESS SPACE OR ENTER TO START', this.canvas.width / 2, this.canvas.height / 2);
+        
+        this.ctx.fillStyle = '#FF0';
+        this.ctx.font = '18px monospace';
+        this.ctx.fillText('Press I for Instructions', this.canvas.width / 2, this.canvas.height / 2 + 40);
+        
+        // Credits
+        this.ctx.fillStyle = '#666';
+        this.ctx.font = '12px monospace';
+        this.ctx.fillText('Improved version with enhanced performance and features', this.canvas.width / 2, this.canvas.height - 40);
+    }
+
+    renderInstructionsScreen() {
+        this.ctx.fillStyle = '#000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.fillStyle = '#FF0';
+        this.ctx.font = 'bold 36px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('INSTRUCTIONS', this.canvas.width / 2, 80);
+        
+        // Instructions
+        const instructions = [
+            '',
+            'CONTROLS:',
+            'WASD / Arrow Keys - Move',
+            'Mouse - Aim',
+            'Space / Left Click - Shoot',
+            'E - Interact with doors',
+            '1-6 - Switch weapons',
+            'Escape - Pause',
+            'M - Settings',
+            '',
+            'OBJECTIVES:',
+            '• Explore the dungeon',
+            '• Defeat all enemies',
+            '• Collect health and ammo',
+            '• Find the exit to next level',
+            '',
+            'CHEAT CODES:',
+            'IDDQD - God mode',
+            'IDKFA - All weapons & ammo',
+            'IDCLIP - No clipping',
+            'IDDT - Reveal map',
+            'IDBEHOLDH - Full health',
+            '',
+            'Press ESCAPE or ENTER to return to menu'
+        ];
+        
+        this.ctx.font = '16px monospace';
+        this.ctx.textAlign = 'left';
+        
+        const startY = 120;
+        const lineHeight = 20;
+        const leftMargin = 50;
+        
+        for (let i = 0; i < instructions.length; i++) {
+            const line = instructions[i];
+            if (line.includes('CONTROLS:') || line.includes('OBJECTIVES:') || line.includes('CHEAT CODES:')) {
+                this.ctx.fillStyle = '#0F0';
+                this.ctx.font = 'bold 18px monospace';
+            } else if (line.startsWith('•') || line.includes(' - ')) {
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.font = '16px monospace';
+            } else {
+                this.ctx.fillStyle = '#AAA';
+                this.ctx.font = '16px monospace';
+            }
+            
+            this.ctx.fillText(line, leftMargin, startY + i * lineHeight);
+        }
     }
 
     renderPauseScreen() {
@@ -573,38 +807,168 @@ export class GameEngine {
 
     // Game logic methods
     generateLevel() {
-        // Simplified level generation
-        const width = 32;
-        const height = 24;
-        this.levelData = Array(height).fill().map(() => Array(width).fill(0));
-        this.exploredMap = Array(height).fill().map(() => Array(width).fill(false));
+        const LEVEL_WIDTH = 60;
+        const LEVEL_HEIGHT = 45;
+        const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
         
-        // Add walls around the border
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-                    this.levelData[y][x] = 1;
+        // Initialize level with walls
+        this.levelData = Array(LEVEL_HEIGHT).fill().map(() => Array(LEVEL_WIDTH).fill(1));
+        this.exploredMap = Array(LEVEL_HEIGHT).fill().map(() => Array(LEVEL_WIDTH).fill(false));
+        this.visibilityMap = Array(LEVEL_HEIGHT).fill().map(() => Array(LEVEL_WIDTH).fill(false));
+        
+        // Generate rooms
+        const rooms = [];
+        const numRooms = 6 + Math.floor(Math.random() * 4); // 6-10 rooms
+        
+        // Create rooms with proper spacing
+        for (let i = 0; i < numRooms; i++) {
+            let room = null;
+            let attempts = 0;
+            
+            while (!room && attempts < 100) {
+                const w = 4 + Math.floor(Math.random() * 8); // 4-12 width
+                const h = 4 + Math.floor(Math.random() * 8); // 4-12 height
+                const x = 1 + Math.floor(Math.random() * (LEVEL_WIDTH - w - 2));
+                const y = 1 + Math.floor(Math.random() * (LEVEL_HEIGHT - h - 2));
+                
+                // Check if room overlaps with existing rooms
+                let overlaps = false;
+                for (let existingRoom of rooms) {
+                    if (!(x + w + 1 < existingRoom.x || x - 1 > existingRoom.x + existingRoom.w ||
+                          y + h + 1 < existingRoom.y || y - 1 > existingRoom.y + existingRoom.h)) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                
+                if (!overlaps) {
+                    room = { x, y, w, h, type: i === 0 ? 'start' : 'normal' };
+                    rooms.push(room);
+                }
+                attempts++;
+            }
+        }
+        
+        // Carve out rooms
+        for (let room of rooms) {
+            for (let y = room.y; y < room.y + room.h; y++) {
+                for (let x = room.x; x < room.x + room.w; x++) {
+                    if (x >= 0 && x < LEVEL_WIDTH && y >= 0 && y < LEVEL_HEIGHT) {
+                        this.levelData[y][x] = 0; // Floor
+                    }
                 }
             }
         }
         
-        // Add some interior walls
-        for (let i = 0; i < 20; i++) {
-            const x = Math.floor(Math.random() * (width - 2)) + 1;
-            const y = Math.floor(Math.random() * (height - 2)) + 1;
-            this.levelData[y][x] = 1;
+        // Create hallways to connect rooms
+        for (let i = 0; i < rooms.length - 1; i++) {
+            const roomA = rooms[i];
+            const roomB = rooms[i + 1];
+            
+            // Create L-shaped hallway
+            const startX = Math.floor(roomA.x + roomA.w / 2);
+            const startY = Math.floor(roomA.y + roomA.h / 2);
+            const endX = Math.floor(roomB.x + roomB.w / 2);
+            const endY = Math.floor(roomB.y + roomB.h / 2);
+            
+            // Horizontal segment
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            for (let x = minX; x <= maxX; x++) {
+                if (x >= 0 && x < LEVEL_WIDTH && startY >= 0 && startY < LEVEL_HEIGHT) {
+                    this.levelData[startY][x] = 0;
+                    // Make hallway 2 tiles wide
+                    if (startY + 1 < LEVEL_HEIGHT) this.levelData[startY + 1][x] = 0;
+                }
+            }
+            
+            // Vertical segment
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+            for (let y = minY; y <= maxY; y++) {
+                if (endX >= 0 && endX < LEVEL_WIDTH && y >= 0 && y < LEVEL_HEIGHT) {
+                    this.levelData[y][endX] = 0;
+                    // Make hallway 2 tiles wide
+                    if (endX + 1 < LEVEL_WIDTH) this.levelData[y][endX + 1] = 0;
+                }
+            }
         }
         
-        // Generate enemies
+        // Add some interior obstacles and variety
+        for (let room of rooms) {
+            // Add pillars in larger rooms
+            if (room.w > 6 && room.h > 6) {
+                const pillarX = room.x + 2 + Math.floor(Math.random() * (room.w - 4));
+                const pillarY = room.y + 2 + Math.floor(Math.random() * (room.h - 4));
+                this.levelData[pillarY][pillarX] = 1;
+            }
+        }
+        
+        // Place player in first room
+        if (rooms.length > 0) {
+            const startRoom = rooms[0];
+            this.player.x = (startRoom.x + Math.floor(startRoom.w / 2)) * CELL_SIZE + CELL_SIZE / 2;
+            this.player.y = (startRoom.y + Math.floor(startRoom.h / 2)) * CELL_SIZE + CELL_SIZE / 2;
+        }
+        
+        // Store rooms for other systems
+        this.rooms = rooms;
+        
+        // Generate enemies and items
         this.generateEnemies();
+        this.generateItems();
     }
 
     generateEnemies() {
         this.enemies = [];
-        for (let i = 0; i < 5; i++) {
-            const x = Math.random() * 800 + 100;
-            const y = Math.random() * 600 + 100;
-            this.enemies.push(new Enemy(x, y, 'zombie'));
+        if (!this.rooms || this.rooms.length === 0) return;
+        
+        const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
+        const enemyCount = 2 + Math.floor(Math.random() * 4);
+        
+        for (let i = 0; i < enemyCount; i++) {
+            // Skip the first room (player start)
+            const roomIndex = 1 + Math.floor(Math.random() * (this.rooms.length - 1));
+            const room = this.rooms[roomIndex];
+            
+            if (room) {
+                const x = (room.x + 1 + Math.random() * (room.w - 2)) * CELL_SIZE + CELL_SIZE / 2;
+                const y = (room.y + 1 + Math.random() * (room.h - 2)) * CELL_SIZE + CELL_SIZE / 2;
+                
+                const enemyTypes = ['zombie', 'demon', 'cacodemon'];
+                const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                
+                this.enemies.push(new Enemy(x, y, type));
+            }
+        }
+    }
+
+    generateItems() {
+        this.items = [];
+        if (!this.rooms || this.rooms.length === 0) return;
+        
+        const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
+        
+        // Place health packs
+        for (let i = 0; i < 3; i++) {
+            const room = this.rooms[Math.floor(Math.random() * this.rooms.length)];
+            const x = (room.x + 1 + Math.random() * (room.w - 2)) * CELL_SIZE + CELL_SIZE / 2;
+            const y = (room.y + 1 + Math.random() * (room.h - 2)) * CELL_SIZE + CELL_SIZE / 2;
+            
+            this.items.push({
+                x, y, type: 'health', value: 25, collected: false
+            });
+        }
+        
+        // Place ammo
+        for (let i = 0; i < 2; i++) {
+            const room = this.rooms[Math.floor(Math.random() * this.rooms.length)];
+            const x = (room.x + 1 + Math.random() * (room.w - 2)) * CELL_SIZE + CELL_SIZE / 2;
+            const y = (room.y + 1 + Math.random() * (room.h - 2)) * CELL_SIZE + CELL_SIZE / 2;
+            
+            this.items.push({
+                x, y, type: 'ammo', weapon: 'shotgun', value: 10, collected: false
+            });
         }
     }
 
@@ -627,7 +991,30 @@ export class GameEngine {
     }
 
     checkItemCollection() {
-        // Implement item collection logic
+        const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
+        const collectionDistance = 20;
+        
+        for (let item of this.items) {
+            if (item.collected) continue;
+            
+            const dx = this.player.x - item.x;
+            const dy = this.player.y - item.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < collectionDistance) {
+                item.collected = true;
+                
+                if (item.type === 'health') {
+                    this.player.heal(item.value);
+                    this.showCheatMessage(`+${item.value} Health`);
+                } else if (item.type === 'ammo') {
+                    this.player.addAmmo(item.weapon, item.value);
+                    this.showCheatMessage(`+${item.value} ${item.weapon.toUpperCase()} ammo`);
+                }
+                
+                this.audioManager.playSound('PICKUP');
+            }
+        }
     }
 
     checkDoorInteraction() {
@@ -662,5 +1049,160 @@ export class GameEngine {
         // Update level and score display
         document.querySelector('.level-info').textContent = `Level ${this.gameState.level}`;
         document.querySelector('.score-info').textContent = `Score: ${this.gameState.score}`;
+        
+        // Update HUD visibility
+        this.updateHUDVisibility();
+    }
+
+    updateHUDVisibility() {
+        const hud = document.querySelector('.doom-hud');
+        const levelInfo = document.querySelector('.level-info');
+        const scoreInfo = document.querySelector('.score-info');
+        
+        const shouldShowHUD = this.gameState.current === GAME_STATES.PLAYING || 
+                             this.gameState.current === GAME_STATES.PAUSED;
+        
+        if (hud) hud.style.display = shouldShowHUD ? 'flex' : 'none';
+        if (levelInfo) levelInfo.style.display = shouldShowHUD ? 'block' : 'none';
+        if (scoreInfo) scoreInfo.style.display = shouldShowHUD ? 'block' : 'none';
+    }
+
+    setupCheats() {
+        this.cheatEffects = {
+            godMode: false,
+            noClip: false,
+            mapRevealed: false,
+            invulnerable: false,
+            invisible: false
+        };
+
+        this.inputManager.onCheatActivated((event) => {
+            this.handleCheat(event.detail.type);
+        });
+    }
+
+    handleCheat(cheatType) {
+        switch (cheatType) {
+            case 'god_mode':
+                this.cheatEffects.godMode = !this.cheatEffects.godMode;
+                this.player.invulnerable = this.cheatEffects.godMode;
+                this.showCheatMessage(`God Mode: ${this.cheatEffects.godMode ? 'ON' : 'OFF'}`);
+                break;
+                
+            case 'all_weapons':
+                this.player.weapons = ['fist', 'pistol', 'shotgun', 'chaingun', 'rocket', 'plasma'];
+                for (let weapon in this.player.ammo) {
+                    if (weapon !== 'fist' && weapon !== 'pistol') {
+                        this.player.ammo[weapon] = 999;
+                    }
+                }
+                this.showCheatMessage('All Weapons & Ammo Acquired');
+                break;
+                
+            case 'no_clip':
+                this.cheatEffects.noClip = !this.cheatEffects.noClip;
+                this.showCheatMessage(`No Clip: ${this.cheatEffects.noClip ? 'ON' : 'OFF'}`);
+                break;
+                
+            case 'map_reveal':
+                this.cheatEffects.mapRevealed = !this.cheatEffects.mapRevealed;
+                if (this.cheatEffects.mapRevealed) {
+                    // Reveal entire map
+                    for (let y = 0; y < this.levelData.length; y++) {
+                        if (!this.exploredMap[y]) this.exploredMap[y] = [];
+                        if (!this.visibilityMap[y]) this.visibilityMap[y] = [];
+                        for (let x = 0; x < this.levelData[y].length; x++) {
+                            this.exploredMap[y][x] = true;
+                            this.visibilityMap[y][x] = true;
+                        }
+                    }
+                }
+                this.showCheatMessage(`Map Reveal: ${this.cheatEffects.mapRevealed ? 'ON' : 'OFF'}`);
+                break;
+                
+            case 'health_boost':
+                this.player.health = this.player.maxHealth;
+                this.showCheatMessage('Health Restored');
+                break;
+                
+            case 'invulnerability':
+                this.cheatEffects.invulnerable = !this.cheatEffects.invulnerable;
+                this.player.invulnerable = this.cheatEffects.invulnerable;
+                this.showCheatMessage(`Invulnerability: ${this.cheatEffects.invulnerable ? 'ON' : 'OFF'}`);
+                break;
+                
+            case 'invisibility':
+                this.cheatEffects.invisible = !this.cheatEffects.invisible;
+                this.showCheatMessage(`Invisibility: ${this.cheatEffects.invisible ? 'ON' : 'OFF'}`);
+                break;
+        }
+    }
+
+    showCheatMessage(message) {
+        // Create temporary message display
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 0, 0.9);
+            color: black;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            z-index: 2000;
+            pointer-events: none;
+        `;
+        
+        document.body.appendChild(messageDiv);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 3000);
+    }
+
+    resetGame() {
+        // Reset player
+        this.player.health = GAME_CONFIG.PLAYER.MAX_HEALTH;
+        this.player.weapons = ['fist', 'pistol'];
+        this.player.currentWeapon = 1;
+        this.player.ammo = { 
+            fist: -1, 
+            pistol: -1, 
+            shotgun: 0, 
+            chaingun: 0, 
+            rocket: 0, 
+            plasma: 0 
+        };
+        this.player.keys = { red: 0, yellow: 0, blue: 0 };
+        this.player.invulnerable = false;
+        
+        // Reset game state
+        this.gameState.level = 1;
+        this.gameState.score = 0;
+        
+        // Reset cheat effects
+        if (this.cheatEffects) {
+            this.cheatEffects.godMode = false;
+            this.cheatEffects.noClip = false;
+            this.cheatEffects.mapRevealed = false;
+            this.cheatEffects.invulnerable = false;
+            this.cheatEffects.invisible = false;
+        }
+        
+        // Clear arrays
+        this.bullets = [];
+        this.enemies = [];
+        this.items = [];
+        this.explosions = [];
+        
+        // Generate new level
+        this.generateLevel();
     }
 }
