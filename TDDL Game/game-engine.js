@@ -286,7 +286,7 @@ export class GameEngine {
         const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
         const playerGridX = Math.floor(this.player.x / CELL_SIZE);
         const playerGridY = Math.floor(this.player.y / CELL_SIZE);
-        const viewDistance = 15; // Maximum view distance
+        const viewDistance = 12; // Reasonable view distance
         
         // Reset current visibility
         for (let y = 0; y < this.levelData.length; y++) {
@@ -296,34 +296,75 @@ export class GameEngine {
             }
         }
         
-        // Cast rays in all directions for line of sight
-        for (let angle = 0; angle < 360; angle += 1) {
-            const radians = (angle * Math.PI) / 180;
-            const dx = Math.cos(radians);
-            const dy = Math.sin(radians);
+        // Always make player position visible
+        if (playerGridY >= 0 && playerGridY < this.levelData.length &&
+            playerGridX >= 0 && playerGridX < this.levelData[0].length) {
+            this.visibilityMap[playerGridY][playerGridX] = true;
+            if (!this.exploredMap[playerGridY]) this.exploredMap[playerGridY] = [];
+            this.exploredMap[playerGridY][playerGridX] = true;
+        }
+        
+        // Use a more precise raycasting algorithm
+        const rays = 720; // Higher resolution for smoother visibility
+        for (let i = 0; i < rays; i++) {
+            const angle = (i / rays) * 2 * Math.PI;
+            const dx = Math.cos(angle);
+            const dy = Math.sin(angle);
             
-            // Cast ray step by step
-            for (let step = 0; step < viewDistance; step++) {
-                const rayX = playerGridX + dx * step;
-                const rayY = playerGridY + dy * step;
+            this.castVisibilityRay(playerGridX, playerGridY, dx, dy, viewDistance);
+        }
+        
+        // Also do a flood fill for immediate area to ensure proper visibility
+        this.floodFillVisibility(playerGridX, playerGridY, 2);
+    }
+    
+    castVisibilityRay(startX, startY, dx, dy, maxDistance) {
+        let currentX = startX + 0.5; // Start from center of cell
+        let currentY = startY + 0.5;
+        
+        const stepSize = 0.1; // Smaller steps for better precision
+        
+        for (let step = 0; step < maxDistance / stepSize; step++) {
+            currentX += dx * stepSize;
+            currentY += dy * stepSize;
+            
+            const gridX = Math.floor(currentX);
+            const gridY = Math.floor(currentY);
+            
+            // Check bounds
+            if (gridX < 0 || gridX >= this.levelData[0].length || 
+                gridY < 0 || gridY >= this.levelData.length) {
+                break;
+            }
+            
+            // Mark as visible and explored
+            this.visibilityMap[gridY][gridX] = true;
+            if (!this.exploredMap[gridY]) this.exploredMap[gridY] = [];
+            this.exploredMap[gridY][gridX] = true;
+            
+            // Stop ray AFTER marking wall as visible
+            if (this.isSolidWallType(this.levelData[gridY][gridX])) {
+                break;
+            }
+        }
+    }
+    
+    floodFillVisibility(centerX, centerY, radius) {
+        // Simple flood fill for immediate area around player
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const x = centerX + dx;
+                const y = centerY + dy;
                 
-                const gridX = Math.floor(rayX);
-                const gridY = Math.floor(rayY);
-                
-                // Check bounds
-                if (gridX < 0 || gridX >= this.levelData[0].length || 
-                    gridY < 0 || gridY >= this.levelData.length) {
-                    break;
-                }
-                
-                // Mark as visible and explored
-                this.visibilityMap[gridY][gridX] = true;
-                if (!this.exploredMap[gridY]) this.exploredMap[gridY] = [];
-                this.exploredMap[gridY][gridX] = true;
-                
-                // Stop ray if it hits a wall
-                if (this.isSolidWallType(this.levelData[gridY][gridX])) {
-                    break;
+                if (x >= 0 && x < this.levelData[0].length && 
+                    y >= 0 && y < this.levelData.length) {
+                    
+                    // Only fill if within circular radius
+                    if (dx * dx + dy * dy <= radius * radius) {
+                        this.visibilityMap[y][x] = true;
+                        if (!this.exploredMap[y]) this.exploredMap[y] = [];
+                        this.exploredMap[y][x] = true;
+                    }
                 }
             }
         }
@@ -554,6 +595,7 @@ export class GameEngine {
 
     renderEnemies() {
         const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
+        let visibleEnemies = 0;
         
         for (let enemy of this.enemies) {
             if (!enemy.active) continue;
@@ -565,17 +607,56 @@ export class GameEngine {
             const enemyGridX = Math.floor(enemy.x / CELL_SIZE);
             const enemyGridY = Math.floor(enemy.y / CELL_SIZE);
             
-            if (!this.visibilityMap[enemyGridY]?.[enemyGridX]) {
+            // In debug mode, show all enemies; otherwise respect fog of war
+            if (this.gameState.settings.graphics !== 'debug' && !this.visibilityMap[enemyGridY]?.[enemyGridX]) {
                 continue; // Don't render enemies not in line of sight
             }
             
-            this.ctx.fillStyle = enemy.isBoss ? '#FF6666' : GAME_CONFIG.COLORS.ENEMY;
+            visibleEnemies++;
+            
+            // Draw enemy body
+            this.ctx.fillStyle = enemy.isBoss ? '#FF6666' : this.getEnemyColor(enemy.type);
             this.ctx.fillRect(
                 enemy.x - enemy.size / 2, 
                 enemy.y - enemy.size / 2, 
                 enemy.size, 
                 enemy.size
             );
+            
+            // Draw enemy direction indicator
+            this.ctx.strokeStyle = '#FFFFFF';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(enemy.x, enemy.y);
+            this.ctx.lineTo(
+                enemy.x + Math.cos(enemy.angle) * enemy.size,
+                enemy.y + Math.sin(enemy.angle) * enemy.size
+            );
+            this.ctx.stroke();
+            
+            // Draw health bar for debugging
+            if (this.gameState.settings.graphics === 'debug') {
+                const healthPercent = enemy.health / enemy.maxHealth;
+                this.ctx.fillStyle = '#FF0000';
+                this.ctx.fillRect(enemy.x - enemy.size / 2, enemy.y - enemy.size / 2 - 8, enemy.size, 3);
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.fillRect(enemy.x - enemy.size / 2, enemy.y - enemy.size / 2 - 8, enemy.size * healthPercent, 3);
+            }
+        }
+        
+        // Update debug counter
+        if (this.gameState.settings.graphics === 'debug') {
+            this.visibleEnemyCount = visibleEnemies;
+        }
+    }
+    
+    getEnemyColor(type) {
+        switch (type.toLowerCase()) {
+            case 'zombie': return '#8B4513';
+            case 'demon': return '#800080';
+            case 'cacodemon': return '#FF6347';
+            case 'baron': return '#2F4F4F';
+            default: return GAME_CONFIG.COLORS.ENEMY;
         }
     }
 
@@ -655,8 +736,10 @@ export class GameEngine {
             this.ctx.font = '12px monospace';
             this.ctx.fillText(`FPS: ${this.fps}`, 10, 30);
             this.ctx.fillText(`Bullets: ${this.bullets.length}`, 10, 45);
-            this.ctx.fillText(`Enemies: ${this.enemies.filter(e => e.active).length}`, 10, 60);
-            this.ctx.fillText(`Player: ${Math.floor(this.player.x)}, ${Math.floor(this.player.y)}`, 10, 75);
+            this.ctx.fillText(`Enemies: ${this.enemies.filter(e => e.active).length} (${this.visibleEnemyCount || 0} visible)`, 10, 60);
+            this.ctx.fillText(`Rooms: ${this.rooms?.length || 0}`, 10, 75);
+            this.ctx.fillText(`Player: ${Math.floor(this.player.x)}, ${Math.floor(this.player.y)}`, 10, 90);
+            this.ctx.fillText(`Total Enemies Generated: ${this.enemies.length}`, 10, 105);
         }
     }
 
@@ -914,6 +997,11 @@ export class GameEngine {
         // Store rooms for other systems
         this.rooms = rooms;
         
+        console.log(`Generated level with ${rooms.length} rooms:`);
+        rooms.forEach((room, i) => {
+            console.log(`  Room ${i}: (${room.x}, ${room.y}) ${room.w}x${room.h}`);
+        });
+        
         // Generate enemies and items
         this.generateEnemies();
         this.generateItems();
@@ -921,26 +1009,94 @@ export class GameEngine {
 
     generateEnemies() {
         this.enemies = [];
-        if (!this.rooms || this.rooms.length === 0) return;
+        if (!this.rooms || this.rooms.length <= 1) {
+            console.warn('No rooms available for enemy generation');
+            return;
+        }
         
         const CELL_SIZE = GAME_CONFIG.GRID.SIZE;
-        const enemyCount = 2 + Math.floor(Math.random() * 4);
+        const baseEnemyCount = 4 + Math.floor(Math.random() * 6); // 4-10 enemies
+        const maxEnemiesPerRoom = 3;
         
-        for (let i = 0; i < enemyCount; i++) {
-            // Skip the first room (player start)
-            const roomIndex = 1 + Math.floor(Math.random() * (this.rooms.length - 1));
+        console.log(`Generating ${baseEnemyCount} enemies in ${this.rooms.length} rooms`);
+        
+        let enemiesGenerated = 0;
+        const enemyTypes = ['zombie', 'demon', 'cacodemon', 'baron'];
+        
+        // Try to place enemies in each room (except first room which is player start)
+        for (let roomIndex = 1; roomIndex < this.rooms.length && enemiesGenerated < baseEnemyCount; roomIndex++) {
             const room = this.rooms[roomIndex];
+            const enemiesInThisRoom = 1 + Math.floor(Math.random() * maxEnemiesPerRoom);
             
-            if (room) {
-                const x = (room.x + 1 + Math.random() * (room.w - 2)) * CELL_SIZE + CELL_SIZE / 2;
-                const y = (room.y + 1 + Math.random() * (room.h - 2)) * CELL_SIZE + CELL_SIZE / 2;
+            for (let e = 0; e < enemiesInThisRoom && enemiesGenerated < baseEnemyCount; e++) {
+                let attempts = 0;
+                let validPosition = false;
                 
-                const enemyTypes = ['zombie', 'demon', 'cacodemon'];
-                const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-                
-                this.enemies.push(new Enemy(x, y, type));
+                while (!validPosition && attempts < 20) {
+                    // Place enemy in room with some margin from walls
+                    const margin = 1;
+                    const x = (room.x + margin + Math.random() * (room.w - 2 * margin)) * CELL_SIZE + CELL_SIZE / 2;
+                    const y = (room.y + margin + Math.random() * (room.h - 2 * margin)) * CELL_SIZE + CELL_SIZE / 2;
+                    
+                    // Check if position is valid (on floor)
+                    const gridX = Math.floor(x / CELL_SIZE);
+                    const gridY = Math.floor(y / CELL_SIZE);
+                    
+                    if (gridX >= 0 && gridX < this.levelData[0].length && 
+                        gridY >= 0 && gridY < this.levelData.length &&
+                        !this.isSolidWallType(this.levelData[gridY][gridX])) {
+                        
+                        // Check distance from player
+                        const playerDist = Math.sqrt(
+                            (x - this.player.x) * (x - this.player.x) + 
+                            (y - this.player.y) * (y - this.player.y)
+                        );
+                        
+                        if (playerDist > 100) { // Minimum distance from player
+                            const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                            const enemy = new Enemy(x, y, type);
+                            
+                            this.enemies.push(enemy);
+                            enemiesGenerated++;
+                            validPosition = true;
+                            
+                            console.log(`Enemy ${enemiesGenerated} (${type}) placed at (${Math.floor(x)}, ${Math.floor(y)}) in room ${roomIndex}`);
+                        }
+                    }
+                    attempts++;
+                }
             }
         }
+        
+        // If we didn't generate enough enemies, try placing some in hallways
+        if (enemiesGenerated < baseEnemyCount / 2) {
+            console.log('Adding enemies to hallways...');
+            for (let i = 0; i < 20 && enemiesGenerated < baseEnemyCount; i++) {
+                const x = (5 + Math.random() * 50) * CELL_SIZE + CELL_SIZE / 2;
+                const y = (5 + Math.random() * 35) * CELL_SIZE + CELL_SIZE / 2;
+                
+                const gridX = Math.floor(x / CELL_SIZE);
+                const gridY = Math.floor(y / CELL_SIZE);
+                
+                if (gridX >= 0 && gridX < this.levelData[0].length && 
+                    gridY >= 0 && gridY < this.levelData.length &&
+                    !this.isSolidWallType(this.levelData[gridY][gridX])) {
+                    
+                    const playerDist = Math.sqrt(
+                        (x - this.player.x) * (x - this.player.x) + 
+                        (y - this.player.y) * (y - this.player.y)
+                    );
+                    
+                    if (playerDist > 100) {
+                        const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                        this.enemies.push(new Enemy(x, y, type));
+                        enemiesGenerated++;
+                    }
+                }
+            }
+        }
+        
+        console.log(`Total enemies generated: ${this.enemies.length}`);
     }
 
     generateItems() {
