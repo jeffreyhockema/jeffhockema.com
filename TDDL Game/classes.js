@@ -16,6 +16,9 @@ export class GameState {
     setState(newState) {
         this.current = newState;
         this.onStateChange?.(newState);
+        
+        // Trigger canvas resize when state changes
+        window.dispatchEvent(new Event('resize'));
     }
 
     reset() {
@@ -309,6 +312,16 @@ export class InputManager {
         this.keys = {};
         this.mouse = { x: 0, y: 0, down: false };
         this.touches = new Map();
+        this.cheatBuffer = '';
+        this.cheatCodes = {
+            'iddqd': 'god_mode',
+            'idkfa': 'all_weapons',
+            'idclip': 'no_clip',
+            'iddt': 'map_reveal',
+            'idbeholdh': 'health_boost',
+            'idbehold1': 'invulnerability',
+            'idbehold2': 'invisibility'
+        };
         
         this.bindEvents();
     }
@@ -316,6 +329,9 @@ export class InputManager {
     bindEvents() {
         document.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
+            
+            // Handle cheat codes
+            this.handleCheatInput(e.key);
         });
 
         document.addEventListener('keyup', (e) => {
@@ -372,5 +388,45 @@ export class InputManager {
 
     isActionPressed(action) {
         return this.isKeyPressed(action) || this.mouse.down;
+    }
+
+    handleCheatInput(key) {
+        // Only handle letter keys for cheat codes
+        if (key.length === 1 && /[a-zA-Z0-9]/.test(key)) {
+            this.cheatBuffer += key.toLowerCase();
+            
+            // Keep buffer manageable
+            if (this.cheatBuffer.length > 20) {
+                this.cheatBuffer = this.cheatBuffer.slice(-20);
+            }
+            
+            // Check for cheat codes
+            for (let cheat in this.cheatCodes) {
+                if (this.cheatBuffer.includes(cheat)) {
+                    this.triggerCheat(this.cheatCodes[cheat]);
+                    this.cheatBuffer = ''; // Clear buffer after successful cheat
+                    break;
+                }
+            }
+        } else if (key === 'Escape') {
+            // Clear cheat buffer on escape
+            this.cheatBuffer = '';
+        }
+    }
+
+    triggerCheat(cheatType) {
+        // Dispatch custom event for cheat activation
+        const event = new CustomEvent('cheatActivated', { 
+            detail: { type: cheatType } 
+        });
+        document.dispatchEvent(event);
+        
+        // Visual feedback
+        console.log(`Cheat activated: ${cheatType}`);
+    }
+
+    // Method to register cheat callback
+    onCheatActivated(callback) {
+        document.addEventListener('cheatActivated', callback);
     }
 }
