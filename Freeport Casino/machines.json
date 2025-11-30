@@ -1,17 +1,5 @@
 [
   {
-    "id": "Default",
-    "name": "Slot Machine",
-    "logo": "Default/assets/LOGO.png",
-    "folder": "Default"
-  },
-  {
-    "id": "sarcophagus-secrets",
-    "name": "Sarcophagus Secrets",
-    "logo": "Sarcophagus Secrets/assets/LOGO.png",
-    "folder": "Sarcophagus Secrets"
-  },
-  {
     "id": "ancient-egypt-gold",
     "name": "Ancient Egypt Gold",
     "logo": "Ancient Egypt Gold/assets/LOGO.png",
@@ -88,6 +76,18 @@
     "name": "Retro 8-bit Pixel Art",
     "logo": "Retro 8-bit Pixel Art/assets/LOGO.png",
     "folder": "Retro 8-bit Pixel Art"
+  },
+  {
+    "id": "sarcophagus-secrets",
+    "name": "Sarcophagus Secrets",
+    "logo": "Sarcophagus Secrets/assets/LOGO.png",
+    "folder": "Sarcophagus Secrets"
+  },
+  {
+    "id": "Default",
+    "name": "Slot Machine",
+    "logo": "Default/assets/LOGO.png",
+    "folder": "Default"
   },
   {
     "id": "tequila-gold-rush",
