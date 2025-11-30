@@ -1549,6 +1549,8 @@
         preload() {
             this.load.json('machines', 'machines.json');
             this.load.image('menu_logo', 'logo.png');
+            // Load default machine's click sound for hover effects
+            this.load.audio('menu_click', 'Default/assets/click.mp3');
         }
         
         create() {
@@ -1766,6 +1768,14 @@
                             scale: 1.05,
                             duration: 200
                         });
+                        // Play default machine's click sound on hover
+                        try {
+                            if (this.cache.audio && this.cache.audio.exists('menu_click')) {
+                                this.sound.play('menu_click', { volume: 0.8 });
+                            }
+                        } catch(e) {
+                            // Ignore errors if sound doesn't exist or can't play
+                        }
                     });
                     card.on('pointerout', () => {
                         card.border.clear();
