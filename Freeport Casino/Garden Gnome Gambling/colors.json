@@ -1,0 +1,12 @@
+{
+  "bgTop": "#C8E6F0",
+  "bgBot": "#7AC47A",
+  "deck": "#8B704F",
+  "frame": "#6E553B",
+  "accent": "#FFEB3B",
+  "gold": "#D4AF37",
+  "spin": "#E53935",
+  "btnActive": "#66BB6A",
+  "btnIdle": "#A5D6A7",
+  "text": "#F8F8F8"
+}
