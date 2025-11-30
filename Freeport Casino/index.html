@@ -261,6 +261,11 @@
                 });
             }
             
+            // Clear fallback mappings when loading a new machine
+            // This ensures machines with their own audio files use them instead of cached fallbacks
+            this.audioFallbacks = {};
+            this.textureFallbacks = {};
+            
             // Load default machine configuration files first (for fallback)
             this.load.json('colors_default', this.defaultMachineFolder + 'colors.json');
             this.load.json('sound_default', this.defaultMachineFolder + 'sound.json');
@@ -462,13 +467,15 @@
             
             // Helper function to get audio key with fallback
             this.getAudioKey = (key) => {
+                // Always check if current machine's audio exists first
+                // This ensures machines with their own audio files use them
+                // even if a fallback was set from a previous machine
+                if (this.cache.audio && this.cache.audio.exists(key)) {
+                    return key;
+                }
                 // Check if we have an audio fallback mapping
                 if (this.audioFallbacks && this.audioFallbacks[key]) {
                     return this.audioFallbacks[key];
-                }
-                // Check if current machine's audio exists
-                if (this.cache.audio && this.cache.audio.exists(key)) {
-                    return key;
                 }
                 // Fall back to default machine's audio
                 const defaultKey = key + '_default';
