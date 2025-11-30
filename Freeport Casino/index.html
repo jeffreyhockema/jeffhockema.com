@@ -1,0 +1,1830 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Slot Game Demo</title>
+    <!-- Preload fonts for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Righteous&family=Roboto+Slab:wght@400;700&family=Rye&display=swap" rel="stylesheet">
+    <style>
+      body { margin: 0; padding: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Righteous', sans-serif; }
+      #game-container { box-shadow: 0 0 50px rgba(0,0,0,0.5); border-radius: 12px; overflow: hidden; }
+      /* Preload fonts by using them */
+      .font-preload { position: absolute; left: -9999px; font-size: 1px; }
+      .font-preload-1 { font-family: 'Righteous', sans-serif; }
+      .font-preload-2 { font-family: 'Rye', serif; }
+      .font-preload-3 { font-family: 'Roboto Slab', serif; }
+    </style>
+    <!-- Use CDN Phaser 3.85.2 to ensure compatibility (fix e.isContextLost) -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.85.2/dist/phaser.min.js"></script>
+</head>
+<body>
+<!-- Hidden elements to force font loading -->
+<span class="font-preload font-preload-1">.</span>
+<span class="font-preload font-preload-2">.</span>
+<span class="font-preload font-preload-3">.</span>
+<div id="game-container"></div>
+<script>
+    const sprites = [{"id":"9","name":"Nine","description":"The number 9","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"10","name":"Ten","description":"The number 10","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"J","name":"Jack","description":"The letter J, representing the Jack card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"Q","name":"Queen","description":"The letter Q, representing the Queen card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"K","name":"King","description":"The letter K, representing the King card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"A","name":"Ace","description":"The letter A, representing the Ace card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"BAR","name":"Bar","description":"A classic BAR symbol, rectangular shape","imageUrl":"present","isLoading":false,"error":null,"crop":0.06},{"id":"7","name":"Seven","description":"A lucky number 7","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"WILD","name":"Wild","description":"A symbol representing a WILD card, magical or powerful","imageUrl":"present","isLoading":false,"error":null,"crop":0.15},{"id":"BONUS","name":"Bonus","description":"A symbol representing a BONUS round, treasure or special item","imageUrl":"present","isLoading":false,"error":null,"crop":0.1}];
+    const logo = {"id":"LOGO","name":"Marquee Logo","description":"Main game title logo marquee","imageUrl":"present","isLoading":false,"error":null,"crop":0.19};
+    const uiAssets = [{"id":"SPIN_BUTTON","name":"Spin Button","description":"Main circular spin button with text SPIN","imageUrl":"present","isLoading":false,"error":null,"crop":0.08},{"id":"FREE_SPINS","name":"Free Spins","description":"Free Spins text logo for bonus mode","imageUrl":"present","isLoading":false,"error":null,"crop":0.09},{"id":"BIG_WIN","name":"Big Win","description":"Big Win text logo for large payouts","imageUrl":"present","isLoading":false,"error":null,"crop":0.09},{"id":"ICON_COIN","name":"Coin","description":"A single gold coin for animations","imageUrl":"present","isLoading":false,"error":null,"crop":0.07}];
+    const colorScheme = {"bgTop":"#0F2A3F","bgBot":"#3A2C2C","deck":"#4F3A2B","frame":"#6D5F5A","accent":"#4EE0E0","gold":"#C5A65C","spin":"#66BB6A","btnActive":"#D6C186","btnIdle":"#5C4B3A","text":"#F0EAD6"};
+    const soundTheme = {"clickWave":"triangle","motorWave":"square","winWave":"sawtooth","pitch":0.9,"speed":0.9};
+    const extractedColors = {"gen_LOGO":{"tl":1248802,"tr":1314850,"bl":1314851,"br":1314594},"gen_SPIN_BUTTON":{"tl":1579842,"tr":1579585,"bl":1514049,"br":1579585},"gen_FREE_SPINS":{"tl":1121864,"tr":1187399,"bl":1121864,"br":1121863},"gen_BIG_WIN":{"tl":1907775,"tr":1907775,"bl":1842238,"br":1907519}};
+    const hasMusic = true;
+    const sfxFlags = {"spin":true,"stop":true,"win":true,"bigWin":true,"click":true,"scatter":true,"bonusTrigger":true,"jam":true};
+    const oddsMode = "vegas";
+    const HEADER_HEIGHT = 435;
+
+    const toHex = (colorStr) => parseInt(colorStr.replace('#', '0x'));
+    // COLORS will be set per-scene from machine configuration
+
+    const SYMBOL_DEFS = [
+        { id: '9',  val: 5,  type: 'ROYAL', color: '#00ff00' }, 
+        { id: '10', val: 10, type: 'ROYAL', color: '#00ccff' },
+        { id: 'J',  val: 15, type: 'ROYAL', color: '#3333ff' }, 
+        { id: 'Q',  val: 20, type: 'ROYAL', color: '#cc00ff' },
+        { id: 'K',  val: 30, type: 'ROYAL', color: '#ff0000' }, 
+        { id: 'A',  val: 50, type: 'ROYAL', color: '#ffff00' },
+        { id: 'BAR', val: 100, type: 'BAR' }, 
+        { id: '7',   val: 200, type: 'SEVEN' },
+        { id: 'WILD', val: 500, type: 'WILD', isWild: true },
+        { id: 'BONUS', val: 0, type: 'BONUS', isScatter: true }
+    ];
+
+    // REEL_STRIP configurations for different odds modes
+    const REEL_STRIP_FUN = [
+        '9','9','9','9', '10','10','10', 'J','J','J', 'Q','Q','Q', 'K','K','K', 'A','A', 
+        'BAR', 'BAR', '7', 'WILD', 'WILD', 'BONUS', '9','9', '10','10', 'J','J', 'Q','Q', 'K','K', 'A','A',
+        '7','7','7', 'BONUS', 'BONUS', '9','10','J','Q','K','A','BAR','7','WILD','9','10','J',
+        'BONUS', '9', '9', '10', '10', 'J'
+    ];
+    
+    // Vegas mode: Lower hit frequency (~25%), bonus ~1 in 400 spins
+    // More low-value symbols, fewer high-value, very rare BONUS
+    const REEL_STRIP_VEGAS = [
+        '9','9','9','9','9','9','9','9', '10','10','10','10','10','10', 'J','J','J','J','J','J', 
+        'Q','Q','Q','Q', 'K','K','K', 'A','A','A', 
+        'BAR', 'BAR', '7', '7', 'WILD', 'WILD',
+        '9','9','9','9','9', '10','10','10','10', 'J','J','J','J', 
+        'Q','Q','Q', 'K','K', 'A','A', 'BAR', '7', 'WILD',
+        '9','9','9','9', '10','10','10', 'J','J','J', 'Q','Q', 'K', 'A',
+        'BAR', '7', 'WILD',
+        '9','9','9', '10','10', 'J','J', 'Q', 'K', 'A',
+        'BAR', '7',
+        '9','9', '10', 'J', 'Q', 'K', 'A',
+        'BAR', '7',
+        '9', '10', 'J', 'Q', 'K', 'A',
+        'BAR',
+        '9', '10', 'J', 'Q',
+        'BONUS'  // Only 1 BONUS in ~120 symbols = ~0.3% bonus frequency
+    ];
+    
+    const REEL_STRIP = oddsMode === 'vegas' ? REEL_STRIP_VEGAS : REEL_STRIP_FUN;
+
+    const CONFIG = {
+        width: 720, height: 1280, reelCount: 5, rowCount: 3,
+        symbolSize: 130, reelWidth: 136, offsetX: 20, 
+        offsetY: HEADER_HEIGHT, 
+        fixedLines: 25,
+        paylines: [ [1,1,1,1,1], [0,0,0,0,0], [2,2,2,2,2], [0,1,2,1,0], [2,1,0,1,2], [0,0,1,2,2], [2,2,1,0,0], [1,0,1,2,1], [1,2,1,0,1], [0,1,0,1,0], [2,1,2,1,2], [1,0,0,0,1], [1,2,2,2,1], [0,2,0,2,0], [2,0,2,0,2], [1,1,0,1,1], [1,1,2,1,1], [0,1,1,1,0], [2,1,1,1,2], [0,2,2,2,0], [2,0,0,0,2], [0,1,0,1,2], [2,1,2,1,0], [1,0,2,0,1], [1,2,0,2,1] ]
+    };
+
+    class SoundEngine {
+        constructor(theme) {
+            this.theme = theme;
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.master = this.ctx.createGain(); this.master.gain.value = 0.25; this.master.connect(this.ctx.destination);
+        }
+        tryResume() { if(this.ctx.state === 'suspended') this.ctx.resume().catch(console.error); }
+        play(freq, type='sine', dur=0.1, vol=1, slide=null) {
+            if(this.ctx.state === 'suspended') this.ctx.resume();
+            const finalFreq = freq * this.theme.pitch;
+            const finalDur = dur / this.theme.speed;
+            const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(finalFreq, this.ctx.currentTime);
+            if(slide) osc.frequency.linearRampToValueAtTime(slide * this.theme.pitch, this.ctx.currentTime + finalDur);
+            g.gain.setValueAtTime(vol, this.ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + finalDur);
+            osc.connect(g); g.connect(this.master);
+            osc.start(); osc.stop(this.ctx.currentTime + finalDur);
+        }
+        playClick() { this.play(800, this.theme.clickWave, 0.05, 0.2); }
+        playStop(i) { this.play(150 + (i*20), this.theme.motorWave, 0.1, 0.4); }
+        playTease() { this.play(100, this.theme.motorWave, 0.1, 0.3, 50); }
+        playScatter() { this.play(1200, this.theme.winWave, 0.5, 0.6); }
+        playBonusStart() { [440, 554, 659, 880].forEach((f,i)=>setTimeout(()=>this.play(f,this.theme.winWave,0.1,0.3), i*100)); }
+        playWin() { [523, 659, 784, 1046].forEach((f,i) => setTimeout(()=>this.play(f, this.theme.winWave, 0.2, 0.3), i*80)); }
+    }
+
+    class GameBtn extends Phaser.GameObjects.Container {
+        constructor(scene, x, y, width, height, text, subtext, colorHex, onClick) {
+            super(scene, x, y);
+            this.scene = scene; this.onClick = onClick; this.enabled = true; this.baseColor = colorHex;
+            this.width = width; this.height = height;
+            scene.add.existing(this);
+            
+            this.bg = scene.add.graphics();
+            this.drawBg(colorHex);
+            this.add(this.bg);
+            
+            const textColor = (scene.COLORS && scene.COLORS.text) ? scene.COLORS.text : '#F0EAD6';
+            const accentColor = (scene.colorScheme && scene.colorScheme.accent) ? scene.colorScheme.accent : '#4EE0E0';
+            this.mainText = scene.add.text(0, subtext?-8:0, text, { fontSize: '28px', fontFamily: 'Righteous', color: textColor, stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
+            if(subtext) this.add(scene.add.text(0, 18, subtext, { fontSize: '12px', fontFamily: 'Roboto Slab', color: accentColor, fontStyle:'bold' }).setOrigin(0.5));
+            this.add(this.mainText);
+            this.setSize(width, height);
+            this.setInteractive({ useHandCursor: true }).on('pointerdown', () => { if(this.enabled) { this.scene.tweens.add({targets:this, scale:0.95, duration:50, yoyo:true}); onClick(); } });
+        }
+        drawBg(color) {
+            if (this.bg) {
+                this.bg.clear(); const r = 12; const w = this.width; const h = this.height;
+                this.bg.fillStyle(0x000000, 0.5); this.bg.fillRoundedRect(-w/2+2, -h/2+4, w, h, r);
+                this.bg.fillStyle(color, 1); this.bg.fillRoundedRect(-w/2, -h/2, w, h, r);
+                this.bg.fillStyle(0xffffff, 0.15); this.bg.fillRoundedRect(-w/2, -h/2, w, h/2, { tl: r, tr: r, bl: 0, br: 0 });
+                this.bg.lineStyle(2, 0xffffff, 0.3); this.bg.strokeRoundedRect(-w/2+1, -h/2+1, w-2, h-2, r);
+                this.bg.lineStyle(1, 0x000000, 0.4); this.bg.strokeRoundedRect(-w/2, -h/2, w, h, r);
+            }
+        }
+        setEnabled(b) { this.enabled = b; this.setAlpha(b?1:0.5); if(b) this.drawBg(this.baseColor); }
+        setActiveState(isActive) { this.drawBg(isActive ? (this.scene.COLORS ? this.scene.COLORS.btnActive : 0xD6C186) : this.baseColor); this.mainText.setColor(isActive ? '#ffffff' : (this.scene.COLORS ? this.scene.COLORS.text : '#F0EAD6')); }
+    }
+
+    class SpinBtn extends Phaser.GameObjects.Container {
+        constructor(scene, x, y, onClick) {
+            super(scene, x, y);
+            this.scene = scene; this.onClick = onClick;
+            scene.add.existing(this);
+            const spinBtnKey = scene.getAssetKey ? scene.getAssetKey('gen_SPIN_BUTTON') : 'gen_SPIN_BUTTON';
+            if (scene.textures.exists(spinBtnKey)) {
+                this.img = scene.add.image(0, 0, spinBtnKey);
+                this.img.setScale(170 / Math.max(this.img.width, this.img.height));
+                this.add(this.img);
+            } else {
+                this.bg = scene.add.graphics();
+                this.drawCircle(this.scene.COLORS ? this.scene.COLORS.spin : 0x66BB6A);
+                const txt = scene.add.text(0, 0, "SPIN", { fontSize: '42px', fontFamily: 'Righteous', color: '#fff', stroke: '#004400', strokeThickness: 6 }).setOrigin(0.5);
+                this.add([this.bg, txt]);
+            }
+            this.setSize(170, 170);
+            this.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.scene.tweens.add({targets:this, scale:0.9, duration:50, yoyo:true}); onClick(); });
+            this.scene.tweens.add({ targets: this, scale: 1.05, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        }
+        drawCircle(color) {
+            this.bg.clear(); const r = 80;
+            this.bg.fillStyle(0x000000, 0.5); this.bg.fillCircle(5, 5, r);
+            this.bg.fillStyle(color, 1); this.bg.fillCircle(0, 0, r);
+            this.bg.lineStyle(4, 0xffffff, 0.8); this.bg.strokeCircle(0, 0, r);
+        }
+        setText(str) { 
+            // Only procedural button has text to update
+            if (!this.img && this.list[1]) (this.list[1]).setText(str); 
+        }
+    }
+
+    class MainScene extends Phaser.Scene {
+        constructor() { 
+            super('MainScene'); 
+            this.credits=10000; 
+            this.denom=1; 
+            this.betMultiplier=1; 
+            this.state='IDLE'; 
+            this.machine = null;
+            this.machineFolder = '';
+            this.sprites = [];
+            this.logo = null;
+            this.uiAssets = [];
+            this.colorScheme = {};
+            this.soundTheme = {};
+            this.extractedColors = {};
+            this.hasMusic = true;
+            this.sfxFlags = {};
+            this.oddsMode = "vegas";
+            this.soundEngine = null;
+            this.betBtns=[]; 
+            this.reels = []; 
+            this.grid = []; 
+            this.winLines = []; 
+            this.stopTimers = []; 
+            this.isMusicOn = true; 
+            this.isSfxOn = true; 
+            this.sfxVolume = 0.8; 
+            this.musicVolume = 0.5; 
+        }
+        
+        init(data) {
+            if (data && data.machine) {
+                this.machine = data.machine;
+                this.machineFolder = this.machine.folder + '/';
+            } else {
+                // Default fallback
+                this.machineFolder = 'Sarcophagus Secrets/';
+            }
+            // Store default machine info if provided
+            this.defaultMachine = data && data.defaultMachine ? data.defaultMachine : null;
+            this.defaultMachineFolder = this.defaultMachine ? this.defaultMachine.folder + '/' : 'Default/';
+        }
+        
+        getReelStrip() {
+            return this.oddsMode === 'vegas' ? REEL_STRIP_VEGAS : REEL_STRIP_FUN;
+        }
+        
+        preload() {
+            // Clear all 'gen_' prefixed textures (machine-specific assets)
+            // This ensures assets are updated when switching machines
+            // Get all texture keys and remove machine-specific ones
+            const textureKeys = this.textures.getTextureKeys();
+            textureKeys.forEach(key => {
+                if (key.startsWith('gen_') || key.startsWith('sym_') || key.startsWith('sym_blur_')) {
+                    try {
+                        this.textures.remove(key);
+                    } catch(e) {
+                        // Ignore errors if texture doesn't exist
+                    }
+                }
+            });
+            
+            // Clear all audio assets
+            if (this.cache.audio) {
+                const audioKeys = this.cache.audio.getKeys();
+                audioKeys.forEach(key => {
+                    if (key.startsWith('sfx_') || key === 'bgm' || key.endsWith('_default')) {
+                        try {
+                            this.cache.audio.remove(key);
+                        } catch(e) {
+                            // Ignore errors if audio doesn't exist
+                        }
+                    }
+                });
+            }
+            
+            // Load default machine configuration files first (for fallback)
+            this.load.json('colors_default', this.defaultMachineFolder + 'colors.json');
+            this.load.json('sound_default', this.defaultMachineFolder + 'sound.json');
+            
+            // Load current machine configuration files
+            this.load.json('colors', this.machineFolder + 'colors.json');
+            this.load.json('sound', this.machineFolder + 'sound.json');
+        }
+        
+        create() {
+            // Initialize extractedColors first to avoid undefined errors
+            this.extractedColors = {};
+            
+            // Helper function to merge objects (default values with current overrides)
+            const mergeObjects = (defaultObj, currentObj) => {
+                const merged = { ...defaultObj };
+                for (const key in currentObj) {
+                    if (currentObj[key] !== null && currentObj[key] !== undefined) {
+                        if (typeof currentObj[key] === 'object' && !Array.isArray(currentObj[key]) && typeof defaultObj[key] === 'object' && !Array.isArray(defaultObj[key])) {
+                            merged[key] = mergeObjects(defaultObj[key] || {}, currentObj[key]);
+                        } else {
+                            merged[key] = currentObj[key];
+                        }
+                    }
+                }
+                return merged;
+            };
+            
+            // Get default machine configuration (for fallback)
+            const defaultColorsData = this.cache.json.get('colors_default');
+            const defaultSoundData = this.cache.json.get('sound_default');
+            
+            // Get current machine configuration
+            let colorsData = this.cache.json.get('colors');
+            let soundData = this.cache.json.get('sound');
+            
+            // Merge with default if current is missing or incomplete
+            if (!colorsData && defaultColorsData) {
+                colorsData = defaultColorsData;
+            } else if (colorsData && defaultColorsData) {
+                // Merge: current machine takes precedence, but fill in missing properties from default
+                colorsData = mergeObjects(defaultColorsData, colorsData);
+            }
+            
+            if (!soundData && defaultSoundData) {
+                soundData = defaultSoundData;
+            } else if (soundData && defaultSoundData) {
+                // Merge: current machine takes precedence
+                soundData = mergeObjects(defaultSoundData, soundData);
+            }
+            
+            // Safety check - ensure data exists
+            if (!colorsData || !soundData) {
+                console.error('Failed to load machine configuration files', { colorsData, soundData, defaultColorsData, defaultSoundData });
+                return;
+            }
+            
+            // colors.json IS the colorScheme object (not wrapped)
+            // sound.json IS the soundTheme object (not wrapped)
+            this.colorScheme = colorsData;
+            this.soundTheme = soundData;
+            
+            // Check if colors.json has nested structure (for compatibility)
+            if (colorsData.colorScheme) {
+                this.colorScheme = colorsData.colorScheme;
+                this.sprites = colorsData.sprites || [];
+                this.logo = colorsData.logo || null;
+                this.uiAssets = colorsData.uiAssets || [];
+                this.extractedColors = colorsData.extractedColors || {};
+            } else {
+                // Flat structure - need to load sprites/logo from elsewhere or use defaults
+                // For now, use the hardcoded values from the original code
+                this.sprites = [{"id":"9","name":"Nine","description":"The number 9","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"10","name":"Ten","description":"The number 10","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"J","name":"Jack","description":"The letter J, representing the Jack card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"Q","name":"Queen","description":"The letter Q, representing the Queen card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"K","name":"King","description":"The letter K, representing the King card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"A","name":"Ace","description":"The letter A, representing the Ace card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"BAR","name":"Bar","description":"A classic BAR symbol, rectangular shape","imageUrl":"present","isLoading":false,"error":null,"crop":0.06},{"id":"7","name":"Seven","description":"A lucky number 7","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"WILD","name":"Wild","description":"A symbol representing a WILD card, magical or powerful","imageUrl":"present","isLoading":false,"error":null,"crop":0.15},{"id":"BONUS","name":"Bonus","description":"A symbol representing a BONUS round, treasure or special item","imageUrl":"present","isLoading":false,"error":null,"crop":0.1}];
+                this.logo = {"id":"LOGO","name":"Marquee Logo","description":"Main game title logo marquee","imageUrl":"present","isLoading":false,"error":null,"crop":0.19};
+                this.uiAssets = [{"id":"SPIN_BUTTON","name":"Spin Button","description":"Main circular spin button with text SPIN","imageUrl":"present","isLoading":false,"error":null,"crop":0.08},{"id":"FREE_SPINS","name":"Free Spins","description":"Free Spins text logo for bonus mode","imageUrl":"present","isLoading":false,"error":null,"crop":0.09},{"id":"BIG_WIN","name":"Big Win","description":"Big Win text logo for large payouts","imageUrl":"present","isLoading":false,"error":null,"crop":0.09},{"id":"ICON_COIN","name":"Coin","description":"A single gold coin for animations","imageUrl":"present","isLoading":false,"error":null,"crop":0.07}];
+                this.extractedColors = {"gen_LOGO":{"tl":1248802,"tr":1314850,"bl":1314851,"br":1314594},"gen_SPIN_BUTTON":{"tl":1579842,"tr":1579585,"bl":1514049,"br":1579585},"gen_FREE_SPINS":{"tl":1121864,"tr":1187399,"bl":1121864,"br":1121863},"gen_BIG_WIN":{"tl":1907775,"tr":1907775,"bl":1842238,"br":1907519}};
+            }
+            
+            // Check if sound.json has nested structure
+            if (soundData.soundTheme) {
+                this.soundTheme = soundData.soundTheme;
+                this.hasMusic = soundData.hasMusic !== undefined ? soundData.hasMusic : true;
+                this.sfxFlags = soundData.sfxFlags || {};
+                this.oddsMode = soundData.oddsMode || "vegas";
+            } else {
+                // Flat structure - sound.json IS the soundTheme
+                this.hasMusic = true;
+                this.sfxFlags = {"spin":true,"stop":true,"win":true,"bigWin":true,"click":true,"scatter":true,"bonusTrigger":true,"jam":true};
+                this.oddsMode = "vegas";
+            }
+            
+            // Safety check for colorScheme
+            if (!this.colorScheme || Object.keys(this.colorScheme).length === 0) {
+                console.error('colorScheme is missing or empty', { colorsData, colorScheme: this.colorScheme });
+                return;
+            }
+            
+            // Initialize sound engine
+            this.soundEngine = new SoundEngine(this.soundTheme);
+            
+            // Initialize COLORS first with defaults to avoid undefined errors
+            this.COLORS = {
+                bgTop: 0x0F2A3F,
+                bgBot: 0x3A2C2C,
+                deck: 0x4F3A2B,
+                frame: 0x6D5F5A,
+                accent: 0x4EE0E0,
+                gold: 0xC5A65C,
+                spin: 0x66BB6A,
+                btnActive: 0xD6C186,
+                btnIdle: 0x5C4B3A,
+                text: '#F0EAD6'
+            };
+            
+            // Update COLORS from colorScheme
+            const toHex = (colorStr) => parseInt(colorStr.replace('#', '0x'));
+            if (this.colorScheme.bgTop) this.COLORS.bgTop = toHex(this.colorScheme.bgTop);
+            if (this.colorScheme.bgBot) this.COLORS.bgBot = toHex(this.colorScheme.bgBot);
+            if (this.colorScheme.deck) this.COLORS.deck = toHex(this.colorScheme.deck);
+            if (this.colorScheme.frame) this.COLORS.frame = toHex(this.colorScheme.frame);
+            if (this.colorScheme.accent) this.COLORS.accent = toHex(this.colorScheme.accent);
+            if (this.colorScheme.gold) this.COLORS.gold = toHex(this.colorScheme.gold);
+            if (this.colorScheme.spin) this.COLORS.spin = toHex(this.colorScheme.spin);
+            if (this.colorScheme.btnActive) this.COLORS.btnActive = toHex(this.colorScheme.btnActive);
+            if (this.colorScheme.btnIdle) this.COLORS.btnIdle = toHex(this.colorScheme.btnIdle);
+            if (this.colorScheme.text) this.COLORS.text = this.colorScheme.text;
+            
+            // Helper function to load asset with fallback to default machine
+            const loadAssetWithFallback = (key, path, type = 'image') => {
+                const defaultPath = this.defaultMachineFolder + path.replace(this.machineFolder, '');
+                if (type === 'image') {
+                    this.load.image(key, this.machineFolder + path);
+                    // Also load default version as fallback
+                    this.load.image(key + '_default', defaultPath);
+                } else if (type === 'audio') {
+                    this.load.audio(key, this.machineFolder + path);
+                    // Also load default version as fallback
+                    this.load.audio(key + '_default', defaultPath);
+                }
+            };
+            
+            // Track which assets failed to load
+            this.failedAssets = new Set();
+            this.load.on('filecomplete', (key, type, data) => {
+                // If an asset failed, we'll use the default version
+            });
+            this.load.on('loaderror', (file) => {
+                // Mark this asset as failed
+                this.failedAssets.add(file.key);
+            });
+            
+            // Load assets with fallback support
+            this.sprites.forEach(s => { 
+                if(s.imageUrl) {
+                    loadAssetWithFallback('gen_'+s.id, 'assets/'+s.id+'.png', 'image');
+                }
+            });
+            this.uiAssets.forEach(u => { 
+                if(u.imageUrl) {
+                    loadAssetWithFallback('gen_'+u.id, 'assets/'+u.id+'.png', 'image');
+                }
+            });
+            if(this.logo && this.logo.imageUrl) {
+                loadAssetWithFallback('gen_LOGO', 'assets/LOGO.png', 'image');
+            }
+            if(this.hasMusic) {
+                loadAssetWithFallback('bgm', 'assets/music.mp3', 'audio');
+            }
+            if(this.sfxFlags.spin) loadAssetWithFallback('sfx_spin', 'assets/spin.mp3', 'audio');
+            if(this.sfxFlags.stop) loadAssetWithFallback('sfx_stop', 'assets/stop.mp3', 'audio');
+            if(this.sfxFlags.win) loadAssetWithFallback('sfx_win', 'assets/win.mp3', 'audio');
+            if(this.sfxFlags.bigWin) loadAssetWithFallback('sfx_bigwin', 'assets/bigwin.mp3', 'audio');
+            if(this.sfxFlags.click) loadAssetWithFallback('sfx_click', 'assets/click.mp3', 'audio');
+            if(this.sfxFlags.scatter) loadAssetWithFallback('sfx_scatter', 'assets/scatter.mp3', 'audio');
+            if(this.sfxFlags.bonusTrigger) loadAssetWithFallback('sfx_bonustrigger', 'assets/bonustrigger.mp3', 'audio');
+            if(this.sfxFlags.jam) loadAssetWithFallback('sfx_jam', 'assets/jam.mp3', 'audio');
+            
+            // Helper function to get asset key with fallback
+            this.getAssetKey = (key) => {
+                // Check if we have a fallback mapping
+                if (this.textureFallbacks && this.textureFallbacks[key]) {
+                    return this.textureFallbacks[key];
+                }
+                if (this.audioFallbacks && this.audioFallbacks[key]) {
+                    return this.audioFallbacks[key];
+                }
+                // Check if current machine's asset exists
+                if (this.textures.exists(key) || (this.cache.audio && this.cache.audio.exists(key))) {
+                    return key;
+                }
+                // Fall back to default machine's asset
+                const defaultKey = key + '_default';
+                if (this.textures.exists(defaultKey) || (this.cache.audio && this.cache.audio.exists(defaultKey))) {
+                    return defaultKey;
+                }
+                // If neither exists, return original key (will fail gracefully)
+                return key;
+            };
+            
+            // Helper function to get audio key with fallback
+            this.getAudioKey = (key) => {
+                // Check if we have an audio fallback mapping
+                if (this.audioFallbacks && this.audioFallbacks[key]) {
+                    return this.audioFallbacks[key];
+                }
+                // Check if current machine's audio exists
+                if (this.cache.audio && this.cache.audio.exists(key)) {
+                    return key;
+                }
+                // Fall back to default machine's audio
+                const defaultKey = key + '_default';
+                if (this.cache.audio && this.cache.audio.exists(defaultKey)) {
+                    return defaultKey;
+                }
+                // If neither exists, return original key (will fail gracefully)
+                return key;
+            };
+            
+            // Start loading assets
+            this.load.once('complete', () => {
+                // For any assets that failed to load, use default versions
+                const assetKeys = [];
+                this.sprites.forEach(s => { if(s.imageUrl) assetKeys.push('gen_'+s.id); });
+                this.uiAssets.forEach(u => { if(u.imageUrl) assetKeys.push('gen_'+u.id); });
+                if(this.logo && this.logo.imageUrl) assetKeys.push('gen_LOGO');
+                
+                assetKeys.forEach(key => {
+                    if (!this.textures.exists(key) && this.textures.exists(key + '_default')) {
+                        // Create a reference to the default texture using the original key
+                        // Phaser doesn't support aliasing, so we'll use the default key directly
+                        // Store mapping for later use
+                        if (!this.textureFallbacks) this.textureFallbacks = {};
+                        this.textureFallbacks[key] = key + '_default';
+                    }
+                });
+                
+                // Handle audio fallbacks - check for failed loads or missing files
+                const audioKeys = ['bgm', 'sfx_spin', 'sfx_stop', 'sfx_win', 'sfx_bigwin', 'sfx_click', 'sfx_scatter', 'sfx_bonustrigger', 'sfx_jam'];
+                if (!this.audioFallbacks) this.audioFallbacks = {};
+                audioKeys.forEach(key => {
+                    // Check if the current machine's audio failed to load or doesn't exist
+                    const currentExists = this.cache.audio && this.cache.audio.exists(key);
+                    const defaultExists = this.cache.audio && this.cache.audio.exists(key + '_default');
+                    const failedToLoad = this.failedAssets && this.failedAssets.has(key);
+                    
+                    // Use default if current doesn't exist or failed to load
+                    if ((!currentExists || failedToLoad) && defaultExists) {
+                        // For audio, we'll use the default key directly when playing
+                        // Store mapping for later use
+                        this.audioFallbacks[key] = key + '_default';
+                    } else if (!currentExists && !defaultExists) {
+                        // If neither exists, try to use default anyway (might load later)
+                        // This handles cases where the file doesn't exist but we want to try default
+                        console.warn(`Audio file ${key} not found for machine ${this.machineFolder}, will try default if available`);
+                    }
+                });
+                
+                if (!this.textures.exists('gen_ICON_COIN')) {
+                    const g = this.make.graphics({x:0, y:0, add:false});
+                    g.fillStyle(this.COLORS.gold, 1); g.fillCircle(16, 16, 16); g.lineStyle(2, 0xffffff, 0.5); g.strokeCircle(16, 16, 16); g.generateTexture('gen_ICON_COIN', 32, 32);
+                }
+                
+                // Stop any existing music before starting new
+                if (this.sound) {
+                    this.sound.stopAll();
+                }
+                
+                if (this.hasMusic) {
+                    const bgmKey = this.getAudioKey('bgm');
+                    try { this.sound.add(bgmKey, { loop: true, volume: this.musicVolume }).play(); } catch(e) {}
+                }
+                this.initGame();
+            });
+            this.load.start();
+        }
+        
+        initGame() { this.generateTextures(); this.createBackground(); this.createReels(); this.createOverlayLayers(); this.createControls(); this.createBackButton(); this.createSettingsButton(); this.createSettingsPopup(); }
+        
+
+        generateTextures() {
+            SYMBOL_DEFS.forEach(s => {
+                // Check if texture already exists to avoid "Texture key already in use" errors
+                if (this.textures.exists('sym_'+s.id)) {
+                    return; // Skip if already exists
+                }
+                
+                const spriteData = this.sprites.find(sd => sd.id === s.id);
+                const spriteKey = this.getAssetKey('gen_'+s.id);
+                const hasCustomImage = spriteData && spriteData.imageUrl && this.textures.exists(spriteKey);
+                const rt = this.add.renderTexture(-1000, -1000, 130, 130);
+                
+                if (hasCustomImage) {
+                   const img = this.make.image({ key: spriteKey, add: false });
+                   const scale = Math.min(120 / img.width, 120 / img.height);
+                   img.setScale(scale);
+                   const bg = this.make.graphics({x:0, y:0, add:false});
+                   bg.fillStyle(0x000000, 0.4); bg.fillRoundedRect(5, 5, 120, 120, 15); bg.lineStyle(2, this.COLORS.gold, 0.5); bg.strokeRoundedRect(5, 5, 120, 120, 15);
+                   rt.draw(bg, 0, 0); rt.draw(img, 65, 65);
+                } else {
+                    const g = this.make.graphics({x:0, y:0, add:false});
+                    g.fillStyle(0x000000, 0.3); g.fillRoundedRect(5, 5, 120, 120, 15);
+                    if(s.type === 'ROYAL') { g.lineStyle(4, parseInt(s.color.replace('#','0x')), 1); g.strokeRoundedRect(10, 10, 110, 110, 15); rt.draw(g); const t = this.make.text({ text: s.id, style: { fontSize: s.id.length > 1 ? '70px' : '85px', fontFamily: 'Righteous', color: s.color, stroke: '#ffffff', strokeThickness: 6 } }).setOrigin(0.5); rt.draw(t, 65, 65); }
+                    else { g.fillStyle(0xffd700, 1); g.fillRoundedRect(10, 35, 110, 60, 5); rt.draw(g); }
+                }
+                rt.saveTexture('sym_'+s.id);
+                const tempImg = this.make.image({ key: 'sym_'+s.id, add: false });
+                
+                // Check if blur texture already exists
+                if (!this.textures.exists('sym_blur_'+s.id)) {
+                const rtb = this.add.renderTexture(-1000,-1000,130,130);
+                for(let i=-20; i<20; i+=8) { rtb.draw(tempImg, 65, 65+i, 0.15); }
+                rtb.saveTexture('sym_blur_'+s.id);
+                    rtb.destroy();
+                }
+                rt.destroy();
+            });
+            
+            // Only create sparkle texture if it doesn't exist
+            if (!this.textures.exists('sparkle')) {
+                const p = this.make.graphics({x:0,y:0,add:false}); p.fillStyle(this.COLORS.accent, 1); p.fillCircle(5,5,5); p.generateTexture('sparkle', 10, 10);
+            }
+        }
+
+        createBackground() {
+            this.bg = this.add.graphics();
+            this.setBgColor(false);
+            this.bgParticles = this.add.particles(0, 0, 'sparkle', { x: { min: 0, max: 720 }, y: 1300, speedY: { min: -50, max: -100 }, scale: { start: 0.5, end: 0 }, alpha: { start: 0.5, end: 0 }, lifespan: 8000, quantity: 1, frequency: 300 });
+            
+            const headerGraphics = this.add.graphics();
+            const headerColors = this.extractedColors['gen_LOGO'];
+            const headerLineY = CONFIG.offsetY - 25;
+
+            if (headerColors) {
+                headerGraphics.fillGradientStyle(headerColors.tl, headerColors.tr, headerColors.bl, headerColors.br, 1);
+                headerGraphics.fillRect(0, 0, CONFIG.width, headerLineY);
+                headerGraphics.lineStyle(4, this.COLORS.accent, 0.8);
+                headerGraphics.lineBetween(0, headerLineY, CONFIG.width, headerLineY);
+            }
+            // Ensure header graphics don't block input
+            headerGraphics.setDepth(-1);
+
+            const frame = this.add.graphics();
+            frame.lineStyle(16, this.COLORS.frame); frame.strokeRoundedRect(CONFIG.offsetX-8, CONFIG.offsetY-8, CONFIG.reelCount*CONFIG.reelWidth+16, CONFIG.rowCount*CONFIG.symbolSize+16, 20);
+
+            const logoKey = this.getAssetKey('gen_LOGO');
+            if (logo.imageUrl && this.textures.exists(logoKey)) {
+                const headerCenterY = (CONFIG.offsetY / 2) - 10;
+                const titleImg = this.add.image(CONFIG.width/2, headerCenterY, logoKey);
+                const targetWidth = (CONFIG.reelCount * CONFIG.reelWidth); 
+                const targetHeight = CONFIG.offsetY - 40;
+                const scale = Math.min(targetWidth / titleImg.width, targetHeight / titleImg.height);
+                titleImg.setScale(scale);
+                this.tweens.add({ targets: titleImg, scale: scale*1.02, duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            }
+        }
+
+        setBgColor(isBonus) {
+            this.bg.clear();
+            if(!this.textures.exists('bgGradient')) {
+                const cvs = document.createElement('canvas'); cvs.width=720; cvs.height=1280;
+                const ctx = cvs.getContext('2d');
+                if (ctx) {
+                    const grd = ctx.createRadialGradient(360, 640, 0, 360, 640, 800);
+                    grd.addColorStop(0, this.colorScheme.bgTop); grd.addColorStop(1, this.colorScheme.bgBot);
+                    ctx.fillStyle = grd; ctx.fillRect(0,0,720,1280);
+                    this.textures.addCanvas('bgGradient', cvs);
+                }
+            }
+            if(!this.textures.exists('bgBonus')) {
+                const cvs = document.createElement('canvas'); cvs.width=720; cvs.height=1280;
+                const ctx = cvs.getContext('2d');
+                if (ctx) {
+                    const grd = ctx.createRadialGradient(360, 640, 0, 360, 640, 800);
+                    grd.addColorStop(0, '#800000'); grd.addColorStop(1, '#1a0000');
+                    ctx.fillStyle = grd; ctx.fillRect(0,0,720,1280);
+                    this.textures.addCanvas('bgBonus', cvs);
+                }
+            }
+            this.add.image(360, 640, isBonus ? 'bgBonus' : 'bgGradient').setDepth(-10);
+        }
+
+        createReels() {
+            // Clear any existing reels before creating new ones
+            if (this.reels && this.reels.length > 0) {
+                this.reels.forEach(r => {
+                    if (r.tween) r.tween.stop();
+                    if (r.container) r.container.destroy();
+                });
+                this.reels = [];
+            }
+            
+            this.add.rectangle(CONFIG.width/2, CONFIG.offsetY + (CONFIG.rowCount*CONFIG.symbolSize)/2, CONFIG.reelCount*CONFIG.reelWidth, CONFIG.rowCount*CONFIG.symbolSize, 0x000000, 0.7);
+            const maskShape = this.make.graphics({x:0,y:0,add:false}).fillStyle(0xffffff).fillRect(CONFIG.offsetX, CONFIG.offsetY, CONFIG.reelCount*CONFIG.reelWidth, CONFIG.rowCount*CONFIG.symbolSize);
+            const mask = maskShape.createGeometryMask();
+            for(let i=0; i<CONFIG.reelCount; i++) {
+                const container = this.add.container(CONFIG.offsetX + (CONFIG.reelWidth/2) + (i*CONFIG.reelWidth), CONFIG.offsetY);
+                container.setMask(mask);
+                const sprites = [];
+                for(let j=-1; j<CONFIG.rowCount+1; j++) {
+                    const s = this.add.sprite(0, (j*CONFIG.symbolSize)+(CONFIG.symbolSize/2), 'sym_9');
+                    container.add(s); sprites.push(s);
+                }
+                this.reels.push({ container, sprites, isTeasing: false });
+                if(i>0) this.add.rectangle(CONFIG.offsetX+(i*CONFIG.reelWidth), CONFIG.offsetY+200, 2, CONFIG.rowCount*CONFIG.symbolSize, 0xffffff, 0.1);
+            }
+            const glass = this.add.graphics();
+            glass.fillStyle(0xffffff, 0.08); glass.fillRect(CONFIG.offsetX, CONFIG.offsetY, CONFIG.reelCount*CONFIG.reelWidth, (CONFIG.rowCount*CONFIG.symbolSize)/2);
+        }
+
+        createOverlayLayers() {
+            this.sparkleEmitter = this.add.particles(0, 0, 'sparkle', { speed: { min: 50, max: 150 }, scale: { start: 1, end: 0 }, blendMode: 'ADD', lifespan: 600, gravityY: 0, emitting: false, rotate: { min: 0, max: 360 } }).setDepth(1001);
+            this.coinEmitter = this.add.particles(0, 0, 'gen_ICON_COIN', { speedY: { min: -600, max: -900 }, speedX: { min: -300, max: 300 }, gravityY: 1200, scale: { start: 0.15, end: 0.15 }, rotate: { min: 0, max: 360 }, lifespan: 3000, emitting: false, quantity: 4 }).setDepth(2001);
+
+            this.winLayer = this.add.container(0,0).setDepth(999);
+            this.winGraphics = this.add.graphics();
+            this.winLayer.add(this.winGraphics);
+            this.popupLayer = this.add.container(CONFIG.width/2, CONFIG.height/2).setDepth(3000).setVisible(false);
+            this.popBg = this.add.graphics();
+            this.popTitle = this.add.text(0,-50, "", { fontSize: '60px', fontFamily:'Righteous', color: '#ffdd00', align:'center', stroke:'#000', strokeThickness:6 }).setOrigin(0.5);
+            this.popSub = this.add.text(0, 60, "", { fontSize: '60px', fontFamily:'Rye', color: this.COLORS.text, align:'center', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+            this.popImage = this.add.image(0, -50, '').setOrigin(0.5).setVisible(false);
+            
+            this.popupLayer.setInteractive(new Phaser.Geom.Rectangle(-300, -200, 600, 400), Phaser.Geom.Rectangle.Contains).on('pointerdown', () => { if (this.isCelebrating) { this.stopCelebration(true); } });
+            this.popupLayer.add([this.popBg, this.popTitle, this.popSub, this.popImage]);
+        }
+        
+        createBackButton() {
+            const x = 20;
+            const y = 20;
+            const iconSize = 32;
+            const iconRadius = 14;
+            
+            // Create container - position it so left edge aligns with x
+            // Container position is its center, so we offset by half the width
+            const btnBack = this.add.container(x + iconSize / 2, y + iconSize / 2);
+            btnBack.setDepth(20001);
+            btnBack.setScrollFactor(0);
+            
+            // Create background circle at container center (0, 0)
+            const bgBack = this.add.circle(0, 0, iconRadius, 0x333333, 0.9);
+            bgBack.setStrokeStyle(2, 0x888888);
+            
+            // Create back arrow icon using graphics
+            const arrowIcon = this.add.graphics();
+            arrowIcon.lineStyle(2.5, 0xffffff, 1);
+            arrowIcon.lineCap = 'round';
+            arrowIcon.lineJoin = 'round';
+            
+            // Draw left-pointing arrow (chevron style)
+            arrowIcon.beginPath();
+            arrowIcon.moveTo(-5, 0);
+            arrowIcon.lineTo(2, -5);
+            arrowIcon.moveTo(-5, 0);
+            arrowIcon.lineTo(2, 5);
+            arrowIcon.strokePath();
+            
+            // Add to container
+            btnBack.add([bgBack, arrowIcon]);
+            
+            // Set size and make interactive
+            btnBack.setSize(iconSize, iconSize);
+            btnBack.setInteractive({ useHandCursor: true });
+            btnBack.on('pointerdown', () => {
+                this.playClickSound();
+                // Stop all sounds before leaving
+                if (this.sound) {
+                    this.sound.stopAll();
+                }
+                // Return to menu
+                this.scene.start('MenuScene');
+            });
+            
+            this.btnBack = btnBack;
+        }
+        
+        createSettingsButton() {
+            const x = CONFIG.width - 20;
+            const y = 20;
+            const iconSize = 32;
+            const iconRadius = 14;
+            
+            // Create container - position it so right edge aligns with x
+            // Container position is its center, so we offset by half the width
+            const btnSettings = this.add.container(x - iconSize / 2, y + iconSize / 2);
+            btnSettings.setDepth(20001);
+            btnSettings.setScrollFactor(0);
+            
+            // Create background circle at container center (0, 0)
+            const bgSettings = this.add.circle(0, 0, iconRadius, 0x333333, 0.9);
+            bgSettings.setStrokeStyle(2, 0x888888);
+            
+            // Create gear icon using graphics - standard settings gear shape
+            const gearIcon = this.add.graphics();
+            gearIcon.lineStyle(2.5, 0xffffff, 1);
+            
+            // Draw gear shape - outer circle with teeth
+            const gearRadius = 8;
+            const numTeeth = 8;
+            const toothDepth = 2;
+            
+            gearIcon.beginPath();
+            for (let i = 0; i <= numTeeth * 2; i++) {
+                const angle = (i * Math.PI) / numTeeth;
+                let radius;
+                if (i % 2 === 0) {
+                    radius = gearRadius;
+                } else {
+                    radius = gearRadius - toothDepth;
+                }
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                if (i === 0) {
+                    gearIcon.moveTo(x, y);
+                } else {
+                    gearIcon.lineTo(x, y);
+                }
+            }
+            gearIcon.closePath();
+            gearIcon.strokePath();
+            
+            // Draw inner circle
+            gearIcon.strokeCircle(0, 0, gearRadius - toothDepth - 1);
+            
+            // Add to container
+            btnSettings.add([bgSettings, gearIcon]);
+            
+            // Set size and make interactive - exactly like GameBtn
+            btnSettings.setSize(iconSize, iconSize);
+            btnSettings.setInteractive({ useHandCursor: true });
+            btnSettings.on('pointerdown', () => {
+                this.playClickSound();
+                // Ensure popup exists, if not create it
+                if (!this.settingsPopup) {
+                    this.createSettingsPopup();
+                }
+                this.showSettingsPopup();
+            });
+            
+            this.btnSettings = btnSettings;
+        }
+        
+        createSettingsPopup() {
+            const popupWidth = 500;
+            const popupHeight = 600;
+            const centerX = CONFIG.width / 2;
+            const centerY = CONFIG.height / 2;
+            
+            // Main container
+            this.settingsPopup = this.add.container(centerX, centerY);
+            this.settingsPopup.setDepth(10001);
+            this.settingsPopup.setVisible(false);
+            this.settingsPopup.setScrollFactor(0);
+            
+            // Background
+            const settingsBg = this.add.graphics();
+            settingsBg.fillStyle(0x000000, 0.95);
+            settingsBg.fillRoundedRect(-popupWidth/2, -popupHeight/2, popupWidth, popupHeight, 20);
+            settingsBg.lineStyle(4, this.COLORS.gold);
+            settingsBg.strokeRoundedRect(-popupWidth/2, -popupHeight/2, popupWidth, popupHeight, 20);
+            
+            // Title
+            const title = this.add.text(0, -popupHeight/2 + 30, "SETTINGS", { 
+                fontSize: '40px', 
+                fontFamily: 'Righteous', 
+                color: this.COLORS.text, 
+                stroke: '#000', 
+                strokeThickness: 4 
+            }).setOrigin(0.5);
+            
+            // Close button
+            const closeBtn = this.add.container(popupWidth/2 - 30, -popupHeight/2 + 30);
+            const closeBg = this.add.circle(0, 0, 15, 0x666666, 0.9).setStrokeStyle(2, 0xffffff);
+            const closeText = this.add.text(0, 0, "×", { fontSize: '24px', color: '#ffffff' }).setOrigin(0.5);
+            closeBtn.add([closeBg, closeText]);
+            closeBtn.setSize(30, 30);
+            closeBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                this.playClickSound();
+                this.hideSettingsPopup();
+            });
+            
+            // Music section
+            const musicY = -150;
+            const musicLabel = this.add.text(-popupWidth/2 + 30, musicY, "MUSIC", { 
+                fontSize: '24px', 
+                fontFamily: 'Righteous', 
+                color: this.COLORS.text 
+            });
+            const musicMuteBtn = this.add.container(popupWidth/2 - 80, musicY);
+            const musicMuteBg = this.add.circle(0, 0, 12, 0x333333, 0.9).setStrokeStyle(2, this.isMusicOn ? 0x00ff00 : 0x555555);
+            const musicMuteIcon = this.add.text(0, 0, this.isMusicOn ? "🔊" : "🔇", { fontSize: '14px' }).setOrigin(0.5);
+            musicMuteBtn.add([musicMuteBg, musicMuteIcon]);
+            musicMuteBtn.setSize(24, 24);
+            musicMuteBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                this.playClickSound();
+                this.isMusicOn = !this.isMusicOn;
+                const bgmKey = this.getAudioKey('bgm');
+                if (this.sound.get(bgmKey)) {
+                    this.sound.get(bgmKey).setVolume(this.isMusicOn ? this.musicVolume : 0);
+                }
+                musicMuteBg.setStrokeStyle(2, this.isMusicOn ? 0x00ff00 : 0x555555);
+                musicMuteIcon.setText(this.isMusicOn ? "🔊" : "🔇");
+            });
+            
+            // Music slider
+            const musicSliderWidth = 300;
+            const musicSliderHeight = 8;
+            const musicSliderY = musicY + 40;
+            const musicSliderBg = this.add.rectangle(0, musicSliderY, musicSliderWidth, musicSliderHeight, 0x333333);
+            const musicSliderFill = this.add.rectangle(-musicSliderWidth/2, musicSliderY, musicSliderWidth * this.musicVolume, musicSliderHeight - 2, 0x00ff00).setOrigin(0, 0.5);
+            const musicSliderHandle = this.add.circle(-musicSliderWidth/2 + (musicSliderWidth * this.musicVolume), musicSliderY, 10, 0xffffff).setInteractive({ useHandCursor: true, draggable: true });
+            
+            musicSliderHandle.on('drag', (pointer) => {
+                const worldX = pointer.worldX;
+                const localPoint = this.settingsPopup.getLocalPoint(worldX, pointer.worldY);
+                const minX = -musicSliderWidth/2;
+                const maxX = musicSliderWidth/2;
+                const clampedX = Math.max(minX, Math.min(maxX, localPoint.x));
+                musicSliderHandle.x = clampedX;
+                this.musicVolume = Math.max(0, Math.min(1, (clampedX + musicSliderWidth/2) / musicSliderWidth));
+                musicSliderFill.width = musicSliderWidth * this.musicVolume;
+                musicSliderFill.x = -musicSliderWidth/2;
+                
+                const bgmKey = this.getAudioKey('bgm');
+                if (this.sound.get(bgmKey)) {
+                    this.sound.get(bgmKey).setVolume(this.musicVolume);
+                }
+                this.isMusicOn = this.musicVolume > 0;
+                musicMuteBg.setStrokeStyle(2, this.isMusicOn ? 0x00ff00 : 0x555555);
+                musicMuteIcon.setText(this.isMusicOn ? "🔊" : "🔇");
+            });
+            
+            // SFX section
+            const sfxY = -30;
+            const sfxLabel = this.add.text(-popupWidth/2 + 30, sfxY, "SOUND EFFECTS", { 
+                fontSize: '24px', 
+                fontFamily: 'Righteous', 
+                color: this.COLORS.text 
+            });
+            const sfxMuteBtn = this.add.container(popupWidth/2 - 80, sfxY);
+            const sfxMuteBg = this.add.circle(0, 0, 12, 0x333333, 0.9).setStrokeStyle(2, this.isSfxOn ? 0x00ff00 : 0x555555);
+            const sfxMuteIcon = this.add.text(0, 0, this.isSfxOn ? "🔊" : "🔇", { fontSize: '14px' }).setOrigin(0.5);
+            sfxMuteBtn.add([sfxMuteBg, sfxMuteIcon]);
+            sfxMuteBtn.setSize(24, 24);
+            sfxMuteBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                this.playClickSound();
+                this.isSfxOn = !this.isSfxOn;
+                sfxMuteBg.setStrokeStyle(2, this.isSfxOn ? 0x00ff00 : 0x555555);
+                sfxMuteIcon.setText(this.isSfxOn ? "🔊" : "🔇");
+            });
+            
+            // SFX slider
+            const sfxSliderWidth = 300;
+            const sfxSliderHeight = 8;
+            const sfxSliderY = sfxY + 40;
+            const sfxSliderBg = this.add.rectangle(0, sfxSliderY, sfxSliderWidth, sfxSliderHeight, 0x333333);
+            const sfxSliderFill = this.add.rectangle(-sfxSliderWidth/2, sfxSliderY, sfxSliderWidth * this.sfxVolume, sfxSliderHeight - 2, 0x00aaff).setOrigin(0, 0.5);
+            const sfxSliderHandle = this.add.circle(-sfxSliderWidth/2 + (sfxSliderWidth * this.sfxVolume), sfxSliderY, 10, 0xffffff).setInteractive({ useHandCursor: true, draggable: true });
+            
+            sfxSliderHandle.on('drag', (pointer) => {
+                const worldX = pointer.worldX;
+                const localPoint = this.settingsPopup.getLocalPoint(worldX, pointer.worldY);
+                const minX = -sfxSliderWidth/2;
+                const maxX = sfxSliderWidth/2;
+                const clampedX = Math.max(minX, Math.min(maxX, localPoint.x));
+                sfxSliderHandle.x = clampedX;
+                this.sfxVolume = Math.max(0, Math.min(1, (clampedX + sfxSliderWidth/2) / sfxSliderWidth));
+                sfxSliderFill.width = sfxSliderWidth * this.sfxVolume;
+                sfxSliderFill.x = -sfxSliderWidth/2;
+                
+                this.isSfxOn = this.sfxVolume > 0;
+                sfxMuteBg.setStrokeStyle(2, this.isSfxOn ? 0x00ff00 : 0x555555);
+                sfxMuteIcon.setText(this.isSfxOn ? "🔊" : "🔇");
+            });
+            
+            // Difficulty section
+            const difficultyY = 90;
+            const difficultyLabel = this.add.text(-popupWidth/2 + 30, difficultyY, "DIFFICULTY", { 
+                fontSize: '24px', 
+                fontFamily: 'Righteous', 
+                color: this.COLORS.text 
+            });
+            
+            const funBtn = this.add.container(-80, difficultyY + 60);
+            const funBtnBg = this.add.rectangle(0, 0, 120, 50, this.oddsMode === 'fun' ? this.COLORS.btnActive : this.COLORS.btnIdle, 0.9);
+            funBtnBg.setStrokeStyle(2, this.oddsMode === 'fun' ? 0x00ff00 : 0x666666);
+            const funBtnText = this.add.text(0, 0, "FUN", { 
+                fontSize: '20px', 
+                fontFamily: 'Righteous', 
+                color: this.COLORS.text 
+            }).setOrigin(0.5);
+            funBtn.add([funBtnBg, funBtnText]);
+            funBtn.setSize(120, 50);
+            funBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                this.playClickSound();
+                this.oddsMode = 'fun';
+                funBtnBg.fillColor = this.COLORS.btnActive;
+                funBtnBg.setStrokeStyle(2, 0x00ff00);
+                vegasBtnBg.fillColor = this.COLORS.btnIdle;
+                vegasBtnBg.setStrokeStyle(2, 0x666666);
+            });
+            
+            const vegasBtn = this.add.container(80, difficultyY + 60);
+            const vegasBtnBg = this.add.rectangle(0, 0, 120, 50, this.oddsMode === 'vegas' ? this.COLORS.btnActive : this.COLORS.btnIdle, 0.9);
+            vegasBtnBg.setStrokeStyle(2, this.oddsMode === 'vegas' ? 0x00ff00 : 0x666666);
+            const vegasBtnText = this.add.text(0, 0, "VEGAS", { 
+                fontSize: '20px', 
+                fontFamily: 'Righteous', 
+                color: this.COLORS.text 
+            }).setOrigin(0.5);
+            vegasBtn.add([vegasBtnBg, vegasBtnText]);
+            vegasBtn.setSize(120, 50);
+            vegasBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                this.playClickSound();
+                this.oddsMode = 'vegas';
+                vegasBtnBg.fillColor = this.COLORS.btnActive;
+                vegasBtnBg.setStrokeStyle(2, 0x00ff00);
+                funBtnBg.fillColor = this.COLORS.btnIdle;
+                funBtnBg.setStrokeStyle(2, 0x666666);
+            });
+            
+            // Store references
+            this.settingsMusicMuteBtn = musicMuteBtn;
+            this.settingsMusicMuteBg = musicMuteBg;
+            this.settingsMusicMuteIcon = musicMuteIcon;
+            this.settingsSfxMuteBtn = sfxMuteBtn;
+            this.settingsSfxMuteBg = sfxMuteBg;
+            this.settingsSfxMuteIcon = sfxMuteIcon;
+            this.settingsFunBtnBg = funBtnBg;
+            this.settingsVegasBtnBg = vegasBtnBg;
+            
+            // Add all to container
+            this.settingsPopup.add([
+                settingsBg, title, closeBtn,
+                musicLabel, musicMuteBtn, musicSliderBg, musicSliderFill, musicSliderHandle,
+                sfxLabel, sfxMuteBtn, sfxSliderBg, sfxSliderFill, sfxSliderHandle,
+                difficultyLabel, funBtn, vegasBtn
+            ]);
+            
+            // Enable dragging for sliders
+            this.input.setDraggable([musicSliderHandle, sfxSliderHandle]);
+        }
+        
+        showSettingsPopup() {
+            this.settingsPopup.setVisible(true).setScale(0);
+            this.tweens.add({ 
+                targets: this.settingsPopup, 
+                scale: 1, 
+                duration: 300, 
+                ease: 'Back.out' 
+            });
+            // Add backdrop to close on click outside
+            if (!this.settingsBackdrop) {
+                this.settingsBackdrop = this.add.rectangle(CONFIG.width/2, CONFIG.height/2, CONFIG.width, CONFIG.height, 0x000000, 0.3)
+                    .setDepth(10000)
+                    .setInteractive()
+                    .setScrollFactor(0)
+                    .on('pointerdown', () => {
+                        this.hideSettingsPopup();
+                    });
+            }
+            this.settingsBackdrop.setVisible(true);
+        }
+        
+        hideSettingsPopup() {
+            this.tweens.add({ 
+                targets: this.settingsPopup, 
+                scale: 0, 
+                duration: 200, 
+                ease: 'Power2',
+                onComplete: () => {
+                    this.settingsPopup.setVisible(false);
+                    if (this.settingsBackdrop) {
+                        this.settingsBackdrop.setVisible(false);
+                    }
+                }
+            });
+        }
+
+        createControls() {
+            const deckY = 850; 
+            const deckBg = this.add.graphics(); 
+            const spinColors = this.extractedColors['gen_SPIN_BUTTON'];
+            if (spinColors) deckBg.fillGradientStyle(spinColors.tl, spinColors.tr, spinColors.bl, spinColors.br, 1);
+            else deckBg.fillStyle(this.COLORS.deck, 1);
+            deckBg.fillRect(0, deckY, CONFIG.width, CONFIG.height - deckY);
+            
+            const border = this.add.graphics();
+            border.lineStyle(4, this.COLORS.accent, 0.8);
+            border.lineBetween(0, deckY, CONFIG.width, deckY);
+            
+            const footerY = 1200;
+            const footerBg = this.add.graphics();
+            footerBg.fillStyle(0x000000, 0.6);
+            footerBg.fillRect(0, footerY, CONFIG.width, 80);
+            
+            this.controlsGroup = this.add.container(0,0).setDepth(100); // Above footer (depth 50)
+            const valStyle = { fontSize: '36px', color: '#ffd700', fontFamily: 'Rye', stroke: '#000', strokeThickness: 4 };
+            const footerValStyle = { fontSize: '32px', color: '#00ff00', fontFamily: 'Rye', stroke: '#000', strokeThickness: 3 };
+
+            this.controlsGroup.add(this.add.text(CONFIG.width/2, deckY + 25, "WIN", { fontSize: '30px', color: '#ff00ff', fontFamily: 'Righteous' }).setOrigin(0.5));
+            this.txtWin = this.add.text(CONFIG.width/2, deckY + 70, "$0.00", {...valStyle, fontSize:'72px', color:'#ffff00'}).setOrigin(0.5);
+            this.controlsGroup.add(this.txtWin);
+
+            const row2Y = deckY + 160; 
+            this.betBtns = [1,2,5,10].map((m,i) => { const b = new GameBtn(this, 180 + (i*120), row2Y, 100, 60, m+"x", null, this.COLORS.btnIdle, ()=>this.setBet(m)); this.controlsGroup.add(b); return b; });
+            this.betBtns[0].setActiveState(true); 
+
+            const row3Y = deckY + 280; 
+            this.btnSpin = new SpinBtn(this, CONFIG.width/2, row3Y + 15, ()=>this.handleSpin());
+            this.btnSpin.setDepth(101); // Above footer (depth 100)
+            this.btnDenom = new GameBtn(this, CONFIG.width/2 - 180, row3Y + 20, 100, 80, "1¢", "DENOM", this.COLORS.btnIdle, ()=>this.cycleDenom());
+            this.btnAuto = new GameBtn(this, CONFIG.width/2 + 180, row3Y + 20, 100, 80, "AUTO", null, 0x222222, ()=>this.toggleAuto());
+            this.controlsGroup.add([this.btnDenom, this.btnSpin, this.btnAuto]);
+            
+            // Footer always visible (even during bonus) with lower depth so spin button is above
+            this.footerGroup = this.add.container(0,0).setDepth(50);
+            const footerBgGraphics = this.add.graphics();
+            footerBgGraphics.fillStyle(0x000000, 0.6);
+            footerBgGraphics.fillRect(0, footerY, CONFIG.width, 80);
+            this.footerGroup.add(footerBgGraphics);
+            
+            // Balance Left (moved up 10px)
+            this.footerGroup.add(this.add.text(30, footerY + 10, "BALANCE", { fontSize: '14px', color: '#cccccc', fontFamily: 'Righteous' }));
+            this.txtCash = this.add.text(30, footerY + 35, "$100.00", footerValStyle);
+            this.footerGroup.add(this.txtCash);
+            // Total Bet Right (moved up 10px, using Rye font like balance)
+            this.footerGroup.add(this.add.text(CONFIG.width - 30, footerY + 10, "TOTAL BET", { fontSize: '14px', color: '#cccccc', fontFamily: 'Righteous' }).setOrigin(1,0));
+            this.txtBet = this.add.text(CONFIG.width - 30, footerY + 35, "$0.25", { fontSize: '32px', color: '#ffffff', fontFamily: 'Rye', stroke: '#000', strokeThickness: 3 }).setOrigin(1,0);
+            this.footerGroup.add(this.txtBet);
+
+            this.bonusGroup = this.add.container(0,0).setVisible(false);
+            this.bonusOverlay = this.add.graphics(); 
+            this.bonusOverlay.fillStyle(0x440000, 1); 
+            this.bonusOverlay.fillRect(0, deckY, CONFIG.width, CONFIG.height-deckY);
+            this.bonusGroup.add(this.bonusOverlay);
+            
+            this.lblFreeSpins = this.add.text(CONFIG.width/2, deckY + 250, "", { fontSize: '50px', fontFamily:'Righteous', color: this.COLORS.text, align: 'center' }).setOrigin(0.5);
+            const freeSpinsKey = this.getAssetKey('gen_FREE_SPINS');
+            this.imgFreeSpins = this.add.image(CONFIG.width/2, deckY + 120, freeSpinsKey).setOrigin(0.5).setVisible(false);
+            this.bonusGroup.add([this.lblFreeSpins, this.imgFreeSpins]);
+            // Bonus Win text - separate from bonusGroup so it can be on top of everything
+            this.lblBonusWin = this.add.text(CONFIG.width/2, CONFIG.height - 80, "", { fontSize: '40px', fontFamily:'Rye', color: '#00ff00', align: 'center' }).setOrigin(0.5).setDepth(4000).setVisible(false);
+            this.updateText();
+        }
+
+        playClickSound() { 
+            if(this.isSfxOn) { 
+                const clickKey = this.getAudioKey('sfx_click');
+                if(sfxFlags.click && this.sound.get(clickKey)) { 
+                    try { this.sound.play(clickKey, { volume: this.sfxVolume }); } catch(e){} 
+                } else { 
+                    this.soundEngine.playClick(); 
+                } 
+            } 
+        }
+        playSfx(key, options = {}) { 
+            if (!this.isSfxOn) return;
+            try { 
+                const audioKey = this.getAudioKey(key);
+                const sound = this.sound.get(audioKey);
+                if (sound) { 
+                    this.sound.play(audioKey, { ...options, volume: this.sfxVolume }); 
+                }
+            } catch(e) {} 
+        }
+        
+        winCounterTween = null;
+        winCounterValue = 0;
+        
+        animateWinCounter(targetAmount) {
+            if (this.winCounterTween) { this.winCounterTween.stop(); }
+            this.winCounterValue = 0;
+            this.txtWin.setText('$0.00');
+            const duration = Math.min(2000, Math.max(500, targetAmount / 50));
+            this.winCounterTween = this.tweens.add({
+                targets: this,
+                winCounterValue: targetAmount,
+                duration: duration,
+                ease: 'Cubic.out',
+                onUpdate: () => { this.txtWin.setText("$"+(this.winCounterValue/100).toFixed(2)); },
+                onComplete: () => { this.txtWin.setText("$"+(targetAmount/100).toFixed(2)); this.winCounterTween = null; }
+            });
+            this.tweens.add({ targets: this.txtWin, scale: 1.15, duration: 150, yoyo: true, repeat: 2, ease: 'Sine.inOut' });
+        }
+        
+        bonusWinCounterTween = null;
+        bonusWinCounterValue = 0;
+        
+        animateBonusWinCounter(fromAmount, toAmount) {
+            if (this.bonusWinCounterTween) { this.bonusWinCounterTween.stop(); }
+            this.bonusWinCounterValue = fromAmount;
+            const winDiff = toAmount - fromAmount;
+            const duration = Math.min(1500, Math.max(400, winDiff / 50));
+            this.bonusWinCounterTween = this.tweens.add({
+                targets: this,
+                bonusWinCounterValue: toAmount,
+                duration: duration,
+                ease: 'Cubic.out',
+                onUpdate: () => { this.lblBonusWin.setText(["BONUS WIN", "$"+(this.bonusWinCounterValue/100).toFixed(2)]); },
+                onComplete: () => { this.lblBonusWin.setText(["BONUS WIN", "$"+(toAmount/100).toFixed(2)]); this.bonusWinCounterTween = null; }
+            });
+            this.tweens.add({ targets: this.lblBonusWin, scale: 1.1, duration: 100, yoyo: true, repeat: 1, ease: 'Sine.inOut' });
+        }
+        
+        cycleDenom() { if((this.state === 'IDLE' || this.state === 'WIN_SHOW') && !this.isAutoSpinning) { this.denom = [1,5,10,25][([1,5,10,25].indexOf(this.denom)+1)%4]; this.btnDenom.mainText.setText(this.denom<100?this.denom+"¢":"$"+this.denom/100); this.playClickSound(); this.updateText(); } }
+        setBet(m) { if((this.state === 'IDLE' || this.state === 'WIN_SHOW') && !this.isAutoSpinning) { this.betMultiplier = m; this.playClickSound(); this.updateText(); this.betBtns.forEach(b=>b.setActiveState(false)); this.betBtns.find(b=>b.mainText.text==m+"x").setActiveState(true); } }
+        updateText() { this.txtBet.setText("$"+(CONFIG.fixedLines*this.betMultiplier*this.denom/100).toFixed(2)); this.txtCash.setText("$"+(this.credits/100).toFixed(2)); }
+        toggleBonusUI(active) { 
+            this.controlsGroup.setVisible(!active); 
+            this.bonusGroup.setVisible(active);
+            this.lblBonusWin.setVisible(active);
+        }
+        toggleAuto() { this.isAutoSpinning = !this.isAutoSpinning; this.btnAuto.setActiveState(this.isAutoSpinning); if(this.isAutoSpinning && this.state === 'IDLE') this.handleSpin(); }
+        
+        updateBonusUI() { 
+            const currentSpin = Math.min(this.freeSpinsTotal, (this.freeSpinsTotal - this.freeSpinsLeft) + 1);
+            const freeSpinColors = this.extractedColors['gen_FREE_SPINS'];
+            if (freeSpinColors) {
+                this.bonusOverlay.clear();
+                this.bonusOverlay.fillGradientStyle(freeSpinColors.tl, freeSpinColors.tr, freeSpinColors.bl, freeSpinColors.br, 1);
+                this.bonusOverlay.fillRect(0, 850, CONFIG.width, CONFIG.height-850);
+            }
+            const deckTop = 850;
+            const freeSpinsKey = this.getAssetKey('gen_FREE_SPINS');
+            if (this.textures.exists(freeSpinsKey)) {
+                this.imgFreeSpins.setTexture(freeSpinsKey);
+                this.imgFreeSpins.setVisible(true);
+                const scale = Math.min(500 / this.imgFreeSpins.width, 200 / this.imgFreeSpins.height);
+                this.imgFreeSpins.setScale(scale);
+                this.imgFreeSpins.setY(deckTop + 120);
+                this.lblFreeSpins.setText(currentSpin + " OF " + this.freeSpinsTotal);
+                this.lblFreeSpins.setY(deckTop + 250);
+                this.lblFreeSpins.setFontSize('50px');
+            } else {
+                this.imgFreeSpins.setVisible(false);
+                this.lblFreeSpins.setText("FREE SPIN\n" + currentSpin + " OF " + this.freeSpinsTotal);
+                this.lblFreeSpins.setY(deckTop + 150);
+                this.lblFreeSpins.setFontSize('40px');
+            }
+            this.lblBonusWin.setText(["BONUS WIN", "$"+(this.totalBonusWin/100).toFixed(2)]);
+            this.lblBonusWin.setY(CONFIG.height - 80);
+        }
+
+        handleSpin() { /* Same logic */
+            this.soundEngine.tryResume();
+            if(this.state === 'IDLE') {
+                const cost = CONFIG.fixedLines * this.betMultiplier * this.denom;
+                if(this.credits < cost) { this.isAutoSpinning = false; this.btnAuto.setActiveState(false); return; }
+                this.credits -= cost; this.updateText(); this.startSpin(false);
+            } else if (this.state === 'SPINNING') { this.instantStop(); } else if (this.state === 'WIN_SHOW') { this.clearWinCycle(); this.state = 'IDLE'; this.handleSpin(); }
+        }
+        startSpin(isFree) {
+            this.state = isFree ? 'BONUS_SPIN' : 'SPINNING';
+            if(!isFree) { this.txtWin.setText("$0.00"); this.btnSpin.setText("STOP"); } else { this.updateBonusUI(); }
+            this.clearWinCycle(); this.stopTimers.forEach(t => t.remove()); this.stopTimers = [];
+            this.grid = [];
+            const currentStrip = this.getReelStrip();
+            for(let c=0; c<CONFIG.reelCount; c++) {
+                const stripIdx = Math.floor(Math.random() * currentStrip.length); let col = [];
+                for(let r=0; r<CONFIG.rowCount; r++) { col.push(SYMBOL_DEFS.find(s => s.id === currentStrip[(stripIdx + r) % currentStrip.length])); }
+                this.grid.push(col);
+            }
+            let scatterCount = 0;
+            this.reels.forEach((r, i) => {
+                let delay = 400 + (i * 200); if (scatterCount >= 2) { delay += 2000; r.isTeasing = true; } else { r.isTeasing = false; }
+                if (this.grid[i].some(s => s.isScatter)) scatterCount++;
+                r.sprites.forEach(s => {
+                    if (s && s.texture && s.texture.key) {
+                        const baseKey = s.texture.key.replace('sym_','').replace('blur_','');
+                        const blurKey = 'sym_blur_' + baseKey;
+                        if (this.textures.exists(blurKey)) {
+                            s.setTexture(blurKey);
+                        }
+                    }
+                });
+                if(r.tween) r.tween.stop();
+                r.tween = this.tweens.add({
+                    targets: r.container, y: CONFIG.offsetY + CONFIG.symbolSize, duration: 80, repeat: -1,
+                    onRepeat: () => { 
+                        r.container.y = CONFIG.offsetY; 
+                        r.sprites.forEach(s => { 
+                            if(s && s.y !== undefined && (s.y < 0 || s.y > 300)) {
+                                const randomSym = SYMBOL_DEFS[Math.floor(Math.random()*SYMBOL_DEFS.length)];
+                                const blurKey = 'sym_blur_' + randomSym.id;
+                                if (this.textures.exists(blurKey)) {
+                                    s.setTexture(blurKey);
+                                }
+                            }
+                        }); 
+                    }
+                });
+                const timer = this.time.delayedCall(delay, () => { if(this.state.includes('SPIN')) { if(r.isTeasing) this.soundEngine.playTease(); this.stopReel(i); } });
+                this.stopTimers.push(timer);
+            });
+            
+            // PLAY SPIN SFX
+            if (sfxFlags.spin && this.isSfxOn) { 
+                try { 
+                    const spinKey = this.getAudioKey('sfx_spin');
+                    if (this.sound.get(spinKey)) {
+                        this.sound.stopByKey(spinKey); 
+                        this.sound.play(spinKey, { loop: true, volume: this.sfxVolume }); // Loop
+                    }
+                } catch(e) {} 
+            }
+        }
+        stopReel(i) {
+            const r = this.reels[i]; if(r.tween) r.tween.stop(); r.tween = null;
+            r.sprites.forEach(s => {
+                if (s && s.texture && s.texture.key) {
+                    const baseKey = s.texture.key.replace('blur_', '');
+                    if (this.textures.exists(baseKey)) {
+                        s.setTexture(baseKey);
+                    }
+                }
+            });
+            const sym1 = 'sym_' + this.grid[i][0].id;
+            const sym2 = 'sym_' + this.grid[i][1].id;
+            const sym3 = 'sym_' + this.grid[i][2].id;
+            if (this.textures.exists(sym1) && r.sprites[1]) r.sprites[1].setTexture(sym1);
+            if (this.textures.exists(sym2) && r.sprites[2]) r.sprites[2].setTexture(sym2);
+            if (this.textures.exists(sym3) && r.sprites[3]) r.sprites[3].setTexture(sym3);
+            if (this.grid[i].some(s => s.isScatter)) {
+                if (this.isSfxOn) { 
+                    const scatterKey = this.getAudioKey('sfx_scatter');
+                    if(sfxFlags.scatter && this.sound.get(scatterKey)) { 
+                        try { this.sound.play(scatterKey, { volume: this.sfxVolume }); } catch(e){} 
+                    } else { 
+                        this.soundEngine.playScatter(); 
+                    } 
+                }
+                const scatterSprite = r.sprites[1 + this.grid[i].findIndex(s => s.isScatter)];
+                this.tweens.add({ targets: scatterSprite, scale: 1.5, duration: 200, yoyo: true });
+            } else { 
+                // Play Stop SFX if available, else procedural
+                if (sfxFlags.stop && this.isSfxOn) { 
+                    const stopKey = this.getAudioKey('sfx_stop');
+                    try { this.sound.play(stopKey, { volume: this.sfxVolume }); } catch(e) {} 
+                } else if (this.isSfxOn) { 
+                    this.soundEngine.playStop(i); 
+                }
+            }
+            
+            // STOP SPIN SOUND IF LAST REEL
+            if (i === CONFIG.reelCount - 1) {
+                try { 
+                    const spinKey = this.getAudioKey('sfx_spin');
+                    if (this.sound.get(spinKey)) this.sound.stopByKey(spinKey); 
+                } catch(e) {}
+            }
+
+            r.container.y = CONFIG.offsetY - 50;
+            this.tweens.add({ targets: r.container, y: CONFIG.offsetY, duration: 350, ease: 'Back.out', onComplete: () => { if(i===CONFIG.reelCount-1) this.evaluateWin(); } });
+        }
+        instantStop() {
+            this.stopTimers.forEach(t => t.remove()); this.stopTimers = [];
+            this.reels.forEach((r, i) => {
+                if(r.tween) r.tween.stop(); r.tween = null;
+                r.sprites.forEach(s => {
+                    if (s && s.texture && s.texture.key) {
+                        const baseKey = s.texture.key.replace('blur_', '');
+                        if (this.textures.exists(baseKey)) {
+                            s.setTexture(baseKey);
+                        }
+                    }
+                });
+                const sym1 = 'sym_' + this.grid[i][0].id;
+                const sym2 = 'sym_' + this.grid[i][1].id;
+                const sym3 = 'sym_' + this.grid[i][2].id;
+                if (this.textures.exists(sym1) && r.sprites[1]) r.sprites[1].setTexture(sym1);
+                if (this.textures.exists(sym2) && r.sprites[2]) r.sprites[2].setTexture(sym2);
+                if (this.textures.exists(sym3) && r.sprites[3]) r.sprites[3].setTexture(sym3);
+                r.container.y = CONFIG.offsetY;
+            });
+            // Stop spin sound immediately
+            try { 
+                const spinKey = this.getAudioKey('sfx_spin');
+                if (this.sound.get(spinKey)) this.sound.stopByKey(spinKey); 
+            } catch(e) {}
+            
+            // Play jam sound when stopping mid-spin
+            if (this.isSfxOn) {
+                if(sfxFlags.jam && this.sound.get('sfx_jam')) {
+                    try { this.sound.play('sfx_jam', { volume: this.sfxVolume }); } catch(e) {}
+                }
+            }
+            
+            this.cameras.main.shake(100,0.005); this.evaluateWin();
+        }
+        evaluateWin() {
+            if(this.state === 'SPINNING') this.btnSpin.setText("SPIN");
+            this.winLines = []; let roundWin = 0; const multiplier = (this.freeSpinsTotal > 0) ? 3 : 1;
+            CONFIG.paylines.forEach((line, lineIdx) => {
+                const syms = line.map((row, col) => this.grid[col][row]); const first = syms[0]; let count = 1;
+                for(let i=1; i<syms.length; i++) { if((syms[i].id === first.id || syms[i].isWild) && !first.isScatter) count++; else break; }
+                if(count >= 3) {
+                    const pay = first.val * (count-2) * this.betMultiplier * this.denom * multiplier;
+                    roundWin += pay; this.winLines.push({ lineIdx, coords: line, count });
+                }
+            });
+            const scatterCount = this.grid.flat().filter(s => s.isScatter).length;
+            if (scatterCount >= 3) {
+                if(this.state === 'SPINNING') { this.triggerBonus(); this.isAutoSpinning = false; this.btnAuto.setActiveState(false); return; }
+                else { 
+                    this.freeSpinsLeft += 10;
+                    this.freeSpinsTotal += 10; 
+                    this.showPopup("RETRIGGER!", "+10 FREE SPINS", 2000, null, 'gen_FREE_SPINS');
+                    if (this.isSfxOn) { 
+                        const bonusKey = this.getAudioKey('sfx_bonustrigger');
+                        if(sfxFlags.bonusTrigger && this.sound.get(bonusKey)) { 
+                            try { this.sound.play(bonusKey, { volume: this.sfxVolume }); } catch(e){} 
+                        } else { 
+                            this.soundEngine.playBonusStart(); 
+                        } 
+                    } 
+                }
+            }
+            if (roundWin > 0) { this.state = 'WIN_SHOW'; } else { this.state = 'IDLE'; }
+            if(roundWin > 0) {
+                if(this.freeSpinsTotal > 0) { 
+                    const previousBonusWin = this.totalBonusWin;
+                    this.totalBonusWin += roundWin; 
+                    this.credits += roundWin;
+                    this.animateBonusWinCounter(previousBonusWin, this.totalBonusWin);
+                } else { 
+                    this.credits += roundWin; 
+                }
+                this.updateText(); 
+                if(!this.state.includes('BONUS')) { this.animateWinCounter(roundWin); }
+                this.soundEngine.playWin(); 
+                
+                // Play Win SFX
+                const totalBet = CONFIG.fixedLines * this.betMultiplier * this.denom;
+                const isBigWin = roundWin >= totalBet * 20;
+
+                if (this.isSfxOn) {
+                    if (isBigWin && sfxFlags.bigWin) { 
+                        const bigWinKey = this.getAudioKey('sfx_bigwin');
+                        try { this.sound.play(bigWinKey, { volume: this.sfxVolume }); } catch(e) {} 
+                    }
+                    else if (!isBigWin && sfxFlags.win) { 
+                        const winKey = this.getAudioKey('sfx_win');
+                        try { this.sound.play(winKey, { volume: this.sfxVolume }); } catch(e) {} 
+                    }
+                    else { this.soundEngine.playWin(); }
+                }
+
+                if (roundWin >= totalBet * 20) this.showPopup("BIG WIN", "$"+(roundWin/100).toFixed(2), 10000, null, 'gen_BIG_WIN');
+                this.startWinCycle();
+            }
+            if(this.freeSpinsTotal > 0) { const delay = (roundWin > 0) ? 2000 : 1000; this.time.delayedCall(delay, () => this.nextFreeSpin()); } 
+            else if(this.isAutoSpinning && this.state === 'IDLE') { const delay = (roundWin > 0) ? 2000 : 1000; this.time.delayedCall(delay, () => this.handleSpin()); }
+        }
+        triggerBonus() {
+            this.state = 'BONUS_INTRO'; this.freeSpinsTotal = 10; this.freeSpinsLeft = 10; this.totalBonusWin = 0;
+            if (this.isSfxOn) { 
+                const bonusKey = this.getAudioKey('sfx_bonustrigger');
+                if(sfxFlags.bonusTrigger && this.sound.get(bonusKey)) { 
+                    try { this.sound.play(bonusKey, { volume: this.sfxVolume }); } catch(e){} 
+                } else { 
+                    this.soundEngine.playBonusStart(); 
+                } 
+            }
+            this.applyBonusColors();
+            this.toggleBonusUI(true);
+            this.showPopup("FREE SPINS", "10 FREE SPINS", 3000, () => { this.setBgColor(true); this.nextFreeSpin(); }, 'gen_FREE_SPINS');
+        }
+        applyBonusColors() {
+            const freeSpinColors = this.extractedColors['gen_FREE_SPINS'];
+            if (freeSpinColors) {
+                this.bonusOverlay.clear();
+                this.bonusOverlay.fillGradientStyle(freeSpinColors.tl, freeSpinColors.tr, freeSpinColors.bl, freeSpinColors.br, 1);
+                this.bonusOverlay.fillRect(0, 850, CONFIG.width, CONFIG.height - 850);
+            }
+        }
+        nextFreeSpin() {
+            if(this.freeSpinsLeft > 0) { this.startSpin(true); this.freeSpinsLeft--; } else { this.endBonus(); }
+        }
+        endBonus() {
+            this.state = 'IDLE'; this.freeSpinsTotal = 0; this.setBgColor(false);
+            this.showPopup("BONUS COMPLETE", "$"+(this.totalBonusWin/100).toFixed(2), 4000, () => {
+                this.toggleBonusUI(false); this.txtWin.setText("BONUS: $"+(this.totalBonusWin/100).toFixed(2));
+                if(this.isAutoSpinning) { this.time.delayedCall(1000, () => this.handleSpin()); }
+            }, 'gen_FREE_SPINS');
+        }
+        startWinCycle() {
+            if(this.winLines.length === 0) return; let idx = 0;
+            const show = () => {
+                if(this.state !== 'WIN_SHOW' && !this.state.includes('BONUS')) return;
+                this.winGraphics.clear(); const win = this.winLines[idx];
+                this.reels.forEach(r => r.sprites.forEach(s => { s.clearTint(); }));
+                for(let i=0; i<win.count; i++) {
+                    const s = this.reels[i].sprites[win.coords[i]+1];
+                    this.winGraphics.lineStyle(6, this.COLORS.gold, 1);
+                    this.winGraphics.strokeRoundedRect(s.parentContainer.x - 65, s.parentContainer.y + s.y - 65, 130, 130, 10);
+                    this.tweens.add({ targets: s, scale: 1.15, duration: 250, yoyo: true });
+                    this.sparkleEmitter.explode(10, s.parentContainer.x, s.y + s.parentContainer.y);
+                }
+                this.winGraphics.beginPath(); this.winGraphics.lineStyle(8, this.COLORS.gold, 0.5); 
+                win.coords.forEach((row, col) => {
+                    const x = CONFIG.offsetX + (CONFIG.reelWidth/2) + (col * CONFIG.reelWidth);
+                    const y = CONFIG.offsetY + (CONFIG.symbolSize/2) + (row * CONFIG.symbolSize);
+                    if(col===0) this.winGraphics.moveTo(x, y); else this.winGraphics.lineTo(x, y);
+                });
+                this.winGraphics.strokePath(); this.winGraphics.lineStyle(4, this.COLORS.accent, 1.0); this.winGraphics.strokePath();
+                idx = (idx + 1) % this.winLines.length;
+                this.winTimer = this.time.delayedCall(1500, show);
+            }; show();
+        }
+        showPopup(title, sub, duration, onComplete, imageKey) {
+            this.popupLayer.setVisible(true).setScale(0); 
+            this.isCelebrating = false;
+            if (this.coinEmitter) this.coinEmitter.stop();
+            this.popBg.clear();
+            
+            // Use fallback for imageKey if provided
+            const actualImageKey = imageKey ? this.getAssetKey(imageKey) : null;
+            
+            if (actualImageKey && this.extractedColors[imageKey]) {
+                const c = this.extractedColors[imageKey];
+                this.popBg.fillGradientStyle(c.tl, c.tr, c.bl, c.br, 0.95);
+            } else { this.popBg.fillStyle(0x000000, 0.95); }
+            this.popBg.fillRoundedRect(-300, -175, 600, 350, 20);
+            this.popBg.lineStyle(6, this.COLORS.gold);
+            this.popBg.strokeRoundedRect(-300, -175, 600, 350, 20);
+
+            if (actualImageKey && this.textures.exists(actualImageKey)) {
+                this.popTitle.setVisible(false);
+                this.popImage.setTexture(actualImageKey).setVisible(true);
+                let maxW = 500; let maxH = 200;
+                if (imageKey === 'gen_BIG_WIN') { maxW = 600; maxH = 300; this.popImage.setY(-80); } else { this.popImage.setY(-50); }
+                const scale = Math.min(maxW / this.popImage.width, maxH / this.popImage.height);
+                this.popImage.setScale(scale);
+            } else {
+                this.popImage.setVisible(false);
+                this.popTitle.setText(title).setVisible(true);
+            }
+            if (imageKey === 'gen_BIG_WIN') {
+                this.isCelebrating = true;
+                this.coinEmitter.setPosition(CONFIG.width/2, CONFIG.height/2 + 100);
+                this.coinEmitter.start();
+                const targetAmt = parseFloat(sub.replace('$',''));
+                this.counterTweenVal = 0;
+                this.popSub.setText("$0.00");
+                this.popSub.setY(100);
+                this.popupLayer.onCompleteCallback = onComplete;
+                this.tweens.add({
+                    targets: this, counterTweenVal: targetAmt, duration: 3000, ease: 'Cubic.out',
+                    onUpdate: () => { this.popSub.setText("$"+this.counterTweenVal.toFixed(2)); },
+                    onComplete: () => { this.time.delayedCall(1000, () => this.stopCelebration(false)); }
+                });
+            } else {
+                this.popSub.setText(sub);
+                if (imageKey) { this.popSub.setY(140); } else { this.popSub.setY(60); }
+                if(duration > 0) { this.time.delayedCall(duration, () => { this.tweens.add({ targets: this.popupLayer, scale: 0, duration: 300, onComplete: () => { this.popupLayer.setVisible(false); if(onComplete) onComplete(); }}); }); }
+            }
+            this.tweens.add({ targets: this.popupLayer, scale: 1, duration: 500, ease: 'Back.out' });
+        }
+        stopCelebration(skipped) {
+            if (!this.isCelebrating) return;
+            this.isCelebrating = false;
+            this.coinEmitter.stop();
+            this.tweens.killTweensOf(this);
+            const cleanup = () => {
+                 this.popupLayer.setVisible(false); this.popupLayer.setScale(0);
+                 if (this.popupLayer.onCompleteCallback) { this.popupLayer.onCompleteCallback(); this.popupLayer.onCompleteCallback = null; }
+            };
+            if (skipped) { cleanup(); } else { this.tweens.add({ targets: this.popupLayer, scale: 0, duration: 300, onComplete: cleanup }); }
+        }
+        clearWinCycle() { if(this.winTimer) this.winTimer.remove(); this.winGraphics.clear(); this.reels.forEach(r => r.sprites.forEach(s => { s.clearTint(); s.setScale(1); })); }
+    }
+    
+    class MenuScene extends Phaser.Scene {
+        constructor() {
+            super('MenuScene');
+            this.machines = [];
+        }
+        
+        preload() {
+            this.load.json('machines', 'machines.json');
+            this.load.image('menu_logo', 'logo.png');
+        }
+        
+        create() {
+            this.machines = this.cache.json.get('machines');
+            
+            // Background
+            this.add.rectangle(CONFIG.width/2, CONFIG.height/2, CONFIG.width, CONFIG.height, 0x000000);
+            
+            // Top logo - full width
+            const topLogo = this.add.image(CONFIG.width/2, 0, 'menu_logo');
+            topLogo.setOrigin(0.5, 0);
+            topLogo.setDisplaySize(CONFIG.width, topLogo.height * (CONFIG.width / topLogo.width));
+            const logoHeight = topLogo.displayHeight;
+            
+            // Title positioned so half is on logo, half is below
+            const title = this.add.text(CONFIG.width/2, logoHeight, "SELECT A MACHINE", {
+                fontSize: '48px',
+                fontFamily: 'Righteous',
+                color: '#ffffff',
+                stroke: '#000',
+                strokeThickness: 4
+            }).setOrigin(0.5, 0.5); // Centered at logo bottom edge so half is above and half is below
+            
+            // Create machine grid (2 columns, scrollable)
+            const cols = 2;
+            const cardWidth = 320;
+            const cardSpacingX = 20; // Narrower gap between columns
+            const cardSpacingY = 10; // Very close together
+            const sideMargin = 30; // Margin on left and right sides
+            // Calculate total width with margins
+            const totalWidth = (cols * cardWidth) + ((cols - 1) * cardSpacingX) + (sideMargin * 2);
+            const startX = sideMargin + cardWidth / 2;
+            // Start machine list lower to avoid overlapping the title text
+            const scrollStartY = logoHeight + 30; // Moved up 10 pixels
+            const scrollTopPadding = 10; // Reduced padding inside the scrollable area at the top
+            
+            // Create scrollable container for machines
+            const scrollContainer = this.add.container(0, scrollStartY);
+            const scrollHeight = CONFIG.height - scrollStartY;
+            const scrollMask = this.make.graphics({x: 0, y: scrollStartY, add: false});
+            scrollMask.fillStyle(0xffffff);
+            scrollMask.fillRect(0, 0, CONFIG.width, scrollHeight);
+            const mask = scrollMask.createGeometryMask();
+            scrollContainer.setMask(mask);
+            
+            // Make container scrollable
+            scrollContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, CONFIG.width, scrollHeight), Phaser.Geom.Rectangle.Contains);
+            this.scrollY = 0;
+            const scrollSpeed = 1; // Slower scrolling for better control
+            
+            // Touch/drag scrolling support
+            this.isDragging = false;
+            this.dragStartY = 0;
+            this.dragStartScrollY = 0;
+            this.dragThreshold = 5; // Minimum movement to start dragging (prevents accidental drags)
+            this.hasDragged = false;
+            
+            // Touch/drag scrolling - handle at scene level to work with cards
+            // We'll start drag detection on pointermove instead to avoid interfering with card clicks
+            this.input.on('pointerdown', (pointer) => {
+                // Only prepare for dragging if clicking in the scroll area
+                if (pointer.y >= scrollStartY && pointer.y <= scrollStartY + scrollHeight) {
+                    // Don't start dragging yet - wait for movement
+                    this.dragStartY = pointer.y;
+                    this.dragStartScrollY = this.scrollY;
+                    this.dragPrepared = true;
+                }
+            });
+            
+            this.input.on('pointermove', (pointer) => {
+                if (this.dragPrepared && pointer.isDown) {
+                    const deltaY = pointer.y - this.dragStartY;
+                    // Check if we've moved enough to consider it a drag
+                    if (Math.abs(deltaY) > this.dragThreshold) {
+                        this.isDragging = true;
+                        this.hasDragged = true;
+                        this.scrollY = this.dragStartScrollY + deltaY;
+                        const maxScroll = Math.max(0, (this.totalContentHeight || scrollHeight) - scrollHeight);
+                        this.scrollY = Phaser.Math.Clamp(this.scrollY, -maxScroll, 0);
+                        scrollContainer.setY(scrollStartY + this.scrollY);
+                        // Update scrollbar after content is loaded
+                        if (this.scrollbarHandle && this.totalContentHeight) {
+                            this.updateScrollbar();
+                        }
+                    }
+                }
+            });
+            
+            this.input.on('pointerup', () => {
+                this.isDragging = false;
+                this.dragPrepared = false;
+                // Reset hasDragged after a short delay to allow clicks
+                this.time.delayedCall(50, () => {
+                    this.hasDragged = false;
+                });
+            });
+            
+            // Create scrollbar
+            const scrollbarWidth = 8;
+            const scrollbarX = CONFIG.width - scrollbarWidth - 10;
+            const scrollbarTrack = this.add.graphics();
+            scrollbarTrack.fillStyle(0x333333, 0.5);
+            scrollbarTrack.fillRect(scrollbarX, scrollStartY, scrollbarWidth, scrollHeight);
+            scrollbarTrack.setDepth(1000);
+            
+            const scrollbarHandle = this.add.graphics();
+            scrollbarHandle.setDepth(1001);
+            this.scrollbarHandle = scrollbarHandle;
+            this.scrollbarTrack = scrollbarTrack;
+            this.scrollbarX = scrollbarX;
+            this.scrollbarWidth = scrollbarWidth;
+            this.scrollbarHeight = scrollHeight;
+            
+            // Load all machine logos first
+            this.machines.forEach((machine) => {
+                this.load.image(`machine_logo_${machine.id}`, machine.logo);
+            });
+            
+            // Track logo heights for spacing calculation
+            let currentY = scrollTopPadding; // Start with top padding inside scroll area
+            let maxLogoHeight = 0;
+            let totalContentHeight = 0;
+            
+            this.load.once('complete', () => {
+                this.machines.forEach((machine, index) => {
+                    const col = index % cols;
+                    const row = Math.floor(index / cols);
+                    
+                    // Create machine card - just a border around the logo
+                    const x = startX + col * (cardWidth + cardSpacingX);
+                    
+                    // Card logo - full width of card, centered vertically
+                    const logoImg = this.add.image(0, 0, `machine_logo_${machine.id}`);
+                    logoImg.setOrigin(0.5);
+                    logoImg.setDisplaySize(cardWidth, logoImg.height * (cardWidth / logoImg.width));
+                    const logoDisplayHeight = logoImg.displayHeight;
+                    const logoDisplayWidth = logoImg.displayWidth;
+                    
+                    // Update max logo height for this row
+                    if (col === 0) {
+                        maxLogoHeight = logoDisplayHeight;
+                    } else {
+                        maxLogoHeight = Math.max(maxLogoHeight, logoDisplayHeight);
+                    }
+                    
+                    // Position based on actual logo heights
+                    let y;
+                    if (col === 0) {
+                        // First column - start new row
+                        y = currentY + maxLogoHeight / 2;
+                        currentY += maxLogoHeight + cardSpacingY;
+                        totalContentHeight = currentY;
+                    } else {
+                        // Second column - same row as previous
+                        y = currentY - maxLogoHeight / 2 - cardSpacingY;
+                    }
+                    
+                    const card = this.add.container(x, y);
+                    scrollContainer.add(card);
+                    
+                    // Simple border around the logo
+                    const border = this.add.graphics();
+                    border.lineStyle(3, 0x666666, 1);
+                    border.strokeRoundedRect(-logoDisplayWidth/2, -logoDisplayHeight/2, logoDisplayWidth, logoDisplayHeight, 5);
+                    
+                    // Grey line underneath logo (same color as border)
+                    const logoLine = this.add.graphics();
+                    logoLine.lineStyle(2, 0x666666, 1);
+                    logoLine.lineBetween(-logoDisplayWidth/2, logoDisplayHeight/2, logoDisplayWidth/2, logoDisplayHeight/2);
+                    
+                    card.add([logoImg, border, logoLine]);
+                    card.setSize(logoDisplayWidth, logoDisplayHeight);
+                    card.setInteractive({ useHandCursor: true });
+                    
+                    // Store border reference on card for hover effects
+                    card.border = border;
+                    card.logoDisplayWidth = logoDisplayWidth;
+                    card.logoDisplayHeight = logoDisplayHeight;
+                    
+                    // Store machine reference for click handler
+                    card.machine = machine;
+                    card.clickStartY = null;
+                    card.clickStartX = null;
+                    
+                    card.on('pointerdown', (pointer) => {
+                        // Store click position and prevent scene-level drag from starting
+                        card.clickStartY = pointer.y;
+                        card.clickStartX = pointer.x;
+                        // Stop propagation to prevent scene drag handler
+                        pointer.event.stopPropagation();
+                    });
+                    
+                    card.on('pointerup', (pointer) => {
+                        // Only trigger if we haven't dragged and pointer hasn't moved much
+                        if (card.clickStartY !== null && card.clickStartX !== null) {
+                            const deltaY = Math.abs(pointer.y - card.clickStartY);
+                            const deltaX = Math.abs(pointer.x - card.clickStartX);
+                            if (!this.hasDragged && deltaY < this.dragThreshold && deltaX < this.dragThreshold) {
+                                // Find default machine
+                                const defaultMachine = this.machines.find(m => m.id === 'Default' || m.id === 'default');
+                                this.scene.start('MainScene', { machine: card.machine, defaultMachine: defaultMachine });
+                            }
+                        }
+                        card.clickStartY = null;
+                        card.clickStartX = null;
+                    });
+                    
+                    // Hover effect
+                    card.on('pointerover', () => {
+                        card.border.clear();
+                        card.border.lineStyle(3, 0x4EE0E0, 1);
+                        card.border.strokeRoundedRect(-card.logoDisplayWidth/2, -card.logoDisplayHeight/2, card.logoDisplayWidth, card.logoDisplayHeight, 5);
+                        this.tweens.add({
+                            targets: card,
+                            scale: 1.05,
+                            duration: 200
+                        });
+                    });
+                    card.on('pointerout', () => {
+                        card.border.clear();
+                        card.border.lineStyle(3, 0x666666, 1);
+                        card.border.strokeRoundedRect(-card.logoDisplayWidth/2, -card.logoDisplayHeight/2, card.logoDisplayWidth, card.logoDisplayHeight, 5);
+                        this.tweens.add({
+                            targets: card,
+                            scale: 1,
+                            duration: 200
+                        });
+                    });
+                });
+                
+                // Store references for scrollbar updates
+                this.scrollContainer = scrollContainer;
+                this.scrollStartY = scrollStartY;
+                this.scrollHeight = scrollHeight;
+                this.totalContentHeight = totalContentHeight;
+                this.scrollY = 0;
+                
+                // Function to update scrollbar position
+                this.updateScrollbar = () => {
+                    if (!this.totalContentHeight || this.totalContentHeight <= this.scrollHeight) {
+                        // Hide scrollbar if content fits
+                        this.scrollbarHandle.clear();
+                        return;
+                    }
+                    
+                    const scrollRatio = Math.abs(this.scrollY) / (this.totalContentHeight - this.scrollHeight);
+                    const handleHeight = Math.max(20, (this.scrollHeight / this.totalContentHeight) * this.scrollHeight);
+                    const handleY = this.scrollStartY + (scrollRatio * (this.scrollHeight - handleHeight));
+                    
+                    this.scrollbarHandle.clear();
+                    this.scrollbarHandle.fillStyle(0x888888, 0.8);
+                    this.scrollbarHandle.fillRect(this.scrollbarX, handleY, this.scrollbarWidth, handleHeight);
+                };
+                
+                // Set up wheel scrolling (with reduced sensitivity and correct direction)
+                this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
+                    // Invert deltaY to scroll in the correct direction
+                    this.scrollY -= deltaY * scrollSpeed;
+                    const maxScroll = Math.max(0, this.totalContentHeight - this.scrollHeight);
+                    this.scrollY = Phaser.Math.Clamp(this.scrollY, -maxScroll, 0);
+                    this.scrollContainer.setY(this.scrollStartY + this.scrollY);
+                    this.updateScrollbar();
+                });
+                
+                // Initial scrollbar update
+                this.updateScrollbar();
+            });
+            this.load.start();
+        }
+    }
+    
+    // Config
+    const config = { type: Phaser.AUTO, width: 720, height: 1280, parent: 'game-container', scene: [MenuScene, MainScene], scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, transparent: true, audio: { disableWebAudio: false } };
+    
+    // Wait for fonts to load before starting the game
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            new Phaser.Game(config);
+        });
+    } else {
+        // Fallback for older browsers - wait a bit for fonts
+        setTimeout(() => { new Phaser.Game(config); }, 500);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,860 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Slot Game Demo</title>
+    <!-- Preload fonts for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Righteous&family=Roboto+Slab:wght@400;700&family=Rye&display=swap" rel="stylesheet">
+    <style>
+      body { margin: 0; padding: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Righteous', sans-serif; }
+      #game-container { box-shadow: 0 0 50px rgba(0,0,0,0.5); border-radius: 12px; overflow: hidden; }
+      /* Preload fonts by using them */
+      .font-preload { position: absolute; left: -9999px; font-size: 1px; }
+      .font-preload-1 { font-family: 'Righteous', sans-serif; }
+      .font-preload-2 { font-family: 'Rye', serif; }
+      .font-preload-3 { font-family: 'Roboto Slab', serif; }
+    </style>
+    <!-- Use CDN Phaser 3.85.2 to ensure compatibility (fix e.isContextLost) -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.85.2/dist/phaser.min.js"></script>
+</head>
+<body>
+<!-- Hidden elements to force font loading -->
+<span class="font-preload font-preload-1">.</span>
+<span class="font-preload font-preload-2">.</span>
+<span class="font-preload font-preload-3">.</span>
+<div id="game-container"></div>
+<script>
+    const sprites = [{"id":"9","name":"Nine","description":"The number 9","imageUrl":"present","isLoading":false,"error":null,"crop":0.05},{"id":"10","name":"Ten","description":"The number 10","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"J","name":"Jack","description":"The letter J, representing the Jack card","imageUrl":"present","isLoading":false,"error":null,"crop":0.06},{"id":"Q","name":"Queen","description":"The letter Q, representing the Queen card","imageUrl":"present","isLoading":false,"error":null,"crop":0.14},{"id":"K","name":"King","description":"The letter K, representing the King card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"A","name":"Ace","description":"The letter A, representing the Ace card","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"BAR","name":"Bar","description":"A classic BAR symbol, rectangular shape","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"7","name":"Seven","description":"A lucky number 7","imageUrl":"present","isLoading":false,"error":null,"crop":0.07},{"id":"WILD","name":"Wild","description":"A symbol representing a WILD card, magical or powerful","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"BONUS","name":"Bonus","description":"A symbol representing a BONUS round, treasure or special item","imageUrl":"present","isLoading":false,"error":null,"crop":0.04}];
+    const logo = {"id":"LOGO","name":"Marquee Logo","description":"Main game title logo marquee","imageUrl":"present","isLoading":false,"error":null,"crop":0.16};
+    const uiAssets = [{"id":"SPIN_BUTTON","name":"Spin Button","description":"Main circular spin button with text SPIN","imageUrl":"present","isLoading":false,"error":null,"crop":0.16},{"id":"FREE_SPINS","name":"Free Spins","description":"Free Spins text logo for bonus mode","imageUrl":"present","isLoading":false,"error":null,"crop":0.1},{"id":"BIG_WIN","name":"Big Win","description":"Big Win text logo for large payouts","imageUrl":"present","isLoading":false,"error":null,"crop":0.05},{"id":"ICON_COIN","name":"Coin","description":"A single gold coin for animations","imageUrl":"present","isLoading":false,"error":null,"crop":0.12}];
+    const colorScheme = {"bgTop":"#2C0040","bgBot":"#1C0028","deck":"#28003A","frame":"#B89F6B","accent":"#00FFFF","gold":"#FFD700","spin":"#00E676","btnActive":"#7C4DFF","btnIdle":"#3E2765","text":"#FFFFFF"};
+    const soundTheme = {"clickWave":"square","motorWave":"sawtooth","winWave":"sawtooth","pitch":1.75,"speed":1.75};
+    const extractedColors = {"gen_LOGO":{"tl":65537,"tr":65536,"bl":1,"br":65537},"gen_SPIN_BUTTON":{"tl":2494508,"tr":2494508,"bl":2494508,"br":2625580},"gen_FREE_SPINS":{"tl":1647955,"tr":1647955,"bl":1647955,"br":1713490},"gen_BIG_WIN":{"tl":992075,"tr":992331,"bl":1057868,"br":1057867}};
+    const hasMusic = true;
+    const sfxFlags = {"spin":true,"stop":true,"win":true,"bigWin":true,"click":true,"scatter":true,"bonusTrigger":true,"jam":true};
+    const oddsMode = "fun";
+    const HEADER_HEIGHT = 435;
+
+    const toHex = (colorStr) => parseInt(colorStr.replace('#', '0x'));
+    const COLORS = {
+        bgTop: toHex(colorScheme.bgTop),
+        bgBot: toHex(colorScheme.bgBot),
+        deck: toHex(colorScheme.deck),
+        frame: toHex(colorScheme.frame),
+        accent: toHex(colorScheme.accent),
+        gold: toHex(colorScheme.gold),
+        spin: toHex(colorScheme.spin),
+        btnActive: toHex(colorScheme.btnActive),
+        btnIdle: toHex(colorScheme.btnIdle),
+        text: colorScheme.text
+    };
+
+    const SYMBOL_DEFS = [
+        { id: '9',  val: 5,  type: 'ROYAL', color: '#00ff00' }, 
+        { id: '10', val: 10, type: 'ROYAL', color: '#00ccff' },
+        { id: 'J',  val: 15, type: 'ROYAL', color: '#3333ff' }, 
+        { id: 'Q',  val: 20, type: 'ROYAL', color: '#cc00ff' },
+        { id: 'K',  val: 30, type: 'ROYAL', color: '#ff0000' }, 
+        { id: 'A',  val: 50, type: 'ROYAL', color: '#ffff00' },
+        { id: 'BAR', val: 100, type: 'BAR' }, 
+        { id: '7',   val: 200, type: 'SEVEN' },
+        { id: 'WILD', val: 500, type: 'WILD', isWild: true },
+        { id: 'BONUS', val: 0, type: 'BONUS', isScatter: true }
+    ];
+
+    // REEL_STRIP configurations for different odds modes
+    const REEL_STRIP_FUN = [
+        '9','9','9','9', '10','10','10', 'J','J','J', 'Q','Q','Q', 'K','K','K', 'A','A', 
+        'BAR', 'BAR', '7', 'WILD', 'WILD', 'BONUS', '9','9', '10','10', 'J','J', 'Q','Q', 'K','K', 'A','A',
+        '7','7','7', 'BONUS', 'BONUS', '9','10','J','Q','K','A','BAR','7','WILD','9','10','J',
+        'BONUS', '9', '9', '10', '10', 'J'
+    ];
+    
+    // Vegas mode: Lower hit frequency (~25%), bonus ~1 in 400 spins
+    // More low-value symbols, fewer high-value, very rare BONUS
+    const REEL_STRIP_VEGAS = [
+        '9','9','9','9','9','9','9','9', '10','10','10','10','10','10', 'J','J','J','J','J','J', 
+        'Q','Q','Q','Q', 'K','K','K', 'A','A','A', 
+        'BAR', 'BAR', '7', '7', 'WILD', 'WILD',
+        '9','9','9','9','9', '10','10','10','10', 'J','J','J','J', 
+        'Q','Q','Q', 'K','K', 'A','A', 'BAR', '7', 'WILD',
+        '9','9','9','9', '10','10','10', 'J','J','J', 'Q','Q', 'K', 'A',
+        'BAR', '7', 'WILD',
+        '9','9','9', '10','10', 'J','J', 'Q', 'K', 'A',
+        'BAR', '7',
+        '9','9', '10', 'J', 'Q', 'K', 'A',
+        'BAR', '7',
+        '9', '10', 'J', 'Q', 'K', 'A',
+        'BAR',
+        '9', '10', 'J', 'Q',
+        'BONUS'  // Only 1 BONUS in ~120 symbols = ~0.3% bonus frequency
+    ];
+    
+    const REEL_STRIP = oddsMode === 'vegas' ? REEL_STRIP_VEGAS : REEL_STRIP_FUN;
+
+    const CONFIG = {
+        width: 720, height: 1280, reelCount: 5, rowCount: 3,
+        symbolSize: 130, reelWidth: 136, offsetX: 20, 
+        offsetY: HEADER_HEIGHT, 
+        fixedLines: 25,
+        paylines: [ [1,1,1,1,1], [0,0,0,0,0], [2,2,2,2,2], [0,1,2,1,0], [2,1,0,1,2], [0,0,1,2,2], [2,2,1,0,0], [1,0,1,2,1], [1,2,1,0,1], [0,1,0,1,0], [2,1,2,1,2], [1,0,0,0,1], [1,2,2,2,1], [0,2,0,2,0], [2,0,2,0,2], [1,1,0,1,1], [1,1,2,1,1], [0,1,1,1,0], [2,1,1,1,2], [0,2,2,2,0], [2,0,0,0,2], [0,1,0,1,2], [2,1,2,1,0], [1,0,2,0,1], [1,2,0,2,1] ]
+    };
+
+    class SoundEngine {
+        constructor(theme) {
+            this.theme = theme;
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.master = this.ctx.createGain(); this.master.gain.value = 0.25; this.master.connect(this.ctx.destination);
+        }
+        tryResume() { if(this.ctx.state === 'suspended') this.ctx.resume().catch(console.error); }
+        play(freq, type='sine', dur=0.1, vol=1, slide=null) {
+            if(this.ctx.state === 'suspended') this.ctx.resume();
+            const finalFreq = freq * this.theme.pitch;
+            const finalDur = dur / this.theme.speed;
+            const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(finalFreq, this.ctx.currentTime);
+            if(slide) osc.frequency.linearRampToValueAtTime(slide * this.theme.pitch, this.ctx.currentTime + finalDur);
+            g.gain.setValueAtTime(vol, this.ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + finalDur);
+            osc.connect(g); g.connect(this.master);
+            osc.start(); osc.stop(this.ctx.currentTime + finalDur);
+        }
+        playClick() { this.play(800, this.theme.clickWave, 0.05, 0.2); }
+        playStop(i) { this.play(150 + (i*20), this.theme.motorWave, 0.1, 0.4); }
+        playTease() { this.play(100, this.theme.motorWave, 0.1, 0.3, 50); }
+        playScatter() { this.play(1200, this.theme.winWave, 0.5, 0.6); }
+        playBonusStart() { [440, 554, 659, 880].forEach((f,i)=>setTimeout(()=>this.play(f,this.theme.winWave,0.1,0.3), i*100)); }
+        playWin() { [523, 659, 784, 1046].forEach((f,i) => setTimeout(()=>this.play(f, this.theme.winWave, 0.2, 0.3), i*80)); }
+    }
+
+    class GameBtn extends Phaser.GameObjects.Container {
+        constructor(scene, x, y, width, height, text, subtext, colorHex, onClick) {
+            super(scene, x, y);
+            this.scene = scene; this.onClick = onClick; this.enabled = true; this.baseColor = colorHex;
+            this.width = width; this.height = height;
+            scene.add.existing(this);
+            
+            this.bg = scene.add.graphics();
+            this.drawBg(colorHex);
+            this.add(this.bg);
+            
+            this.mainText = scene.add.text(0, subtext?-8:0, text, { fontSize: '28px', fontFamily: 'Righteous', color: COLORS.text, stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
+            if(subtext) this.add(scene.add.text(0, 18, subtext, { fontSize: '12px', fontFamily: 'Roboto Slab', color: colorScheme.accent, fontStyle:'bold' }).setOrigin(0.5));
+            this.add(this.mainText);
+            this.setSize(width, height);
+            this.setInteractive({ useHandCursor: true }).on('pointerdown', () => { if(this.enabled) { this.scene.tweens.add({targets:this, scale:0.95, duration:50, yoyo:true}); onClick(); } });
+        }
+        drawBg(color) {
+            if (this.bg) {
+                this.bg.clear(); const r = 12; const w = this.width; const h = this.height;
+                this.bg.fillStyle(0x000000, 0.5); this.bg.fillRoundedRect(-w/2+2, -h/2+4, w, h, r);
+                this.bg.fillStyle(color, 1); this.bg.fillRoundedRect(-w/2, -h/2, w, h, r);
+                this.bg.fillStyle(0xffffff, 0.15); this.bg.fillRoundedRect(-w/2, -h/2, w, h/2, { tl: r, tr: r, bl: 0, br: 0 });
+                this.bg.lineStyle(2, 0xffffff, 0.3); this.bg.strokeRoundedRect(-w/2+1, -h/2+1, w-2, h-2, r);
+                this.bg.lineStyle(1, 0x000000, 0.4); this.bg.strokeRoundedRect(-w/2, -h/2, w, h, r);
+            }
+        }
+        setEnabled(b) { this.enabled = b; this.setAlpha(b?1:0.5); if(b) this.drawBg(this.baseColor); }
+        setActiveState(isActive) { this.drawBg(isActive ? COLORS.btnActive : this.baseColor); this.mainText.setColor(isActive ? '#ffffff' : COLORS.text); }
+    }
+
+    class SpinBtn extends Phaser.GameObjects.Container {
+        constructor(scene, x, y, onClick) {
+            super(scene, x, y);
+            this.scene = scene; this.onClick = onClick;
+            scene.add.existing(this);
+            if (scene.textures.exists('gen_SPIN_BUTTON')) {
+                this.img = scene.add.image(0, 0, 'gen_SPIN_BUTTON');
+                this.img.setScale(170 / Math.max(this.img.width, this.img.height));
+                this.add(this.img);
+            } else {
+                this.bg = scene.add.graphics();
+                this.drawCircle(COLORS.spin);
+                const txt = scene.add.text(0, 0, "SPIN", { fontSize: '42px', fontFamily: 'Righteous', color: '#fff', stroke: '#004400', strokeThickness: 6 }).setOrigin(0.5);
+                this.add([this.bg, txt]);
+            }
+            this.setSize(170, 170);
+            this.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.scene.tweens.add({targets:this, scale:0.9, duration:50, yoyo:true}); onClick(); });
+            this.scene.tweens.add({ targets: this, scale: 1.05, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        }
+        drawCircle(color) {
+            this.bg.clear(); const r = 80;
+            this.bg.fillStyle(0x000000, 0.5); this.bg.fillCircle(5, 5, r);
+            this.bg.fillStyle(color, 1); this.bg.fillCircle(0, 0, r);
+            this.bg.lineStyle(4, 0xffffff, 0.8); this.bg.strokeCircle(0, 0, r);
+        }
+        setText(str) { 
+            // Only procedural button has text to update
+            if (!this.img && this.list[1]) (this.list[1]).setText(str); 
+        }
+    }
+
+    class MainScene extends Phaser.Scene {
+        constructor() { super('MainScene'); this.credits=10000; this.denom=1; this.betMultiplier=1; this.state='IDLE'; this.soundEngine = new SoundEngine(soundTheme); this.betBtns=[]; this.extractedColors = extractedColors; 
+        this.reels = []; this.grid = []; this.winLines = []; this.stopTimers = []; 
+        this.isMusicOn = true; this.isSfxOn = true; }
+        
+        preload() {
+            sprites.forEach(s => { if(s.imageUrl) this.load.image('gen_'+s.id, 'assets/'+s.id+'.png'); });
+            uiAssets.forEach(u => { if(u.imageUrl) this.load.image('gen_'+u.id, 'assets/'+u.id+'.png'); });
+            if(logo.imageUrl) this.load.image('gen_LOGO', 'assets/LOGO.png');
+            if(hasMusic) this.load.audio('bgm', 'assets/music.mp3');
+            if(sfxFlags.spin) this.load.audio('sfx_spin', 'assets/spin.mp3');
+            if(sfxFlags.stop) this.load.audio('sfx_stop', 'assets/stop.mp3');
+            if(sfxFlags.win) this.load.audio('sfx_win', 'assets/win.mp3');
+            if(sfxFlags.bigWin) this.load.audio('sfx_bigwin', 'assets/bigwin.mp3');
+            if(sfxFlags.click) this.load.audio('sfx_click', 'assets/click.mp3');
+            if(sfxFlags.scatter) this.load.audio('sfx_scatter', 'assets/scatter.mp3');
+            if(sfxFlags.bonusTrigger) this.load.audio('sfx_bonustrigger', 'assets/bonustrigger.mp3');
+            if(sfxFlags.jam) this.load.audio('sfx_jam', 'assets/jam.mp3');
+        }
+        
+        create() {
+            if (!this.textures.exists('gen_ICON_COIN')) {
+                const g = this.make.graphics({x:0, y:0, add:false});
+                g.fillStyle(COLORS.gold, 1); g.fillCircle(16, 16, 16); g.lineStyle(2, 0xffffff, 0.5); g.strokeCircle(16, 16, 16); g.generateTexture('gen_ICON_COIN', 32, 32);
+            }
+            if (hasMusic) {
+                try { this.sound.add('bgm', { loop: true, volume: 0.5 }).play(); } catch(e) {}
+            }
+            this.initGame();
+        }
+        
+        initGame() { this.generateTextures(); this.createBackground(); this.createReels(); this.createOverlayLayers(); this.createControls(); this.createAudioToggles(); }
+        
+        musicVolume = 0.5;
+        sfxVolume = 0.8;
+        musicVolumeBeforeMute = 0.5;
+        sfxVolumeBeforeMute = 0.8;
+        musicSliderExpanded = false;
+        sfxSliderExpanded = false;
+        
+        createAudioToggles() {
+            // Container for audio controls (Top Right)
+            const x = CONFIG.width - 20;
+            const y = 20;
+            const iconSize = 28; // Smaller icons
+            const iconRadius = 12;
+            const sliderWidth = 60;
+            const sliderHeight = 6;
+            
+            // Music icon button (always visible, top)
+            const musicIconY = y;
+            const btnMusicMute = this.add.container(x, musicIconY);
+            btnMusicMute.setDepth(200);
+            const bgMusicMute = this.add.circle(0, 0, iconRadius, 0x333333, 0.8).setStrokeStyle(2, this.isMusicOn ? 0x00ff00 : 0x555555);
+            const txtMusicIcon = this.add.text(0, 0, "🎵", { fontSize: '14px' }).setOrigin(0.5);
+            btnMusicMute.add([bgMusicMute, txtMusicIcon]);
+            btnMusicMute.setSize(iconSize, iconSize);
+            btnMusicMute.setOrigin(1, 0);
+            
+            // Music slider container (hidden by default, appears below icon)
+            const musicSliderContainer = this.add.container(0, 0);
+            musicSliderContainer.setVisible(false);
+            musicSliderContainer.setDepth(201);
+            const musicSliderBg = this.add.rectangle(x - sliderWidth/2, musicIconY + iconSize + 8, sliderWidth, sliderHeight, 0x333333).setOrigin(0.5, 0);
+            const musicSliderFill = this.add.rectangle(x - sliderWidth, musicIconY + iconSize + 8, sliderWidth * this.musicVolume, sliderHeight - 2, 0x00ff00).setOrigin(0, 0);
+            const musicSliderHandle = this.add.circle(x - sliderWidth + (sliderWidth * this.musicVolume), musicIconY + iconSize + 8, 6, 0xffffff).setInteractive({ useHandCursor: true, draggable: true });
+            musicSliderContainer.add([musicSliderBg, musicSliderFill, musicSliderHandle]);
+            
+            // Music icon click handler - toggle slider visibility
+            btnMusicMute.setInteractive({ useHandCursor: true }).on('pointerdown', (pointer) => {
+                if (pointer && pointer.event) pointer.event.stopPropagation();
+                // Toggle slider visibility
+                this.musicSliderExpanded = !this.musicSliderExpanded;
+                musicSliderContainer.setVisible(this.musicSliderExpanded);
+            });
+            
+            // Music slider drag handler
+            musicSliderHandle.on('drag', (pointer, dragX) => {
+                const minX = x - sliderWidth;
+                const maxX = x;
+                const clampedX = Math.max(minX, Math.min(maxX, dragX));
+                musicSliderHandle.x = clampedX;
+                this.musicVolume = (clampedX - minX) / sliderWidth;
+                musicSliderFill.width = sliderWidth * this.musicVolume;
+                
+                // Update music volume
+                if (this.sound.get('bgm')) { this.sound.get('bgm').setVolume(this.musicVolume); }
+                this.isMusicOn = this.musicVolume > 0;
+                bgMusicMute.setStrokeStyle(2, this.isMusicOn ? 0x00ff00 : 0x555555);
+                txtMusicIcon.setAlpha(this.isMusicOn ? 1 : 0.4);
+            });
+            
+            // SFX icon button (always visible, below music)
+            const sfxIconY = y + iconSize + 5;
+            const btnSfxMute = this.add.container(x, sfxIconY);
+            btnSfxMute.setDepth(200);
+            const bgSfxMute = this.add.circle(0, 0, iconRadius, 0x333333, 0.8).setStrokeStyle(2, this.isSfxOn ? 0x00ff00 : 0x555555);
+            const txtSfxIcon = this.add.text(0, 0, "🔊", { fontSize: '14px' }).setOrigin(0.5);
+            btnSfxMute.add([bgSfxMute, txtSfxIcon]);
+            btnSfxMute.setSize(iconSize, iconSize);
+            btnSfxMute.setOrigin(1, 0);
+            
+            // SFX slider container (hidden by default, appears below icon)
+            const sfxSliderContainer = this.add.container(0, 0);
+            sfxSliderContainer.setVisible(false);
+            sfxSliderContainer.setDepth(201);
+            const sfxSliderBg = this.add.rectangle(x - sliderWidth/2, sfxIconY + iconSize + 8, sliderWidth, sliderHeight, 0x333333).setOrigin(0.5, 0);
+            const sfxSliderFill = this.add.rectangle(x - sliderWidth, sfxIconY + iconSize + 8, sliderWidth * this.sfxVolume, sliderHeight - 2, 0x00aaff).setOrigin(0, 0);
+            const sfxSliderHandle = this.add.circle(x - sliderWidth + (sliderWidth * this.sfxVolume), sfxIconY + iconSize + 8, 6, 0xffffff).setInteractive({ useHandCursor: true, draggable: true });
+            sfxSliderContainer.add([sfxSliderBg, sfxSliderFill, sfxSliderHandle]);
+            
+            // SFX icon click handler - toggle slider visibility
+            btnSfxMute.setInteractive({ useHandCursor: true }).on('pointerdown', (pointer) => {
+                if (pointer && pointer.event) pointer.event.stopPropagation();
+                // Toggle slider visibility
+                this.sfxSliderExpanded = !this.sfxSliderExpanded;
+                sfxSliderContainer.setVisible(this.sfxSliderExpanded);
+            });
+            
+            // SFX slider drag handler
+            sfxSliderHandle.on('drag', (pointer, dragX) => {
+                const minX = x - sliderWidth;
+                const maxX = x;
+                const clampedX = Math.max(minX, Math.min(maxX, dragX));
+                sfxSliderHandle.x = clampedX;
+                this.sfxVolume = (clampedX - minX) / sliderWidth;
+                sfxSliderFill.width = sliderWidth * this.sfxVolume;
+                
+                this.isSfxOn = this.sfxVolume > 0;
+                bgSfxMute.setStrokeStyle(2, this.isSfxOn ? 0x00ff00 : 0x555555);
+                txtSfxIcon.setText(this.isSfxOn ? "🔊" : "🔇");
+                txtSfxIcon.setAlpha(this.isSfxOn ? 1 : 0.4);
+            });
+            
+            // Enable drag on scene
+            this.input.setDraggable([musicSliderHandle, sfxSliderHandle]);
+            
+            // Apply initial volumes
+            if (this.sound.get('bgm')) { this.sound.get('bgm').setVolume(this.musicVolume); }
+        }
+
+        generateTextures() {
+            SYMBOL_DEFS.forEach(s => {
+                const spriteData = sprites.find(sd => sd.id === s.id);
+                const hasCustomImage = spriteData && spriteData.imageUrl && this.textures.exists('gen_'+s.id);
+                const rt = this.add.renderTexture(-1000, -1000, 130, 130);
+                
+                if (hasCustomImage) {
+                   const img = this.make.image({ key: 'gen_'+s.id, add: false });
+                   const scale = Math.min(120 / img.width, 120 / img.height);
+                   img.setScale(scale);
+                   const bg = this.make.graphics({x:0, y:0, add:false});
+                   bg.fillStyle(0x000000, 0.4); bg.fillRoundedRect(5, 5, 120, 120, 15); bg.lineStyle(2, COLORS.gold, 0.5); bg.strokeRoundedRect(5, 5, 120, 120, 15);
+                   rt.draw(bg, 0, 0); rt.draw(img, 65, 65);
+                } else {
+                    const g = this.make.graphics({x:0, y:0, add:false});
+                    g.fillStyle(0x000000, 0.3); g.fillRoundedRect(5, 5, 120, 120, 15);
+                    if(s.type === 'ROYAL') { g.lineStyle(4, parseInt(s.color.replace('#','0x')), 1); g.strokeRoundedRect(10, 10, 110, 110, 15); rt.draw(g); const t = this.make.text({ text: s.id, style: { fontSize: s.id.length > 1 ? '70px' : '85px', fontFamily: 'Righteous', color: s.color, stroke: '#ffffff', strokeThickness: 6 } }).setOrigin(0.5); rt.draw(t, 65, 65); }
+                    else { g.fillStyle(0xffd700, 1); g.fillRoundedRect(10, 35, 110, 60, 5); rt.draw(g); }
+                }
+                rt.saveTexture('sym_'+s.id);
+                const tempImg = this.make.image({ key: 'sym_'+s.id, add: false });
+                const rtb = this.add.renderTexture(-1000,-1000,130,130);
+                for(let i=-20; i<20; i+=8) { rtb.draw(tempImg, 65, 65+i, 0.15); }
+                rtb.saveTexture('sym_blur_'+s.id);
+                rt.destroy(); rtb.destroy();
+            });
+            const p = this.make.graphics({x:0,y:0,add:false}); p.fillStyle(COLORS.accent, 1); p.fillCircle(5,5,5); p.generateTexture('sparkle', 10, 10);
+        }
+
+        createBackground() {
+            this.bg = this.add.graphics();
+            this.setBgColor(false);
+            this.bgParticles = this.add.particles(0, 0, 'sparkle', { x: { min: 0, max: 720 }, y: 1300, speedY: { min: -50, max: -100 }, scale: { start: 0.5, end: 0 }, alpha: { start: 0.5, end: 0 }, lifespan: 8000, quantity: 1, frequency: 300 });
+            
+            const headerGraphics = this.add.graphics();
+            const headerColors = this.extractedColors['gen_LOGO'];
+            const headerLineY = CONFIG.offsetY - 25;
+
+            if (headerColors) {
+                headerGraphics.fillGradientStyle(headerColors.tl, headerColors.tr, headerColors.bl, headerColors.br, 1);
+                headerGraphics.fillRect(0, 0, CONFIG.width, headerLineY);
+                headerGraphics.lineStyle(4, COLORS.accent, 0.8);
+                headerGraphics.lineBetween(0, headerLineY, CONFIG.width, headerLineY);
+            }
+
+            const frame = this.add.graphics();
+            frame.lineStyle(16, COLORS.frame); frame.strokeRoundedRect(CONFIG.offsetX-8, CONFIG.offsetY-8, CONFIG.reelCount*CONFIG.reelWidth+16, CONFIG.rowCount*CONFIG.symbolSize+16, 20);
+
+            if (logo.imageUrl && this.textures.exists('gen_LOGO')) {
+                const headerCenterY = (CONFIG.offsetY / 2) - 10;
+                const titleImg = this.add.image(CONFIG.width/2, headerCenterY, 'gen_LOGO');
+                const targetWidth = (CONFIG.reelCount * CONFIG.reelWidth); 
+                const targetHeight = CONFIG.offsetY - 40;
+                const scale = Math.min(targetWidth / titleImg.width, targetHeight / titleImg.height);
+                titleImg.setScale(scale);
+                this.tweens.add({ targets: titleImg, scale: scale*1.02, duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            }
+        }
+
+        setBgColor(isBonus) {
+            this.bg.clear();
+            if(!this.textures.exists('bgGradient')) {
+                const cvs = document.createElement('canvas'); cvs.width=720; cvs.height=1280;
+                const ctx = cvs.getContext('2d');
+                if (ctx) {
+                    const grd = ctx.createRadialGradient(360, 640, 0, 360, 640, 800);
+                    grd.addColorStop(0, colorScheme.bgTop); grd.addColorStop(1, colorScheme.bgBot);
+                    ctx.fillStyle = grd; ctx.fillRect(0,0,720,1280);
+                    this.textures.addCanvas('bgGradient', cvs);
+                }
+            }
+            if(!this.textures.exists('bgBonus')) {
+                const cvs = document.createElement('canvas'); cvs.width=720; cvs.height=1280;
+                const ctx = cvs.getContext('2d');
+                if (ctx) {
+                    const grd = ctx.createRadialGradient(360, 640, 0, 360, 640, 800);
+                    grd.addColorStop(0, '#800000'); grd.addColorStop(1, '#1a0000');
+                    ctx.fillStyle = grd; ctx.fillRect(0,0,720,1280);
+                    this.textures.addCanvas('bgBonus', cvs);
+                }
+            }
+            this.add.image(360, 640, isBonus ? 'bgBonus' : 'bgGradient').setDepth(-10);
+        }
+
+        createReels() {
+            this.add.rectangle(CONFIG.width/2, CONFIG.offsetY + (CONFIG.rowCount*CONFIG.symbolSize)/2, CONFIG.reelCount*CONFIG.reelWidth, CONFIG.rowCount*CONFIG.symbolSize, 0x000000, 0.7);
+            const maskShape = this.make.graphics({x:0,y:0,add:false}).fillStyle(0xffffff).fillRect(CONFIG.offsetX, CONFIG.offsetY, CONFIG.reelCount*CONFIG.reelWidth, CONFIG.rowCount*CONFIG.symbolSize);
+            const mask = maskShape.createGeometryMask();
+            for(let i=0; i<CONFIG.reelCount; i++) {
+                const container = this.add.container(CONFIG.offsetX + (CONFIG.reelWidth/2) + (i*CONFIG.reelWidth), CONFIG.offsetY);
+                container.setMask(mask);
+                const sprites = [];
+                for(let j=-1; j<CONFIG.rowCount+1; j++) {
+                    const s = this.add.sprite(0, (j*CONFIG.symbolSize)+(CONFIG.symbolSize/2), 'sym_9');
+                    container.add(s); sprites.push(s);
+                }
+                this.reels.push({ container, sprites, isTeasing: false });
+                if(i>0) this.add.rectangle(CONFIG.offsetX+(i*CONFIG.reelWidth), CONFIG.offsetY+200, 2, CONFIG.rowCount*CONFIG.symbolSize, 0xffffff, 0.1);
+            }
+            const glass = this.add.graphics();
+            glass.fillStyle(0xffffff, 0.08); glass.fillRect(CONFIG.offsetX, CONFIG.offsetY, CONFIG.reelCount*CONFIG.reelWidth, (CONFIG.rowCount*CONFIG.symbolSize)/2);
+        }
+
+        createOverlayLayers() {
+            this.sparkleEmitter = this.add.particles(0, 0, 'sparkle', { speed: { min: 50, max: 150 }, scale: { start: 1, end: 0 }, blendMode: 'ADD', lifespan: 600, gravityY: 0, emitting: false, rotate: { min: 0, max: 360 } }).setDepth(1001);
+            this.coinEmitter = this.add.particles(0, 0, 'gen_ICON_COIN', { speedY: { min: -600, max: -900 }, speedX: { min: -300, max: 300 }, gravityY: 1200, scale: { start: 0.15, end: 0.15 }, rotate: { min: 0, max: 360 }, lifespan: 3000, emitting: false, quantity: 4 }).setDepth(2001);
+
+            this.winLayer = this.add.container(0,0).setDepth(999);
+            this.winGraphics = this.add.graphics();
+            this.winLayer.add(this.winGraphics);
+            this.popupLayer = this.add.container(CONFIG.width/2, CONFIG.height/2).setDepth(3000).setVisible(false);
+            this.popBg = this.add.graphics();
+            this.popTitle = this.add.text(0,-50, "", { fontSize: '60px', fontFamily:'Righteous', color: '#ffdd00', align:'center', stroke:'#000', strokeThickness:6 }).setOrigin(0.5);
+            this.popSub = this.add.text(0, 60, "", { fontSize: '60px', fontFamily:'Rye', color: COLORS.text, align:'center', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+            this.popImage = this.add.image(0, -50, '').setOrigin(0.5).setVisible(false);
+            
+            this.popupLayer.setInteractive(new Phaser.Geom.Rectangle(-300, -200, 600, 400), Phaser.Geom.Rectangle.Contains).on('pointerdown', () => { if (this.isCelebrating) { this.stopCelebration(true); } });
+            this.popupLayer.add([this.popBg, this.popTitle, this.popSub, this.popImage]);
+        }
+
+        createControls() {
+            const deckY = 850; 
+            const deckBg = this.add.graphics(); 
+            const spinColors = this.extractedColors['gen_SPIN_BUTTON'];
+            if (spinColors) deckBg.fillGradientStyle(spinColors.tl, spinColors.tr, spinColors.bl, spinColors.br, 1);
+            else deckBg.fillStyle(COLORS.deck, 1);
+            deckBg.fillRect(0, deckY, CONFIG.width, CONFIG.height - deckY);
+            
+            const border = this.add.graphics();
+            border.lineStyle(4, COLORS.accent, 0.8);
+            border.lineBetween(0, deckY, CONFIG.width, deckY);
+            
+            const footerY = 1200;
+            const footerBg = this.add.graphics();
+            footerBg.fillStyle(0x000000, 0.6);
+            footerBg.fillRect(0, footerY, CONFIG.width, 80);
+            
+            this.controlsGroup = this.add.container(0,0).setDepth(100); // Above footer (depth 50)
+            const valStyle = { fontSize: '36px', color: '#ffd700', fontFamily: 'Rye', stroke: '#000', strokeThickness: 4 };
+            const footerValStyle = { fontSize: '32px', color: '#00ff00', fontFamily: 'Rye', stroke: '#000', strokeThickness: 3 };
+
+            this.controlsGroup.add(this.add.text(CONFIG.width/2, deckY + 25, "WIN", { fontSize: '30px', color: '#ff00ff', fontFamily: 'Righteous' }).setOrigin(0.5));
+            this.txtWin = this.add.text(CONFIG.width/2, deckY + 70, "$0.00", {...valStyle, fontSize:'72px', color:'#ffff00'}).setOrigin(0.5);
+            this.controlsGroup.add(this.txtWin);
+
+            const row2Y = deckY + 160; 
+            this.betBtns = [1,2,5,10].map((m,i) => { const b = new GameBtn(this, 180 + (i*120), row2Y, 100, 60, m+"x", null, COLORS.btnIdle, ()=>this.setBet(m)); this.controlsGroup.add(b); return b; });
+            this.betBtns[0].setActiveState(true); 
+
+            const row3Y = deckY + 280; 
+            this.btnSpin = new SpinBtn(this, CONFIG.width/2, row3Y + 15, ()=>this.handleSpin());
+            this.btnSpin.setDepth(101); // Above footer (depth 100)
+            this.btnDenom = new GameBtn(this, CONFIG.width/2 - 180, row3Y + 20, 100, 80, "1¢", "DENOM", COLORS.btnIdle, ()=>this.cycleDenom());
+            this.btnAuto = new GameBtn(this, CONFIG.width/2 + 180, row3Y + 20, 100, 80, "AUTO", null, 0x222222, ()=>this.toggleAuto());
+            this.controlsGroup.add([this.btnDenom, this.btnSpin, this.btnAuto]);
+            
+            // Footer always visible (even during bonus) with lower depth so spin button is above
+            this.footerGroup = this.add.container(0,0).setDepth(50);
+            const footerBgGraphics = this.add.graphics();
+            footerBgGraphics.fillStyle(0x000000, 0.6);
+            footerBgGraphics.fillRect(0, footerY, CONFIG.width, 80);
+            this.footerGroup.add(footerBgGraphics);
+            
+            // Balance Left (moved up 10px)
+            this.footerGroup.add(this.add.text(30, footerY + 10, "BALANCE", { fontSize: '14px', color: '#cccccc', fontFamily: 'Righteous' }));
+            this.txtCash = this.add.text(30, footerY + 35, "$100.00", footerValStyle);
+            this.footerGroup.add(this.txtCash);
+            // Total Bet Right (moved up 10px, using Rye font like balance)
+            this.footerGroup.add(this.add.text(CONFIG.width - 30, footerY + 10, "TOTAL BET", { fontSize: '14px', color: '#cccccc', fontFamily: 'Righteous' }).setOrigin(1,0));
+            this.txtBet = this.add.text(CONFIG.width - 30, footerY + 35, "$0.25", { fontSize: '32px', color: '#ffffff', fontFamily: 'Rye', stroke: '#000', strokeThickness: 3 }).setOrigin(1,0);
+            this.footerGroup.add(this.txtBet);
+
+            this.bonusGroup = this.add.container(0,0).setVisible(false);
+            this.bonusOverlay = this.add.graphics(); 
+            this.bonusOverlay.fillStyle(0x440000, 1); 
+            this.bonusOverlay.fillRect(0, deckY, CONFIG.width, CONFIG.height-deckY);
+            this.bonusGroup.add(this.bonusOverlay);
+            
+            this.lblFreeSpins = this.add.text(CONFIG.width/2, deckY + 250, "", { fontSize: '50px', fontFamily:'Righteous', color: COLORS.text, align: 'center' }).setOrigin(0.5);
+            this.imgFreeSpins = this.add.image(CONFIG.width/2, deckY + 120, 'gen_FREE_SPINS').setOrigin(0.5).setVisible(false);
+            this.bonusGroup.add([this.lblFreeSpins, this.imgFreeSpins]);
+            // Bonus Win text - separate from bonusGroup so it can be on top of everything
+            this.lblBonusWin = this.add.text(CONFIG.width/2, CONFIG.height - 80, "", { fontSize: '40px', fontFamily:'Rye', color: '#00ff00', align: 'center' }).setOrigin(0.5).setDepth(4000).setVisible(false);
+            this.updateText();
+        }
+
+        playClickSound() { if(this.isSfxOn) { if(sfxFlags.click && this.sound.get('sfx_click')) { try { this.sound.play('sfx_click'); } catch(e){} } else { this.soundEngine.playClick(); } } }
+        
+        winCounterTween = null;
+        winCounterValue = 0;
+        
+        animateWinCounter(targetAmount) {
+            if (this.winCounterTween) { this.winCounterTween.stop(); }
+            this.winCounterValue = 0;
+            this.txtWin.setText('$0.00');
+            const duration = Math.min(2000, Math.max(500, targetAmount / 50));
+            this.winCounterTween = this.tweens.add({
+                targets: this,
+                winCounterValue: targetAmount,
+                duration: duration,
+                ease: 'Cubic.out',
+                onUpdate: () => { this.txtWin.setText("$"+(this.winCounterValue/100).toFixed(2)); },
+                onComplete: () => { this.txtWin.setText("$"+(targetAmount/100).toFixed(2)); this.winCounterTween = null; }
+            });
+            this.tweens.add({ targets: this.txtWin, scale: 1.15, duration: 150, yoyo: true, repeat: 2, ease: 'Sine.inOut' });
+        }
+        
+        bonusWinCounterTween = null;
+        bonusWinCounterValue = 0;
+        
+        animateBonusWinCounter(fromAmount, toAmount) {
+            if (this.bonusWinCounterTween) { this.bonusWinCounterTween.stop(); }
+            this.bonusWinCounterValue = fromAmount;
+            const winDiff = toAmount - fromAmount;
+            const duration = Math.min(1500, Math.max(400, winDiff / 50));
+            this.bonusWinCounterTween = this.tweens.add({
+                targets: this,
+                bonusWinCounterValue: toAmount,
+                duration: duration,
+                ease: 'Cubic.out',
+                onUpdate: () => { this.lblBonusWin.setText(["BONUS WIN", "$"+(this.bonusWinCounterValue/100).toFixed(2)]); },
+                onComplete: () => { this.lblBonusWin.setText(["BONUS WIN", "$"+(toAmount/100).toFixed(2)]); this.bonusWinCounterTween = null; }
+            });
+            this.tweens.add({ targets: this.lblBonusWin, scale: 1.1, duration: 100, yoyo: true, repeat: 1, ease: 'Sine.inOut' });
+        }
+        
+        cycleDenom() { if(this.state === 'IDLE' && !this.isAutoSpinning) { this.denom = [1,5,10,25][([1,5,10,25].indexOf(this.denom)+1)%4]; this.btnDenom.mainText.setText(this.denom<100?this.denom+"¢":"$"+this.denom/100); this.playClickSound(); this.updateText(); } }
+        setBet(m) { if(this.state === 'IDLE' && !this.isAutoSpinning) { this.betMultiplier = m; this.playClickSound(); this.updateText(); this.betBtns.forEach(b=>b.setActiveState(false)); this.betBtns.find(b=>b.mainText.text==m+"x").setActiveState(true); } }
+        updateText() { this.txtBet.setText("$"+(CONFIG.fixedLines*this.betMultiplier*this.denom/100).toFixed(2)); this.txtCash.setText("$"+(this.credits/100).toFixed(2)); }
+        toggleBonusUI(active) { 
+            this.controlsGroup.setVisible(!active); 
+            this.bonusGroup.setVisible(active);
+            this.lblBonusWin.setVisible(active);
+        }
+        toggleAuto() { this.isAutoSpinning = !this.isAutoSpinning; this.btnAuto.setActiveState(this.isAutoSpinning); if(this.isAutoSpinning && this.state === 'IDLE') this.handleSpin(); }
+        
+        updateBonusUI() { 
+            const currentSpin = Math.min(this.freeSpinsTotal, (this.freeSpinsTotal - this.freeSpinsLeft) + 1);
+            const freeSpinColors = this.extractedColors['gen_FREE_SPINS'];
+            if (freeSpinColors) {
+                this.bonusOverlay.clear();
+                this.bonusOverlay.fillGradientStyle(freeSpinColors.tl, freeSpinColors.tr, freeSpinColors.bl, freeSpinColors.br, 1);
+                this.bonusOverlay.fillRect(0, 850, CONFIG.width, CONFIG.height-850);
+            }
+            const deckTop = 850;
+            if (this.textures.exists('gen_FREE_SPINS')) {
+                this.imgFreeSpins.setVisible(true);
+                const scale = Math.min(500 / this.imgFreeSpins.width, 200 / this.imgFreeSpins.height);
+                this.imgFreeSpins.setScale(scale);
+                this.imgFreeSpins.setY(deckTop + 120);
+                this.lblFreeSpins.setText(currentSpin + " OF " + this.freeSpinsTotal);
+                this.lblFreeSpins.setY(deckTop + 250);
+                this.lblFreeSpins.setFontSize('50px');
+            } else {
+                this.imgFreeSpins.setVisible(false);
+                this.lblFreeSpins.setText("FREE SPIN\n" + currentSpin + " OF " + this.freeSpinsTotal);
+                this.lblFreeSpins.setY(deckTop + 150);
+                this.lblFreeSpins.setFontSize('40px');
+            }
+            this.lblBonusWin.setText(["BONUS WIN", "$"+(this.totalBonusWin/100).toFixed(2)]);
+            this.lblBonusWin.setY(CONFIG.height - 80);
+        }
+
+        handleSpin() { /* Same logic */
+            this.soundEngine.tryResume();
+            if(this.state === 'IDLE') {
+                const cost = CONFIG.fixedLines * this.betMultiplier * this.denom;
+                if(this.credits < cost) { this.isAutoSpinning = false; this.btnAuto.setActiveState(false); return; }
+                this.credits -= cost; this.updateText(); this.startSpin(false);
+            } else if (this.state === 'SPINNING') { this.instantStop(); } else if (this.state === 'WIN_SHOW') { this.clearWinCycle(); this.state = 'IDLE'; this.handleSpin(); }
+        }
+        startSpin(isFree) {
+            this.state = isFree ? 'BONUS_SPIN' : 'SPINNING';
+            if(!isFree) { this.txtWin.setText("$0.00"); this.btnSpin.setText("STOP"); } else { this.updateBonusUI(); }
+            this.clearWinCycle(); this.stopTimers.forEach(t => t.remove()); this.stopTimers = [];
+            this.grid = [];
+            for(let c=0; c<CONFIG.reelCount; c++) {
+                const stripIdx = Math.floor(Math.random() * REEL_STRIP.length); let col = [];
+                for(let r=0; r<CONFIG.rowCount; r++) { col.push(SYMBOL_DEFS.find(s => s.id === REEL_STRIP[(stripIdx + r) % REEL_STRIP.length])); }
+                this.grid.push(col);
+            }
+            let scatterCount = 0;
+            this.reels.forEach((r, i) => {
+                let delay = 400 + (i * 200); if (scatterCount >= 2) { delay += 2000; r.isTeasing = true; } else { r.isTeasing = false; }
+                if (this.grid[i].some(s => s.isScatter)) scatterCount++;
+                r.sprites.forEach(s => s.setTexture('sym_blur_' + s.texture.key.replace('sym_','').replace('blur_','')));
+                if(r.tween) r.tween.stop();
+                r.tween = this.tweens.add({
+                    targets: r.container, y: CONFIG.offsetY + CONFIG.symbolSize, duration: 80, repeat: -1,
+                    onRepeat: () => { r.container.y = CONFIG.offsetY; r.sprites.forEach(s => { if(s.y < 0 || s.y > 300) s.setTexture('sym_blur_'+SYMBOL_DEFS[Math.floor(Math.random()*SYMBOL_DEFS.length)].id); }); }
+                });
+                const timer = this.time.delayedCall(delay, () => { if(this.state.includes('SPIN')) { if(r.isTeasing) this.soundEngine.playTease(); this.stopReel(i); } });
+                this.stopTimers.push(timer);
+            });
+            
+            // PLAY SPIN SFX
+            if (sfxFlags.spin && this.isSfxOn) { 
+                try { 
+                    if (this.sound.get('sfx_spin')) {
+                        this.sound.stopByKey('sfx_spin'); 
+                        this.sound.play('sfx_spin', { loop: true }); // Loop
+                    }
+                } catch(e) {} 
+            }
+        }
+        stopReel(i) {
+            const r = this.reels[i]; if(r.tween) r.tween.stop(); r.tween = null;
+            r.sprites.forEach(s => s.setTexture(s.texture.key.replace('blur_', '')));
+            r.sprites[1].setTexture('sym_' + this.grid[i][0].id); r.sprites[2].setTexture('sym_' + this.grid[i][1].id); r.sprites[3].setTexture('sym_' + this.grid[i][2].id);
+            if (this.grid[i].some(s => s.isScatter)) {
+                if (this.isSfxOn) { if(sfxFlags.scatter && this.sound.get('sfx_scatter')) { try { this.sound.play('sfx_scatter'); } catch(e){} } else { this.soundEngine.playScatter(); } }
+                const scatterSprite = r.sprites[1 + this.grid[i].findIndex(s => s.isScatter)];
+                this.tweens.add({ targets: scatterSprite, scale: 1.5, duration: 200, yoyo: true });
+            } else { 
+                // Play Stop SFX if available, else procedural
+                if (sfxFlags.stop && this.isSfxOn) { 
+                    try { this.sound.play('sfx_stop'); } catch(e) {} 
+                } else if (this.isSfxOn) { 
+                    this.soundEngine.playStop(i); 
+                }
+            }
+            
+            // STOP SPIN SOUND IF LAST REEL
+            if (i === CONFIG.reelCount - 1) {
+                try { if (this.sound.get('sfx_spin')) this.sound.stopByKey('sfx_spin'); } catch(e) {}
+            }
+
+            r.container.y = CONFIG.offsetY - 50;
+            this.tweens.add({ targets: r.container, y: CONFIG.offsetY, duration: 350, ease: 'Back.out', onComplete: () => { if(i===CONFIG.reelCount-1) this.evaluateWin(); } });
+        }
+        instantStop() {
+            this.stopTimers.forEach(t => t.remove()); this.stopTimers = [];
+            this.reels.forEach((r, i) => {
+                if(r.tween) r.tween.stop(); r.tween = null;
+                r.sprites.forEach(s => s.setTexture(s.texture.key.replace('blur_', '')));
+                r.sprites[1].setTexture('sym_' + this.grid[i][0].id); r.sprites[2].setTexture('sym_' + this.grid[i][1].id); r.sprites[3].setTexture('sym_' + this.grid[i][2].id);
+                r.container.y = CONFIG.offsetY;
+            });
+            // Stop spin sound immediately
+            try { if (this.sound.get('sfx_spin')) this.sound.stopByKey('sfx_spin'); } catch(e) {}
+            
+            // Play jam sound when stopping mid-spin
+            if (this.isSfxOn) {
+                if(sfxFlags.jam && this.sound.get('sfx_jam')) {
+                    try { this.sound.play('sfx_jam'); } catch(e) {}
+                }
+            }
+            
+            this.cameras.main.shake(100,0.005); this.evaluateWin();
+        }
+        evaluateWin() {
+            if(this.state === 'SPINNING') this.btnSpin.setText("SPIN");
+            this.winLines = []; let roundWin = 0; const multiplier = (this.freeSpinsTotal > 0) ? 3 : 1;
+            CONFIG.paylines.forEach((line, lineIdx) => {
+                const syms = line.map((row, col) => this.grid[col][row]); const first = syms[0]; let count = 1;
+                for(let i=1; i<syms.length; i++) { if((syms[i].id === first.id || syms[i].isWild) && !first.isScatter) count++; else break; }
+                if(count >= 3) {
+                    const pay = first.val * (count-2) * this.betMultiplier * this.denom * multiplier;
+                    roundWin += pay; this.winLines.push({ lineIdx, coords: line, count });
+                }
+            });
+            const scatterCount = this.grid.flat().filter(s => s.isScatter).length;
+            if (scatterCount >= 3) {
+                if(this.state === 'SPINNING') { this.triggerBonus(); this.isAutoSpinning = false; this.btnAuto.setActiveState(false); return; }
+                else { 
+                    this.freeSpinsLeft += 10;
+                    this.freeSpinsTotal += 10; 
+                    this.showPopup("RETRIGGER!", "+10 FREE SPINS", 2000, null, 'gen_FREE_SPINS');
+                    if (this.isSfxOn) { if(sfxFlags.bonusTrigger && this.sound.get('sfx_bonustrigger')) { try { this.sound.play('sfx_bonustrigger'); } catch(e){} } else { this.soundEngine.playBonusStart(); } } 
+                }
+            }
+            if (roundWin > 0) { this.state = 'WIN_SHOW'; } else { this.state = 'IDLE'; }
+            if(roundWin > 0) {
+                if(this.freeSpinsTotal > 0) { 
+                    const previousBonusWin = this.totalBonusWin;
+                    this.totalBonusWin += roundWin; 
+                    this.credits += roundWin;
+                    this.animateBonusWinCounter(previousBonusWin, this.totalBonusWin);
+                } else { 
+                    this.credits += roundWin; 
+                }
+                this.updateText(); 
+                if(!this.state.includes('BONUS')) { this.animateWinCounter(roundWin); }
+                this.soundEngine.playWin(); 
+                
+                // Play Win SFX
+                const totalBet = CONFIG.fixedLines * this.betMultiplier * this.denom;
+                const isBigWin = roundWin >= totalBet * 20;
+
+                if (this.isSfxOn) {
+                    if (isBigWin && sfxFlags.bigWin) { try { this.sound.play('sfx_bigwin'); } catch(e) {} }
+                    else if (!isBigWin && sfxFlags.win) { try { this.sound.play('sfx_win'); } catch(e) {} }
+                    else { this.soundEngine.playWin(); }
+                }
+
+                if (roundWin >= totalBet * 20) this.showPopup("BIG WIN", "$"+(roundWin/100).toFixed(2), 10000, null, 'gen_BIG_WIN');
+                this.startWinCycle();
+            }
+            if(this.freeSpinsTotal > 0) { const delay = (roundWin > 0) ? 2000 : 1000; this.time.delayedCall(delay, () => this.nextFreeSpin()); } 
+            else if(this.isAutoSpinning && this.state === 'IDLE') { const delay = (roundWin > 0) ? 2000 : 1000; this.time.delayedCall(delay, () => this.handleSpin()); }
+        }
+        triggerBonus() {
+            this.state = 'BONUS_INTRO'; this.freeSpinsTotal = 10; this.freeSpinsLeft = 10; this.totalBonusWin = 0;
+            if (this.isSfxOn) { if(sfxFlags.bonusTrigger && this.sound.get('sfx_bonustrigger')) { try { this.sound.play('sfx_bonustrigger'); } catch(e){} } else { this.soundEngine.playBonusStart(); } }
+            this.applyBonusColors();
+            this.toggleBonusUI(true);
+            this.showPopup("FREE SPINS", "10 FREE SPINS", 3000, () => { this.setBgColor(true); this.nextFreeSpin(); }, 'gen_FREE_SPINS');
+        }
+        applyBonusColors() {
+            const freeSpinColors = this.extractedColors['gen_FREE_SPINS'];
+            if (freeSpinColors) {
+                this.bonusOverlay.clear();
+                this.bonusOverlay.fillGradientStyle(freeSpinColors.tl, freeSpinColors.tr, freeSpinColors.bl, freeSpinColors.br, 1);
+                this.bonusOverlay.fillRect(0, 850, CONFIG.width, CONFIG.height - 850);
+            }
+        }
+        nextFreeSpin() {
+            if(this.freeSpinsLeft > 0) { this.startSpin(true); this.freeSpinsLeft--; } else { this.endBonus(); }
+        }
+        endBonus() {
+            this.state = 'IDLE'; this.freeSpinsTotal = 0; this.setBgColor(false);
+            this.showPopup("BONUS COMPLETE", "$"+(this.totalBonusWin/100).toFixed(2), 4000, () => {
+                this.toggleBonusUI(false); this.txtWin.setText("BONUS: $"+(this.totalBonusWin/100).toFixed(2));
+                if(this.isAutoSpinning) { this.time.delayedCall(1000, () => this.handleSpin()); }
+            }, 'gen_FREE_SPINS');
+        }
+        startWinCycle() {
+            if(this.winLines.length === 0) return; let idx = 0;
+            const show = () => {
+                if(this.state !== 'WIN_SHOW' && !this.state.includes('BONUS')) return;
+                this.winGraphics.clear(); const win = this.winLines[idx];
+                this.reels.forEach(r => r.sprites.forEach(s => { s.clearTint(); }));
+                for(let i=0; i<win.count; i++) {
+                    const s = this.reels[i].sprites[win.coords[i]+1];
+                    this.winGraphics.lineStyle(6, COLORS.gold, 1);
+                    this.winGraphics.strokeRoundedRect(s.parentContainer.x - 65, s.parentContainer.y + s.y - 65, 130, 130, 10);
+                    this.tweens.add({ targets: s, scale: 1.15, duration: 250, yoyo: true });
+                    this.sparkleEmitter.explode(10, s.parentContainer.x, s.y + s.parentContainer.y);
+                }
+                this.winGraphics.beginPath(); this.winGraphics.lineStyle(8, COLORS.gold, 0.5); 
+                win.coords.forEach((row, col) => {
+                    const x = CONFIG.offsetX + (CONFIG.reelWidth/2) + (col * CONFIG.reelWidth);
+                    const y = CONFIG.offsetY + (CONFIG.symbolSize/2) + (row * CONFIG.symbolSize);
+                    if(col===0) this.winGraphics.moveTo(x, y); else this.winGraphics.lineTo(x, y);
+                });
+                this.winGraphics.strokePath(); this.winGraphics.lineStyle(4, COLORS.accent, 1.0); this.winGraphics.strokePath();
+                idx = (idx + 1) % this.winLines.length;
+                this.winTimer = this.time.delayedCall(1500, show);
+            }; show();
+        }
+        showPopup(title, sub, duration, onComplete, imageKey) {
+            this.popupLayer.setVisible(true).setScale(0); 
+            this.isCelebrating = false;
+            if (this.coinEmitter) this.coinEmitter.stop();
+            this.popBg.clear();
+            if (imageKey && this.extractedColors[imageKey]) {
+                const c = this.extractedColors[imageKey];
+                this.popBg.fillGradientStyle(c.tl, c.tr, c.bl, c.br, 0.95);
+            } else { this.popBg.fillStyle(0x000000, 0.95); }
+            this.popBg.fillRoundedRect(-300, -175, 600, 350, 20);
+            this.popBg.lineStyle(6, COLORS.gold);
+            this.popBg.strokeRoundedRect(-300, -175, 600, 350, 20);
+
+            if (imageKey && this.textures.exists(imageKey)) {
+                this.popTitle.setVisible(false);
+                this.popImage.setTexture(imageKey).setVisible(true);
+                let maxW = 500; let maxH = 200;
+                if (imageKey === 'gen_BIG_WIN') { maxW = 600; maxH = 300; this.popImage.setY(-80); } else { this.popImage.setY(-50); }
+                const scale = Math.min(maxW / this.popImage.width, maxH / this.popImage.height);
+                this.popImage.setScale(scale);
+            } else {
+                this.popImage.setVisible(false);
+                this.popTitle.setText(title).setVisible(true);
+            }
+            if (imageKey === 'gen_BIG_WIN') {
+                this.isCelebrating = true;
+                this.coinEmitter.setPosition(CONFIG.width/2, CONFIG.height/2 + 100);
+                this.coinEmitter.start();
+                const targetAmt = parseFloat(sub.replace('$',''));
+                this.counterTweenVal = 0;
+                this.popSub.setText("$0.00");
+                this.popSub.setY(100);
+                this.popupLayer.onCompleteCallback = onComplete;
+                this.tweens.add({
+                    targets: this, counterTweenVal: targetAmt, duration: 3000, ease: 'Cubic.out',
+                    onUpdate: () => { this.popSub.setText("$"+this.counterTweenVal.toFixed(2)); },
+                    onComplete: () => { this.time.delayedCall(1000, () => this.stopCelebration(false)); }
+                });
+            } else {
+                this.popSub.setText(sub);
+                if (imageKey) { this.popSub.setY(140); } else { this.popSub.setY(60); }
+                if(duration > 0) { this.time.delayedCall(duration, () => { this.tweens.add({ targets: this.popupLayer, scale: 0, duration: 300, onComplete: () => { this.popupLayer.setVisible(false); if(onComplete) onComplete(); }}); }); }
+            }
+            this.tweens.add({ targets: this.popupLayer, scale: 1, duration: 500, ease: 'Back.out' });
+        }
+        stopCelebration(skipped) {
+            if (!this.isCelebrating) return;
+            this.isCelebrating = false;
+            this.coinEmitter.stop();
+            this.tweens.killTweensOf(this);
+            const cleanup = () => {
+                 this.popupLayer.setVisible(false); this.popupLayer.setScale(0);
+                 if (this.popupLayer.onCompleteCallback) { this.popupLayer.onCompleteCallback(); this.popupLayer.onCompleteCallback = null; }
+            };
+            if (skipped) { cleanup(); } else { this.tweens.add({ targets: this.popupLayer, scale: 0, duration: 300, onComplete: cleanup }); }
+        }
+        clearWinCycle() { if(this.winTimer) this.winTimer.remove(); this.winGraphics.clear(); this.reels.forEach(r => r.sprites.forEach(s => { s.clearTint(); s.setScale(1); })); }
+    }
+    
+    // Config
+    const config = { type: Phaser.AUTO, width: 720, height: 1280, parent: 'game-container', scene: MainScene, scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, transparent: true, audio: { disableWebAudio: false } };
+    
+    // Wait for fonts to load before starting the game
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            new Phaser.Game(config);
+        });
+    } else {
+        // Fallback for older browsers - wait a bit for fonts
+        setTimeout(() => { new Phaser.Game(config); }, 500);
+    }
+</script>
+</body>
+</html>
