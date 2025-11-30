@@ -1,134 +1,63 @@
 [
   {
-    "id": "ancient-egypt-gold",
-    "name": "Ancient Egypt Gold",
-    "logo": "Ancient Egypt Gold/assets/LOGO.png",
-    "folder": "Ancient Egypt Gold"
+    "id": "Fortune Food Truck Rally",
+    "name": "Fortune Food Truck Rally",
+    "logo": "Fortune Food Truck Rally/assets/LOGO.png",
+    "folder": "Fortune Food Truck Rally"
   },
   {
-    "id": "bubble-guppies",
-    "name": "Bubble Guppies",
-    "logo": "Bubble Guppies/assets/LOGO.png",
-    "folder": "Bubble Guppies"
+    "id": "Galactic Heist Squad",
+    "name": "Galactic Heist Squad",
+    "logo": "Galactic Heist Squad/assets/LOGO.png",
+    "folder": "Galactic Heist Squad"
   },
   {
-    "id": "cyberpunk-neon-city",
-    "name": "Cyberpunk Neon City",
-    "logo": "Cyberpunk Neon City/assets/LOGO.png",
-    "folder": "Cyberpunk Neon City"
+    "id": "Garden Gnome Gambling",
+    "name": "Garden Gnome Gambling",
+    "logo": "Garden Gnome Gambling/assets/LOGO.png",
+    "folder": "Garden Gnome Gambling"
   },
   {
-    "id": "forest-gnome-jamboree",
-    "name": "Forest Gnome Jamboree",
-    "logo": "Forest Gnome Jamboree/assets/LOGO.png",
-    "folder": "Forest Gnome Jamboree"
+    "id": "Haunted Candy Factory",
+    "name": "Haunted Candy Factory",
+    "logo": "Haunted Candy Factory/assets/LOGO.png",
+    "folder": "Haunted Candy Factory"
   },
   {
-    "id": "glitched-glow",
-    "name": "Glitched Glow",
-    "logo": "Glitched Glow/assets/LOGO.png",
-    "folder": "Glitched Glow"
+    "id": "Jurassic Gem Hunters",
+    "name": "Jurassic Gem Hunters",
+    "logo": "Jurassic Gem Hunters/assets/LOGO.png",
+    "folder": "Jurassic Gem Hunters"
   },
   {
-    "id": "molten-salt",
-    "name": "Molten Salt",
-    "logo": "Molten Salt/assets/LOGO.png",
-    "folder": "Molten Salt"
+    "id": "Moonlit Tea House",
+    "name": "Moonlit Tea House",
+    "logo": "Moonlit Tea House/assets/LOGO.png",
+    "folder": "Moonlit Tea House"
   },
   {
-    "id": "monkeys",
-    "name": "Monkeys",
-    "logo": "Monkeys/assets/LOGO.png",
-    "folder": "Monkeys"
+    "id": "Mythical Pet Sanctuary",
+    "name": "Mythical Pet Sanctuary",
+    "logo": "Mythical Pet Sanctuary/assets/LOGO.png",
+    "folder": "Mythical Pet Sanctuary"
   },
   {
-    "id": "motherboard-mothership",
-    "name": "Motherboard Mothership",
-    "logo": "Motherboard Mothership/assets/LOGO.png",
-    "folder": "Motherboard Mothership"
+    "id": "Neon Pirate Lagoon",
+    "name": "Neon Pirate Lagoon",
+    "logo": "Neon Pirate Lagoon/assets/LOGO.png",
+    "folder": "Neon Pirate Lagoon"
   },
   {
-    "id": "outlaws-order",
-    "name": "Outlaw's Order",
-    "logo": "Outlaw's Order/assets/LOGO.png",
-    "folder": "Outlaw's Order"
-  },
+    "id": "Pharaoh’s Time-Warp",
+    "name": "Pharaoh’s Time-Warp",
+    "logo": "Pharaoh’s Time-Warp/assets/LOGO.png",
+    "folder": "Pharaoh’s Time-Warp"
+  }
+,
   {
-    "id": "planes",
-    "name": "Planes",
-    "logo": "Planes/assets/LOGO.png",
-    "folder": "Planes"
-  },
-  {
-    "id": "poop-nuggets",
-    "name": "Poop Nuggets",
-    "logo": "Poop Nuggets/assets/LOGO.png",
-    "folder": "Poop Nuggets"
-  },
-  {
-    "id": "ragnarok-riches",
-    "name": "Ragnarok Riches",
-    "logo": "Ragnarok Riches/assets/LOGO.png",
-    "folder": "Ragnarok Riches"
-  },
-  {
-    "id": "retro-8-bit-pixel-art",
-    "name": "Retro 8-bit Pixel Art",
-    "logo": "Retro 8-bit Pixel Art/assets/LOGO.png",
-    "folder": "Retro 8-bit Pixel Art"
-  },
-  {
-    "id": "sarcophagus-secrets",
-    "name": "Sarcophagus Secrets",
-    "logo": "Sarcophagus Secrets/assets/LOGO.png",
-    "folder": "Sarcophagus Secrets"
-  },
-  {
-    "id": "Default",
-    "name": "Slot Machine",
-    "logo": "Default/assets/LOGO.png",
-    "folder": "Default"
-  },
-  {
-    "id": "tequila-gold-rush",
-    "name": "Tequila Gold Rush",
-    "logo": "Tequila Gold Rush/assets/LOGO.png",
-    "folder": "Tequila Gold Rush"
-  },
-  {
-    "id": "the-simpsons",
-    "name": "The Simpsons",
-    "logo": "The Simpsons/assets/LOGO.png",
-    "folder": "The Simpsons"
-  },
-  {
-    "id": "tidal-treasures",
-    "name": "Tidal Treasures",
-    "logo": "Tidal Treasures/assets/LOGO.png",
-    "folder": "Tidal Treasures"
-  },
-  {
-    "id": "underwater-kingdom",
-    "name": "Underwater Kingdom",
-    "logo": "Underwater Kingdom/assets/LOGO.png",
-    "folder": "Underwater Kingdom"
-  },
-  {
-    "id": "viking-mythology",
-    "name": "Viking Mythology",
-    "logo": "Viking Mythology/assets/LOGO.png",
-    "folder": "Viking Mythology"
-  },
-  {
-    "id": "whiskey-wins",
-    "name": "Whiskey Wins",
-    "logo": "Whiskey Wins/assets/LOGO.png",
-    "folder": "Whiskey Wins"
-  },
-  {
-    "id": "wild-west-saloon",
-    "name": "Wild West Saloon",
-    "logo": "Wild West Saloon/assets/LOGO.png",
-    "folder": "Wild West Saloon"
+    "id": "Treasure Train Express",
+    "name": "Treasure Train Express",
+    "logo": "Treasure Train Express/assets/LOGO.png",
+    "folder": "Treasure Train Express"
   }
 ]

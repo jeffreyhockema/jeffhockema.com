@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Freeport Casino</title>
+    <title>Slot Game Demo</title>
     <!-- Preload fonts for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -185,10 +185,105 @@
         }
     }
 
+    // Cookie and encoding helpers for balance and odds mode storage
+    const BalanceCookie = {
+        cookieName: 'slot_balance',
+        secretKey: 0x7A3F9C2E, // Simple XOR key (not secure, just obfuscation)
+        
+        // Simple encoding: XOR with key, then base64
+        encode(data) {
+            // Convert object to JSON string
+            const str = JSON.stringify(data);
+            let encoded = '';
+            for (let i = 0; i < str.length; i++) {
+                const charCode = str.charCodeAt(i);
+                const xor = charCode ^ (this.secretKey >>> (i % 32)) & 0xFF;
+                encoded += String.fromCharCode(xor);
+            }
+            // Base64 encode to make it look more "encoded"
+            try {
+                return btoa(encoded);
+            } catch(e) {
+                return btoa(encoded.replace(/[^\x00-\x7F]/g, "?"));
+            }
+        },
+        
+        // Decode: base64 decode, then XOR
+        decode(encoded) {
+            try {
+                const base64Decoded = atob(encoded);
+                let decoded = '';
+                for (let i = 0; i < base64Decoded.length; i++) {
+                    const charCode = base64Decoded.charCodeAt(i);
+                    const xor = charCode ^ (this.secretKey >>> (i % 32)) & 0xFF;
+                    decoded += String.fromCharCode(xor);
+                }
+                const data = JSON.parse(decoded);
+                // Validate data structure
+                if (data && typeof data === 'object') {
+                    // Validate credits
+                    if (data.credits !== undefined) {
+                        const credits = parseInt(data.credits, 10);
+                        if (isNaN(credits) || credits < 0 || credits > 10000000) {
+                            return null;
+                        }
+                        data.credits = credits;
+                    }
+                    // Validate oddsMode
+                    if (data.oddsMode !== undefined && data.oddsMode !== 'fun' && data.oddsMode !== 'vegas') {
+                        data.oddsMode = 'vegas'; // Default to vegas if invalid
+                    }
+                    return data;
+                }
+                return null;
+            } catch(e) {
+                return null;
+            }
+        },
+        
+        // Set cookie - accepts object with credits and oddsMode
+        setCookie(data, days = 365) {
+            const encoded = this.encode(data);
+            const expires = new Date();
+            expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${this.cookieName}=${encoded};expires=${expires.toUTCString()};path=/`;
+        },
+        
+        // Get cookie - returns object with credits and oddsMode, or null
+        getCookie() {
+            const name = this.cookieName + '=';
+            const decodedCookie = decodeURIComponent(document.cookie);
+            const ca = decodedCookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) === 0) {
+                    const encoded = c.substring(name.length, c.length);
+                    return this.decode(encoded);
+                }
+            }
+            return null;
+        },
+        
+        // Delete cookie
+        deleteCookie() {
+            document.cookie = `${this.cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+        }
+    };
+
     class MainScene extends Phaser.Scene {
         constructor() { 
             super('MainScene'); 
-            this.credits=10000; 
+            // Load balance and odds mode from cookie, or use defaults
+            const savedData = BalanceCookie.getCookie();
+            this.credits = (savedData && savedData.credits !== undefined) ? savedData.credits : 10000;
+            this.oddsMode = (savedData && savedData.oddsMode) ? savedData.oddsMode : 'vegas';
+            // Save to refresh cookie expiry on game start
+            BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
+            // Flag to prevent multiple balance reset popups
+            this.balanceResetPopupShown = false; 
             this.denom=1; 
             this.betMultiplier=1; 
             this.state='IDLE'; 
@@ -202,7 +297,10 @@
             this.extractedColors = {};
             this.hasMusic = true;
             this.sfxFlags = {};
-            this.oddsMode = "vegas";
+            // oddsMode is already set from cookie in constructor, don't override it
+            if (!this.oddsMode) {
+                this.oddsMode = "vegas";
+            }
             this.soundEngine = null;
             this.betBtns=[]; 
             this.reels = []; 
@@ -260,11 +358,6 @@
                     }
                 });
             }
-            
-            // Clear fallback mappings when loading a new machine
-            // This ensures machines with their own audio files use them instead of cached fallbacks
-            this.audioFallbacks = {};
-            this.textureFallbacks = {};
             
             // Load default machine configuration files first (for fallback)
             this.load.json('colors_default', this.defaultMachineFolder + 'colors.json');
@@ -349,12 +442,18 @@
                 this.soundTheme = soundData.soundTheme;
                 this.hasMusic = soundData.hasMusic !== undefined ? soundData.hasMusic : true;
                 this.sfxFlags = soundData.sfxFlags || {};
-                this.oddsMode = soundData.oddsMode || "vegas";
+                // Only set oddsMode from sound.json if not already loaded from cookie
+                if (!this.oddsMode) {
+                    this.oddsMode = soundData.oddsMode || "vegas";
+                }
             } else {
                 // Flat structure - sound.json IS the soundTheme
                 this.hasMusic = true;
                 this.sfxFlags = {"spin":true,"stop":true,"win":true,"bigWin":true,"click":true,"scatter":true,"bonusTrigger":true,"jam":true};
-                this.oddsMode = "vegas";
+                // Only set oddsMode from sound.json if not already loaded from cookie
+                if (!this.oddsMode) {
+                    this.oddsMode = "vegas";
+                }
             }
             
             // Safety check for colorScheme
@@ -467,15 +566,13 @@
             
             // Helper function to get audio key with fallback
             this.getAudioKey = (key) => {
-                // Always check if current machine's audio exists first
-                // This ensures machines with their own audio files use them
-                // even if a fallback was set from a previous machine
-                if (this.cache.audio && this.cache.audio.exists(key)) {
-                    return key;
-                }
                 // Check if we have an audio fallback mapping
                 if (this.audioFallbacks && this.audioFallbacks[key]) {
                     return this.audioFallbacks[key];
+                }
+                // Check if current machine's audio exists
+                if (this.cache.audio && this.cache.audio.exists(key)) {
+                    return key;
                 }
                 // Fall back to default machine's audio
                 const defaultKey = key + '_default';
@@ -544,7 +641,18 @@
             this.load.start();
         }
         
-        initGame() { this.generateTextures(); this.createBackground(); this.createReels(); this.createOverlayLayers(); this.createControls(); this.createBackButton(); this.createSettingsButton(); this.createSettingsPopup(); }
+        initGame() { 
+            this.generateTextures(); 
+            this.createBackground(); 
+            this.createReels(); 
+            this.createOverlayLayers(); 
+            this.createControls(); 
+            this.createBackButton(); 
+            this.createSettingsButton(); 
+            this.createSettingsPopup();
+            // Check balance after everything is initialized
+            this.checkBalanceAndReset();
+        }
         
 
         generateTextures() {
@@ -692,13 +800,56 @@
             
             this.popupLayer.setInteractive(new Phaser.Geom.Rectangle(-300, -200, 600, 400), Phaser.Geom.Rectangle.Contains).on('pointerdown', () => { if (this.isCelebrating) { this.stopCelebration(true); } });
             this.popupLayer.add([this.popBg, this.popTitle, this.popSub, this.popImage]);
+            
+            // Confirmation popup
+            this.confirmPopup = this.add.container(CONFIG.width/2, CONFIG.height/2).setDepth(20001).setVisible(false);
+            this.confirmPopupBg = this.add.graphics();
+            this.confirmPopupTitle = this.add.text(0, -60, "", { fontSize: '40px', fontFamily:'Righteous', color: '#ffdd00', align:'center', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+            this.confirmPopupMessage = this.add.text(0, 0, "", { fontSize: '24px', fontFamily:'Righteous', color: this.COLORS.text, align:'center', stroke:'#000', strokeThickness:2, wordWrap: { width: 400 } }).setOrigin(0.5);
+            
+            // Yes button
+            this.confirmYesBtn = this.add.container(-100, 80);
+            const confirmYesBg = this.add.rectangle(0, 0, 120, 50, 0x00aa00, 0.9);
+            confirmYesBg.setStrokeStyle(2, 0x00ff00);
+            const confirmYesText = this.add.text(0, 0, "YES", { fontSize: '24px', fontFamily:'Righteous', color: '#ffffff', stroke:'#000', strokeThickness:2 }).setOrigin(0.5);
+            this.confirmYesBtn.add([confirmYesBg, confirmYesText]);
+            this.confirmYesBtn.setSize(120, 50);
+            this.confirmYesBtn.setInteractive({ useHandCursor: true });
+            
+            // No button
+            this.confirmNoBtn = this.add.container(100, 80);
+            const confirmNoBg = this.add.rectangle(0, 0, 120, 50, 0xaa0000, 0.9);
+            confirmNoBg.setStrokeStyle(2, 0xff0000);
+            const confirmNoText = this.add.text(0, 0, "NO", { fontSize: '24px', fontFamily:'Righteous', color: '#ffffff', stroke:'#000', strokeThickness:2 }).setOrigin(0.5);
+            this.confirmNoBtn.add([confirmNoBg, confirmNoText]);
+            this.confirmNoBtn.setSize(120, 50);
+            this.confirmNoBtn.setInteractive({ useHandCursor: true });
+            
+            this.confirmPopup.add([this.confirmPopupBg, this.confirmPopupTitle, this.confirmPopupMessage, this.confirmYesBtn, this.confirmNoBtn]);
+            
+            // Alert popup (OK only)
+            this.alertPopup = this.add.container(CONFIG.width/2, CONFIG.height/2).setDepth(20001).setVisible(false);
+            this.alertPopupBg = this.add.graphics();
+            this.alertPopupTitle = this.add.text(0, -60, "", { fontSize: '40px', fontFamily:'Righteous', color: '#ffdd00', align:'center', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+            this.alertPopupMessage = this.add.text(0, 0, "", { fontSize: '24px', fontFamily:'Righteous', color: this.COLORS.text, align:'center', stroke:'#000', strokeThickness:2, wordWrap: { width: 400 } }).setOrigin(0.5);
+            
+            // OK button
+            this.alertOkBtn = this.add.container(0, 80);
+            const alertOkBg = this.add.rectangle(0, 0, 120, 50, 0x00aa00, 0.9);
+            alertOkBg.setStrokeStyle(2, 0x00ff00);
+            const alertOkText = this.add.text(0, 0, "OK", { fontSize: '24px', fontFamily:'Righteous', color: '#ffffff', stroke:'#000', strokeThickness:2 }).setOrigin(0.5);
+            this.alertOkBtn.add([alertOkBg, alertOkText]);
+            this.alertOkBtn.setSize(120, 50);
+            this.alertOkBtn.setInteractive({ useHandCursor: true });
+            
+            this.alertPopup.add([this.alertPopupBg, this.alertPopupTitle, this.alertPopupMessage, this.alertOkBtn]);
         }
         
         createBackButton() {
             const x = 20;
             const y = 20;
-            const iconSize = 32;
-            const iconRadius = 14;
+            const iconSize = 48; // 50% larger: 32 * 1.5 = 48
+            const iconRadius = 21; // 50% larger: 14 * 1.5 = 21
             
             // Create container - position it so left edge aligns with x
             // Container position is its center, so we offset by half the width
@@ -708,20 +859,20 @@
             
             // Create background circle at container center (0, 0)
             const bgBack = this.add.circle(0, 0, iconRadius, 0x333333, 0.9);
-            bgBack.setStrokeStyle(2, 0x888888);
+            bgBack.setStrokeStyle(3, 0x888888); // 50% larger: 2 * 1.5 = 3
             
             // Create back arrow icon using graphics
             const arrowIcon = this.add.graphics();
-            arrowIcon.lineStyle(2.5, 0xffffff, 1);
+            arrowIcon.lineStyle(4, 0xffffff, 1); // 50% larger: 2.5 * 1.5 = 3.75, rounded to 4
             arrowIcon.lineCap = 'round';
             arrowIcon.lineJoin = 'round';
             
-            // Draw left-pointing arrow (chevron style)
+            // Draw left-pointing arrow (chevron style) - scaled 50% larger
             arrowIcon.beginPath();
-            arrowIcon.moveTo(-5, 0);
-            arrowIcon.lineTo(2, -5);
-            arrowIcon.moveTo(-5, 0);
-            arrowIcon.lineTo(2, 5);
+            arrowIcon.moveTo(-7.5, 0); // -5 * 1.5 = -7.5
+            arrowIcon.lineTo(3, -7.5); // 2 * 1.5 = 3, -5 * 1.5 = -7.5
+            arrowIcon.moveTo(-7.5, 0);
+            arrowIcon.lineTo(3, 7.5); // 5 * 1.5 = 7.5
             arrowIcon.strokePath();
             
             // Add to container
@@ -746,8 +897,8 @@
         createSettingsButton() {
             const x = CONFIG.width - 20;
             const y = 20;
-            const iconSize = 32;
-            const iconRadius = 14;
+            const iconSize = 48; // 50% larger: 32 * 1.5 = 48
+            const iconRadius = 21; // 50% larger: 14 * 1.5 = 21
             
             // Create container - position it so right edge aligns with x
             // Container position is its center, so we offset by half the width
@@ -757,16 +908,16 @@
             
             // Create background circle at container center (0, 0)
             const bgSettings = this.add.circle(0, 0, iconRadius, 0x333333, 0.9);
-            bgSettings.setStrokeStyle(2, 0x888888);
+            bgSettings.setStrokeStyle(3, 0x888888); // 50% larger: 2 * 1.5 = 3
             
             // Create gear icon using graphics - standard settings gear shape
             const gearIcon = this.add.graphics();
-            gearIcon.lineStyle(2.5, 0xffffff, 1);
+            gearIcon.lineStyle(4, 0xffffff, 1); // 50% larger: 2.5 * 1.5 = 3.75, rounded to 4
             
-            // Draw gear shape - outer circle with teeth
-            const gearRadius = 8;
+            // Draw gear shape - outer circle with teeth - scaled 50% larger
+            const gearRadius = 12; // 50% larger: 8 * 1.5 = 12
             const numTeeth = 8;
-            const toothDepth = 2;
+            const toothDepth = 3; // 50% larger: 2 * 1.5 = 3
             
             gearIcon.beginPath();
             for (let i = 0; i <= numTeeth * 2; i++) {
@@ -788,8 +939,8 @@
             gearIcon.closePath();
             gearIcon.strokePath();
             
-            // Draw inner circle
-            gearIcon.strokeCircle(0, 0, gearRadius - toothDepth - 1);
+            // Draw inner circle - scaled 50% larger
+            gearIcon.strokeCircle(0, 0, gearRadius - toothDepth - 1.5); // 1 * 1.5 = 1.5
             
             // Add to container
             btnSettings.add([bgSettings, gearIcon]);
@@ -811,7 +962,7 @@
         
         createSettingsPopup() {
             const popupWidth = 500;
-            const popupHeight = 600;
+            const popupHeight = 700;
             const centerX = CONFIG.width / 2;
             const centerY = CONFIG.height / 2;
             
@@ -963,6 +1114,7 @@
             funBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
                 this.playClickSound();
                 this.oddsMode = 'fun';
+                BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
                 funBtnBg.fillColor = this.COLORS.btnActive;
                 funBtnBg.setStrokeStyle(2, 0x00ff00);
                 vegasBtnBg.fillColor = this.COLORS.btnIdle;
@@ -982,10 +1134,40 @@
             vegasBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
                 this.playClickSound();
                 this.oddsMode = 'vegas';
+                BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
                 vegasBtnBg.fillColor = this.COLORS.btnActive;
                 vegasBtnBg.setStrokeStyle(2, 0x00ff00);
                 funBtnBg.fillColor = this.COLORS.btnIdle;
                 funBtnBg.setStrokeStyle(2, 0x666666);
+            });
+            
+            // Reset Balance section
+            const resetBalanceY = 220;
+            const resetBalanceBtn = this.add.container(0, resetBalanceY);
+            const resetBalanceBtnBg = this.add.rectangle(0, 0, 300, 50, 0xcc0000, 0.9);
+            resetBalanceBtnBg.setStrokeStyle(2, 0xff0000);
+            const resetBalanceBtnText = this.add.text(0, 0, "RESET BALANCE TO $100", { 
+                fontSize: '20px', 
+                fontFamily: 'Righteous', 
+                color: '#ffffff',
+                stroke: '#000',
+                strokeThickness: 2
+            }).setOrigin(0.5);
+            resetBalanceBtn.add([resetBalanceBtnBg, resetBalanceBtnText]);
+            resetBalanceBtn.setSize(300, 50);
+            resetBalanceBtn.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                this.playClickSound();
+                this.showConfirmPopup(
+                    "Reset Balance?",
+                    "Are you sure you want to reset your balance to $100?",
+                    () => {
+                        this.credits = 10000; // $100.00 in cents
+                        BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
+                        this.updateText();
+                        this.hideConfirmPopup();
+                        this.hideSettingsPopup();
+                    }
+                );
             });
             
             // Store references
@@ -1003,7 +1185,8 @@
                 settingsBg, title, closeBtn,
                 musicLabel, musicMuteBtn, musicSliderBg, musicSliderFill, musicSliderHandle,
                 sfxLabel, sfxMuteBtn, sfxSliderBg, sfxSliderFill, sfxSliderHandle,
-                difficultyLabel, funBtn, vegasBtn
+                difficultyLabel, funBtn, vegasBtn,
+                resetBalanceBtn
             ]);
             
             // Enable dragging for sliders
@@ -1011,6 +1194,21 @@
         }
         
         showSettingsPopup() {
+            // Update button states to reflect current oddsMode
+            if (this.settingsFunBtnBg && this.settingsVegasBtnBg) {
+                if (this.oddsMode === 'fun') {
+                    this.settingsFunBtnBg.fillColor = this.COLORS.btnActive;
+                    this.settingsFunBtnBg.setStrokeStyle(2, 0x00ff00);
+                    this.settingsVegasBtnBg.fillColor = this.COLORS.btnIdle;
+                    this.settingsVegasBtnBg.setStrokeStyle(2, 0x666666);
+                } else {
+                    this.settingsVegasBtnBg.fillColor = this.COLORS.btnActive;
+                    this.settingsVegasBtnBg.setStrokeStyle(2, 0x00ff00);
+                    this.settingsFunBtnBg.fillColor = this.COLORS.btnIdle;
+                    this.settingsFunBtnBg.setStrokeStyle(2, 0x666666);
+                }
+            }
+            
             this.settingsPopup.setVisible(true).setScale(0);
             this.tweens.add({ 
                 targets: this.settingsPopup, 
@@ -1116,7 +1314,7 @@
         playClickSound() { 
             if(this.isSfxOn) { 
                 const clickKey = this.getAudioKey('sfx_click');
-                if(sfxFlags.click && this.sound.get(clickKey)) { 
+                if(this.sfxFlags.click && this.sound.get(clickKey)) { 
                     try { this.sound.play(clickKey, { volume: this.sfxVolume }); } catch(e){} 
                 } else { 
                     this.soundEngine.playClick(); 
@@ -1216,7 +1414,11 @@
             if(this.state === 'IDLE') {
                 const cost = CONFIG.fixedLines * this.betMultiplier * this.denom;
                 if(this.credits < cost) { this.isAutoSpinning = false; this.btnAuto.setActiveState(false); return; }
-                this.credits -= cost; this.updateText(); this.startSpin(false);
+                this.credits -= cost; 
+                BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
+                this.updateText();
+                this.checkBalanceAndReset();
+                this.startSpin(false);
             } else if (this.state === 'SPINNING') { this.instantStop(); } else if (this.state === 'WIN_SHOW') { this.clearWinCycle(); this.state = 'IDLE'; this.handleSpin(); }
         }
         startSpin(isFree) {
@@ -1264,14 +1466,20 @@
             });
             
             // PLAY SPIN SFX
-            if (sfxFlags.spin && this.isSfxOn) { 
+            if (this.sfxFlags.spin && this.isSfxOn) { 
                 try { 
                     const spinKey = this.getAudioKey('sfx_spin');
-                    if (this.sound.get(spinKey)) {
-                        this.sound.stopByKey(spinKey); 
-                        this.sound.play(spinKey, { loop: true, volume: this.sfxVolume }); // Loop
+                    if (spinKey && this.cache.audio && this.cache.audio.exists(spinKey)) {
+                        // Stop any existing spin sound
+                        if (this.sound.get(spinKey)) {
+                            this.sound.stopByKey(spinKey);
+                        }
+                        // Play the spinning sound with loop
+                        this.sound.play(spinKey, { loop: true, volume: this.sfxVolume });
                     }
-                } catch(e) {} 
+                } catch(e) {
+                    console.warn('Error playing spin sound:', e);
+                } 
             }
         }
         stopReel(i) {
@@ -1293,7 +1501,7 @@
             if (this.grid[i].some(s => s.isScatter)) {
                 if (this.isSfxOn) { 
                     const scatterKey = this.getAudioKey('sfx_scatter');
-                    if(sfxFlags.scatter && this.sound.get(scatterKey)) { 
+                    if(this.sfxFlags.scatter && this.sound.get(scatterKey)) { 
                         try { this.sound.play(scatterKey, { volume: this.sfxVolume }); } catch(e){} 
                     } else { 
                         this.soundEngine.playScatter(); 
@@ -1303,7 +1511,7 @@
                 this.tweens.add({ targets: scatterSprite, scale: 1.5, duration: 200, yoyo: true });
             } else { 
                 // Play Stop SFX if available, else procedural
-                if (sfxFlags.stop && this.isSfxOn) { 
+                if (this.sfxFlags.stop && this.isSfxOn) { 
                     const stopKey = this.getAudioKey('sfx_stop');
                     try { this.sound.play(stopKey, { volume: this.sfxVolume }); } catch(e) {} 
                 } else if (this.isSfxOn) { 
@@ -1350,8 +1558,15 @@
             
             // Play jam sound when stopping mid-spin
             if (this.isSfxOn) {
-                if(sfxFlags.jam && this.sound.get('sfx_jam')) {
-                    try { this.sound.play('sfx_jam', { volume: this.sfxVolume }); } catch(e) {}
+                if(this.sfxFlags.jam) {
+                    try {
+                        const jamKey = this.getAudioKey('sfx_jam');
+                        if (jamKey && this.cache.audio && this.cache.audio.exists(jamKey)) {
+                            this.sound.play(jamKey, { volume: this.sfxVolume });
+                        }
+                    } catch(e) {
+                        console.warn('Error playing jam sound:', e);
+                    }
                 }
             }
             
@@ -1377,7 +1592,7 @@
                     this.showPopup("RETRIGGER!", "+10 FREE SPINS", 2000, null, 'gen_FREE_SPINS');
                     if (this.isSfxOn) { 
                         const bonusKey = this.getAudioKey('sfx_bonustrigger');
-                        if(sfxFlags.bonusTrigger && this.sound.get(bonusKey)) { 
+                        if(this.sfxFlags.bonusTrigger && this.sound.get(bonusKey)) { 
                             try { this.sound.play(bonusKey, { volume: this.sfxVolume }); } catch(e){} 
                         } else { 
                             this.soundEngine.playBonusStart(); 
@@ -1391,11 +1606,14 @@
                     const previousBonusWin = this.totalBonusWin;
                     this.totalBonusWin += roundWin; 
                     this.credits += roundWin;
+                    BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
                     this.animateBonusWinCounter(previousBonusWin, this.totalBonusWin);
                 } else { 
-                    this.credits += roundWin; 
+                    this.credits += roundWin;
+                    BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
                 }
-                this.updateText(); 
+                this.updateText();
+                this.checkBalanceAndReset(); 
                 if(!this.state.includes('BONUS')) { this.animateWinCounter(roundWin); }
                 this.soundEngine.playWin(); 
                 
@@ -1404,11 +1622,11 @@
                 const isBigWin = roundWin >= totalBet * 20;
 
                 if (this.isSfxOn) {
-                    if (isBigWin && sfxFlags.bigWin) { 
+                    if (isBigWin && this.sfxFlags.bigWin) { 
                         const bigWinKey = this.getAudioKey('sfx_bigwin');
                         try { this.sound.play(bigWinKey, { volume: this.sfxVolume }); } catch(e) {} 
                     }
-                    else if (!isBigWin && sfxFlags.win) { 
+                    else if (!isBigWin && this.sfxFlags.win) { 
                         const winKey = this.getAudioKey('sfx_win');
                         try { this.sound.play(winKey, { volume: this.sfxVolume }); } catch(e) {} 
                     }
@@ -1425,7 +1643,7 @@
             this.state = 'BONUS_INTRO'; this.freeSpinsTotal = 10; this.freeSpinsLeft = 10; this.totalBonusWin = 0;
             if (this.isSfxOn) { 
                 const bonusKey = this.getAudioKey('sfx_bonustrigger');
-                if(sfxFlags.bonusTrigger && this.sound.get(bonusKey)) { 
+                if(this.sfxFlags.bonusTrigger && this.sound.get(bonusKey)) { 
                     try { this.sound.play(bonusKey, { volume: this.sfxVolume }); } catch(e){} 
                 } else { 
                     this.soundEngine.playBonusStart(); 
@@ -1537,6 +1755,171 @@
             };
             if (skipped) { cleanup(); } else { this.tweens.add({ targets: this.popupLayer, scale: 0, duration: 300, onComplete: cleanup }); }
         }
+        
+        showConfirmPopup(title, message, onConfirm) {
+            // Draw background
+            this.confirmPopupBg.clear();
+            this.confirmPopupBg.fillStyle(0x000000, 0.95);
+            this.confirmPopupBg.fillRoundedRect(-250, -120, 500, 240, 20);
+            this.confirmPopupBg.lineStyle(4, this.COLORS.gold);
+            this.confirmPopupBg.strokeRoundedRect(-250, -120, 500, 240, 20);
+            
+            // Set text
+            this.confirmPopupTitle.setText(title);
+            this.confirmPopupMessage.setText(message);
+            
+            // Store callback
+            this.confirmPopup.onConfirm = onConfirm;
+            
+            // Remove old event listeners
+            this.confirmYesBtn.removeAllListeners('pointerdown');
+            this.confirmNoBtn.removeAllListeners('pointerdown');
+            
+            // Add event listeners
+            this.confirmYesBtn.on('pointerdown', () => {
+                this.playClickSound();
+                if (this.confirmPopup.onConfirm) {
+                    this.confirmPopup.onConfirm();
+                }
+            });
+            
+            this.confirmNoBtn.on('pointerdown', () => {
+                this.playClickSound();
+                this.hideConfirmPopup();
+            });
+            
+            // Show with animation
+            this.confirmPopup.setVisible(true).setScale(0);
+            this.tweens.add({ 
+                targets: this.confirmPopup, 
+                scale: 1, 
+                duration: 300, 
+                ease: 'Back.out' 
+            });
+            
+            // Add backdrop
+            if (!this.confirmBackdrop) {
+                this.confirmBackdrop = this.add.rectangle(CONFIG.width/2, CONFIG.height/2, CONFIG.width, CONFIG.height, 0x000000, 0.5)
+                    .setDepth(20000)
+                    .setInteractive()
+                    .setScrollFactor(0)
+                    .on('pointerdown', () => {
+                        this.hideConfirmPopup();
+                    });
+            }
+            this.confirmBackdrop.setVisible(true);
+        }
+        
+        hideConfirmPopup() {
+            this.tweens.add({ 
+                targets: this.confirmPopup, 
+                scale: 0, 
+                duration: 200, 
+                ease: 'Power2',
+                onComplete: () => {
+                    this.confirmPopup.setVisible(false);
+                    if (this.confirmBackdrop) {
+                        this.confirmBackdrop.setVisible(false);
+                    }
+                    if (this.confirmPopup.onConfirm) {
+                        this.confirmPopup.onConfirm = null;
+                    }
+                }
+            });
+        }
+        
+        showAlertPopup(title, message, onOk) {
+            // Draw background
+            this.alertPopupBg.clear();
+            this.alertPopupBg.fillStyle(0x000000, 0.95);
+            this.alertPopupBg.fillRoundedRect(-250, -120, 500, 240, 20);
+            this.alertPopupBg.lineStyle(4, this.COLORS.gold);
+            this.alertPopupBg.strokeRoundedRect(-250, -120, 500, 240, 20);
+            
+            // Set text
+            this.alertPopupTitle.setText(title);
+            this.alertPopupMessage.setText(message);
+            
+            // Store callback
+            this.alertPopup.onOk = onOk;
+            
+            // Remove old event listeners
+            this.alertOkBtn.removeAllListeners('pointerdown');
+            
+            // Add event listener
+            this.alertOkBtn.on('pointerdown', () => {
+                this.playClickSound();
+                this.hideAlertPopup();
+                if (this.alertPopup.onOk) {
+                    this.alertPopup.onOk();
+                    this.alertPopup.onOk = null;
+                }
+            });
+            
+            // Show with animation
+            this.alertPopup.setVisible(true).setScale(0);
+            this.tweens.add({ 
+                targets: this.alertPopup, 
+                scale: 1, 
+                duration: 300, 
+                ease: 'Back.out' 
+            });
+            
+            // Add backdrop
+            if (!this.alertBackdrop) {
+                this.alertBackdrop = this.add.rectangle(CONFIG.width/2, CONFIG.height/2, CONFIG.width, CONFIG.height, 0x000000, 0.5)
+                    .setDepth(20000)
+                    .setInteractive()
+                    .setScrollFactor(0)
+                    .on('pointerdown', () => {
+                        // Don't allow closing by clicking outside - must click OK
+                    });
+            }
+            this.alertBackdrop.setVisible(true);
+        }
+        
+        hideAlertPopup() {
+            this.tweens.add({ 
+                targets: this.alertPopup, 
+                scale: 0, 
+                duration: 200, 
+                ease: 'Power2',
+                onComplete: () => {
+                    this.alertPopup.setVisible(false);
+                    if (this.alertBackdrop) {
+                        this.alertBackdrop.setVisible(false);
+                    }
+                    if (this.alertPopup.onOk) {
+                        this.alertPopup.onOk = null;
+                    }
+                }
+            });
+        }
+        
+        checkBalanceAndReset() {
+            // Check if balance is below $0.25 (25 cents)
+            if (this.credits < 25) {
+                // Prevent multiple popups
+                if (this.balanceResetPopupShown) {
+                    return;
+                }
+                this.balanceResetPopupShown = true;
+                
+                // Show alert popup
+                this.showAlertPopup(
+                    "Low Balance",
+                    "Your balance is below $0.25. Your balance will be reset to $100.",
+                    () => {
+                        // Reset balance when OK is clicked
+                        this.credits = 10000; // $100.00 in cents
+                        BalanceCookie.setCookie({ credits: this.credits, oddsMode: this.oddsMode });
+                        this.updateText();
+                        this.balanceResetPopupShown = false;
+                    }
+                );
+            }
+        }
+        
         clearWinCycle() { if(this.winTimer) this.winTimer.remove(); this.winGraphics.clear(); this.reels.forEach(r => r.sprites.forEach(s => { s.clearTint(); s.setScale(1); })); }
     }
     
@@ -1549,8 +1932,6 @@
         preload() {
             this.load.json('machines', 'machines.json');
             this.load.image('menu_logo', 'logo.png');
-            // Load default machine's click sound for hover effects
-            this.load.audio('menu_click', 'Default/assets/click.mp3');
         }
         
         create() {
@@ -1567,7 +1948,7 @@
             
             // Title positioned so half is on logo, half is below
             const title = this.add.text(CONFIG.width/2, logoHeight, "SELECT A MACHINE", {
-                fontSize: '48px',
+                fontSize: '36px', // 25% smaller: 48 * 0.75 = 36
                 fontFamily: 'Righteous',
                 color: '#ffffff',
                 stroke: '#000',
@@ -1768,14 +2149,6 @@
                             scale: 1.05,
                             duration: 200
                         });
-                        // Play default machine's click sound on hover
-                        try {
-                            if (this.cache.audio && this.cache.audio.exists('menu_click')) {
-                                this.sound.play('menu_click', { volume: 0.8 });
-                            }
-                        } catch(e) {
-                            // Ignore errors if sound doesn't exist or can't play
-                        }
                     });
                     card.on('pointerout', () => {
                         card.border.clear();
