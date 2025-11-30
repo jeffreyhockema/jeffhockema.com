@@ -1,0 +1,7 @@
+{
+  "clickWave": "triangle",
+  "motorWave": "square",
+  "winWave": "sawtooth",
+  "pitch": 1.7,
+  "speed": 1.5
+}
