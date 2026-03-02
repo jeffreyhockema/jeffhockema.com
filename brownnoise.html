@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deep Brown Noise - Pure Loop</title>
+    <title>Seamless Brown Noise</title>
     <style>
         :root {
-            --bg-color: #050505;
-            --accent-color: #5c4033;
-            --text-color: #c0c0c0;
+            --bg-color: #080808;
+            --accent-color: #63422b;
+            --text-color: #d1d1d1;
         }
 
         body, html {
             margin: 0; padding: 0; height: 100%;
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: sans-serif;
+            font-family: -apple-system, sans-serif;
             overflow: hidden;
             display: flex; justify-content: center; align-items: center;
         }
@@ -33,26 +33,26 @@
             color: var(--accent-color);
             font-size: 1.4rem; font-weight: bold;
             cursor: pointer;
-            transition: all 0.4s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             outline: none;
             -webkit-tap-highlight-color: transparent;
         }
 
         #master-toggle.playing {
             background: var(--accent-color);
-            color: #000;
+            color: var(--bg-color);
             transform: scale(1.1);
         }
 
         #settings-btn {
             position: absolute; top: 25px; right: 25px;
             background: none; border: none;
-            fill: var(--text-color); opacity: 0.3; cursor: pointer;
+            fill: var(--text-color); opacity: 0.4; cursor: pointer;
         }
 
         #settings-menu {
             position: fixed; bottom: -100%; left: 0; width: 100%;
-            background: #111; padding: 30px 20px;
+            background: #121212; padding: 30px 20px;
             box-sizing: border-box; transition: bottom 0.4s ease;
             border-top: 2px solid var(--accent-color);
             z-index: 100; text-align: center;
@@ -61,15 +61,15 @@
         #settings-menu.open { bottom: 0; }
 
         .control-group { max-width: 400px; margin: 0 auto 20px; text-align: left; }
-        label { display: block; margin-bottom: 8px; font-size: 0.7rem; color: #555; text-transform: uppercase; }
+        label { display: block; margin-bottom: 8px; font-size: 0.7rem; color: #666; letter-spacing: 1px; }
         input[type=range] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
         
         .btn-row { display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin: 0 auto; }
         .ui-btn { 
             background: #222; border: none; color: white; 
-            padding: 14px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+            padding: 12px; border-radius: 8px; cursor: pointer;
         }
-        .apply-btn { background: var(--accent-color); font-weight: bold; color: #000; }
+        .apply-btn { background: var(--accent-color); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -87,16 +87,16 @@
 
     <div id="settings-menu">
         <div class="control-group">
-            <label>Master Volume</label>
+            <label>VOLUME</label>
             <input type="range" id="vol-slider" min="0" max="1" step="0.01">
         </div>
         <div class="control-group">
-            <label>Bass Power</label>
+            <label>BASS POWER</label>
             <input type="range" id="bass-slider" min="-10" max="30" step="1">
         </div>
         <div class="control-group">
-            <label>Muffle (Softness)</label>
-            <input type="range" id="muffle-slider" min="300" max="5000" step="100">
+            <label>MUFFLE (LOW PASS)</label>
+            <input type="range" id="muffle-slider" min="400" max="8000" step="100">
         </div>
         
         <div class="btn-row">
@@ -114,8 +114,9 @@
         let isPlaying = false;
         let switchTimer;
         let activePlayer = 1;
-        const DURATION = 60; // seconds
-        const SWITCH_INTERVAL = 30; // swap players every 30s
+        const DURATION = 15; // Shorter loop as requested
+        const CROSSFADE_START = 10; // Crossfade begins at 10s
+        const FADE_DURATION = 3000; // 3 second crossfade
 
         function setCookie(name, val) { document.cookie = `${name}=${val};max-age=31536000;path=/`; }
         function getCookie(name) { 
@@ -123,14 +124,13 @@
             return v ? v[2] : null;
         }
 
-        async function generateWavBlob() {
+        async function createWav() {
             const bass = parseFloat(document.getElementById('bass-slider').value);
             const muffle = parseFloat(document.getElementById('muffle-slider').value);
             const sr = 44100;
             const ctx = new OfflineAudioContext(1, sr * DURATION, sr);
             const buffer = ctx.createBuffer(1, sr * DURATION, sr);
             const data = buffer.getChannelData(0);
-            
             let lastOut = 0.0;
             for (let i = 0; i < data.length; i++) {
                 let white = Math.random() * 2 - 1;
@@ -138,19 +138,16 @@
                 lastOut = data[i];
                 data[i] *= 3.5;
             }
-
             const source = ctx.createBufferSource();
             source.buffer = buffer;
             const lp = ctx.createBiquadFilter();
             lp.type = "lowpass"; lp.frequency.value = muffle;
             const bs = ctx.createBiquadFilter();
             bs.type = "lowshelf"; bs.frequency.value = 200; bs.gain.value = bass;
-
             source.connect(lp); lp.connect(bs); bs.connect(ctx.destination);
             source.start();
             const rendered = await ctx.startRendering();
             
-            // Standard WAV Header construction
             let len = rendered.length * 2 + 44, buf = new ArrayBuffer(len), view = new DataView(buf), pos = 0;
             const setU32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
             const setU16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
@@ -165,31 +162,35 @@
             return URL.createObjectURL(new Blob([buf], {type: "audio/wav"}));
         }
 
-        function instantSwitch() {
+        async function runCrossfade() {
             if (!isPlaying) return;
             const masterVol = parseFloat(document.getElementById('vol-slider').value);
+            const incoming = activePlayer === 1 ? a2 : a1;
+            const outgoing = activePlayer === 1 ? a1 : a2;
 
-            if (activePlayer === 1) {
-                // Prep A2
-                a2.currentTime = 0;
-                a2.volume = masterVol;
-                a2.play();
-                // Kill A1 immediately
-                a1.volume = 0;
-                a1.pause();
-                activePlayer = 2;
-            } else {
-                // Prep A1
-                a1.currentTime = 0;
-                a1.volume = masterVol;
-                a1.play();
-                // Kill A2 immediately
-                a2.volume = 0;
-                a2.pause();
-                activePlayer = 1;
-            }
+            incoming.currentTime = 0;
+            incoming.play();
+
+            const startTime = performance.now();
             
-            switchTimer = setTimeout(instantSwitch, SWITCH_INTERVAL * 1000);
+            function step() {
+                if (!isPlaying) return;
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / FADE_DURATION, 1);
+                
+                // Constant Power Crossfade: sqrt(x) and sqrt(1-x)
+                incoming.volume = Math.sqrt(progress) * masterVol;
+                outgoing.volume = Math.sqrt(1 - progress) * masterVol;
+
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    outgoing.pause();
+                    activePlayer = activePlayer === 1 ? 2 : 1;
+                    switchTimer = setTimeout(runCrossfade, (DURATION * 1000) - FADE_DURATION - 1000);
+                }
+            }
+            requestAnimationFrame(step);
         }
 
         toggleBtn.onclick = async function() {
@@ -206,16 +207,15 @@
             this.classList.add('playing');
             isPlaying = true;
             
-            const blobUrl = await generateWavBlob();
-            a1.src = blobUrl;
-            a2.src = blobUrl;
+            const blobUrl = await createWav();
+            a1.src = blobUrl; a2.src = blobUrl;
             
-            const masterVol = parseFloat(document.getElementById('vol-slider').value);
-            a1.volume = masterVol;
+            a1.volume = parseFloat(document.getElementById('vol-slider').value);
             a1.play();
+            activePlayer = 1;
             
-            // Start the switch cycle
-            switchTimer = setTimeout(instantSwitch, SWITCH_INTERVAL * 1000);
+            // Start crossfade cycle before the first 15s ends
+            switchTimer = setTimeout(runCrossfade, (DURATION * 1000) - FADE_DURATION - 1000);
         };
 
         applyBtn.onclick = async () => {
@@ -225,18 +225,16 @@
                 clearTimeout(switchTimer);
                 a1.pause(); a2.pause();
             }
-            applyBtn.textContent = "Updating...";
-            // This forces a re-render of the sound file
-            const blobUrl = await generateWavBlob();
-            a1.src = blobUrl;
-            a2.src = blobUrl;
-            
+            applyBtn.textContent = "Generating...";
+            const blobUrl = await createWav();
+            a1.src = blobUrl; a2.src = blobUrl;
             applyBtn.textContent = "Generate & Apply";
             if (wasPlaying) {
                 isPlaying = true;
                 a1.volume = parseFloat(document.getElementById('vol-slider').value);
                 a1.play();
-                switchTimer = setTimeout(instantSwitch, SWITCH_INTERVAL * 1000);
+                activePlayer = 1;
+                switchTimer = setTimeout(runCrossfade, (DURATION * 1000) - FADE_DURATION - 1000);
             }
             setCookie('bass', document.getElementById('bass-slider').value);
             setCookie('muffle', document.getElementById('muffle-slider').value);
@@ -248,8 +246,8 @@
             setCookie('volume', v);
         };
 
-        document.getElementById('close-btn').onclick = () => document.getElementById('settings-menu').classList.remove('open');
         document.getElementById('settings-btn').onclick = () => document.getElementById('settings-menu').classList.add('open');
+        document.getElementById('close-btn').onclick = () => document.getElementById('settings-menu').classList.remove('open');
 
         window.onload = () => {
             document.getElementById('vol-slider').value = getCookie('volume') || 0.5;
