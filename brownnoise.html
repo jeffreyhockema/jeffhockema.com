@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seamless Brown Noise</title>
+    <title>Pro Seamless Brown Noise</title>
     <style>
         :root {
-            --bg-color: #080808;
-            --accent-color: #63422b;
-            --text-color: #d1d1d1;
+            --bg-color: #000000;
+            --accent-color: #8B4513; /* Saddle Brown */
+            --text-color: #e0e0e0;
         }
 
         body, html {
             margin: 0; padding: 0; height: 100%;
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
             display: flex; justify-content: center; align-items: center;
         }
@@ -23,6 +23,14 @@
         .button-container {
             width: 300px; height: 300px;
             display: flex; justify-content: center; align-items: center;
+            position: relative;
+        }
+
+        /* Pulsing animation to show it's alive */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(139, 69, 19, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(139, 69, 19, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(139, 69, 19, 0); }
         }
 
         #master-toggle {
@@ -31,219 +39,352 @@
             border: 4px solid var(--accent-color);
             background: transparent;
             color: var(--accent-color);
-            font-size: 1.4rem; font-weight: bold;
+            font-size: 1.4rem; font-weight: 800;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s ease;
+            z-index: 10;
             outline: none;
             -webkit-tap-highlight-color: transparent;
         }
 
         #master-toggle.playing {
             background: var(--accent-color);
-            color: var(--bg-color);
-            transform: scale(1.1);
+            color: #fff;
+            transform: scale(1.05);
+            animation: pulse 2s infinite;
+            border-color: #fff;
         }
 
+        #status-indicator {
+            position: absolute;
+            bottom: -40px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #master-toggle.playing + #status-indicator { opacity: 1; }
+
         #settings-btn {
-            position: absolute; top: 25px; right: 25px;
+            position: absolute; top: 30px; right: 30px;
             background: none; border: none;
-            fill: var(--text-color); opacity: 0.4; cursor: pointer;
+            fill: var(--text-color); opacity: 0.5; cursor: pointer;
         }
 
         #settings-menu {
             position: fixed; bottom: -100%; left: 0; width: 100%;
-            background: #121212; padding: 30px 20px;
-            box-sizing: border-box; transition: bottom 0.4s ease;
+            background: #111; padding: 30px 20px;
+            box-sizing: border-box; transition: bottom 0.4s cubic-bezier(0.22, 1, 0.36, 1);
             border-top: 2px solid var(--accent-color);
-            z-index: 100; text-align: center;
+            z-index: 100;
         }
 
         #settings-menu.open { bottom: 0; }
 
-        .control-group { max-width: 400px; margin: 0 auto 20px; text-align: left; }
-        label { display: block; margin-bottom: 8px; font-size: 0.7rem; color: #666; letter-spacing: 1px; }
-        input[type=range] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
+        .control-group { max-width: 400px; margin: 0 auto 25px; }
+        label { display: block; margin-bottom: 10px; font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        input[type=range] { width: 100%; accent-color: var(--accent-color); cursor: pointer; height: 4px; border-radius: 2px; }
         
-        .btn-row { display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin: 0 auto; }
+        .btn-row { display: flex; flex-direction: column; gap: 12px; max-width: 400px; margin: 0 auto; }
         .ui-btn { 
             background: #222; border: none; color: white; 
-            padding: 12px; border-radius: 8px; cursor: pointer;
+            padding: 14px; border-radius: 8px; cursor: pointer; font-size: 1rem;
         }
-        .apply-btn { background: var(--accent-color); font-weight: bold; }
+        .apply-btn { background: var(--accent-color); font-weight: 600; color: #000; }
+        .close-btn { background: transparent; border: 1px solid #333; color: #888; }
     </style>
 </head>
 <body>
 
-    <button id="settings-btn">
-        <svg width="32" height="32" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    <button id="settings-btn" aria-label="Settings">
+        <svg width="28" height="28" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
     </button>
 
     <div class="button-container">
         <button id="master-toggle">PLAY</button>
+        <div id="status-indicator">Hardware Loop Active</div>
     </div>
 
-    <audio id="audio1" loop playsinline></audio>
-    <audio id="audio2" loop playsinline></audio>
+    <audio id="audio1" loop playsinline crossorigin="anonymous"></audio>
+    <audio id="audio2" loop playsinline crossorigin="anonymous"></audio>
 
     <div id="settings-menu">
         <div class="control-group">
-            <label>VOLUME</label>
+            <label>Master Volume</label>
             <input type="range" id="vol-slider" min="0" max="1" step="0.01">
         </div>
         <div class="control-group">
-            <label>BASS POWER</label>
-            <input type="range" id="bass-slider" min="-10" max="30" step="1">
+            <label>Bass Depth</label>
+            <input type="range" id="bass-slider" min="-5" max="30" step="1">
         </div>
         <div class="control-group">
-            <label>MUFFLE (LOW PASS)</label>
-            <input type="range" id="muffle-slider" min="400" max="8000" step="100">
+            <label>Softness (Muffle)</label>
+            <input type="range" id="muffle-slider" min="200" max="4000" step="50">
         </div>
         
         <div class="btn-row">
             <button class="ui-btn apply-btn" id="apply-btn">Generate & Apply</button>
-            <button class="ui-btn" id="close-btn">Done</button>
+            <button class="ui-btn close-btn" id="close-btn">Close</button>
         </div>
     </div>
 
     <script>
+        // --- CONFIG ---
+        const LOOP_DURATION = 15; // Seconds
+        const FADE_DURATION = 3;  // Seconds
+        
+        // --- STATE ---
+        let audioCtx;
+        let sourceNode1, sourceNode2;
+        let gainNode1, gainNode2; // The hardware faders
+        let isPlaying = false;
+        let activePlayer = 1; 
+        let switchTimer;
+        let fadeCurve, fadeCurveInverse;
+
         const a1 = document.getElementById('audio1');
         const a2 = document.getElementById('audio2');
         const toggleBtn = document.getElementById('master-toggle');
         const applyBtn = document.getElementById('apply-btn');
-        
-        let isPlaying = false;
-        let switchTimer;
-        let activePlayer = 1;
-        const DURATION = 15; // Shorter loop as requested
-        const CROSSFADE_START = 10; // Crossfade begins at 10s
-        const FADE_DURATION = 3000; // 3 second crossfade
 
+        // --- COOKIES ---
         function setCookie(name, val) { document.cookie = `${name}=${val};max-age=31536000;path=/`; }
         function getCookie(name) { 
             let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
             return v ? v[2] : null;
         }
 
-        async function createWav() {
+        // --- AUDIO ENGINE ---
+
+        // Pre-calculate Equal Power Curves (Cosine/Sine)
+        // This ensures volume sum is always 1.0 (flat), not 0.7 or 1.4
+        function initFadeCurves() {
+            const resolution = 100;
+            fadeCurve = new Float32Array(resolution);
+            fadeCurveInverse = new Float32Array(resolution);
+            for (let i = 0; i < resolution; i++) {
+                const x = i / (resolution - 1);
+                // Cosine equal-power curve
+                fadeCurve[i] = Math.cos(x * 0.5 * Math.PI);        // Fading OUT (1 -> 0)
+                fadeCurveInverse[i] = Math.sin(x * 0.5 * Math.PI); // Fading IN (0 -> 1)
+            }
+        }
+
+        function initAudioContext() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            
+            // Create inputs from the <audio> tags
+            sourceNode1 = audioCtx.createMediaElementSource(a1);
+            sourceNode2 = audioCtx.createMediaElementSource(a2);
+
+            // Create individual gain nodes (Faders)
+            gainNode1 = audioCtx.createGain();
+            gainNode2 = audioCtx.createGain();
+
+            // Connect graph: Source -> Gain -> Master
+            sourceNode1.connect(gainNode1);
+            sourceNode2.connect(gainNode2);
+            gainNode1.connect(audioCtx.destination);
+            gainNode2.connect(audioCtx.destination);
+
+            // Initial state: Gain 1 is UP, Gain 2 is SILENT
+            gainNode1.gain.value = 1;
+            gainNode2.gain.value = 0;
+            
+            initFadeCurves();
+        }
+
+        async function generateWavBlob() {
             const bass = parseFloat(document.getElementById('bass-slider').value);
             const muffle = parseFloat(document.getElementById('muffle-slider').value);
             const sr = 44100;
-            const ctx = new OfflineAudioContext(1, sr * DURATION, sr);
-            const buffer = ctx.createBuffer(1, sr * DURATION, sr);
+            
+            // Offline render to bake in EQ
+            const ctx = new OfflineAudioContext(1, sr * LOOP_DURATION, sr);
+            
+            // Brown Noise Math
+            const buffer = ctx.createBuffer(1, sr * LOOP_DURATION, sr);
             const data = buffer.getChannelData(0);
             let lastOut = 0.0;
             for (let i = 0; i < data.length; i++) {
                 let white = Math.random() * 2 - 1;
+                // Leaky integrator with high gain compensation
                 data[i] = (lastOut + (0.02 * white)) / 1.02;
                 lastOut = data[i];
                 data[i] *= 3.5;
             }
+
             const source = ctx.createBufferSource();
             source.buffer = buffer;
+            
+            // Apply User EQ
             const lp = ctx.createBiquadFilter();
             lp.type = "lowpass"; lp.frequency.value = muffle;
             const bs = ctx.createBiquadFilter();
             bs.type = "lowshelf"; bs.frequency.value = 200; bs.gain.value = bass;
+
             source.connect(lp); lp.connect(bs); bs.connect(ctx.destination);
             source.start();
+            
             const rendered = await ctx.startRendering();
             
-            let len = rendered.length * 2 + 44, buf = new ArrayBuffer(len), view = new DataView(buf), pos = 0;
-            const setU32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
-            const setU16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
-            setU32(0x46464952); setU32(len - 8); setU32(0x45564157); setU32(0x20746d66);
-            setU32(16); setU16(1); setU16(1); setU32(sr); setU32(sr * 2); setU16(2); setU16(16);
-            setU32(0x61746164); setU32(len - pos - 4);
-            let d_chan = rendered.getChannelData(0);
-            for(let i=0; i<d_chan.length; i++) {
-                let s = Math.max(-1, Math.min(1, d_chan[i]));
-                view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true); pos += 2;
-            }
-            return URL.createObjectURL(new Blob([buf], {type: "audio/wav"}));
+            // Convert to WAV
+            return bufferToWav(rendered);
         }
 
-        async function runCrossfade() {
-            if (!isPlaying) return;
-            const masterVol = parseFloat(document.getElementById('vol-slider').value);
-            const incoming = activePlayer === 1 ? a2 : a1;
-            const outgoing = activePlayer === 1 ? a1 : a2;
+        function bufferToWav(abuffer) {
+            let numOfChan = abuffer.numberOfChannels,
+                length = abuffer.length * numOfChan * 2 + 44,
+                buffer = new ArrayBuffer(length),
+                view = new DataView(buffer),
+                channels = [], i, sample, offset = 0, pos = 0;
 
-            incoming.currentTime = 0;
-            incoming.play();
+            const setU16 = (d) => { view.setUint16(pos, d, true); pos += 2; }
+            const setU32 = (d) => { view.setUint32(pos, d, true); pos += 4; }
 
-            const startTime = performance.now();
-            
-            function step() {
-                if (!isPlaying) return;
-                const elapsed = performance.now() - startTime;
-                const progress = Math.min(elapsed / FADE_DURATION, 1);
-                
-                // Constant Power Crossfade: sqrt(x) and sqrt(1-x)
-                incoming.volume = Math.sqrt(progress) * masterVol;
-                outgoing.volume = Math.sqrt(1 - progress) * masterVol;
+            setU32(0x46464952); setU32(length - 8); setU32(0x45564157); setU32(0x20746d66);
+            setU32(16); setU16(1); setU16(numOfChan); setU32(abuffer.sampleRate);
+            setU32(abuffer.sampleRate * 2 * numOfChan); setU16(numOfChan * 2); setU16(16);
+            setU32(0x61746164); setU32(length - pos - 4);
 
-                if (progress < 1) {
-                    requestAnimationFrame(step);
-                } else {
-                    outgoing.pause();
-                    activePlayer = activePlayer === 1 ? 2 : 1;
-                    switchTimer = setTimeout(runCrossfade, (DURATION * 1000) - FADE_DURATION - 1000);
+            for(i=0; i<abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
+
+            while(pos < length) {
+                for(i=0; i<numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset])); 
+                    sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF);
+                    view.setInt16(pos, sample, true); pos += 2;
                 }
+                offset++;
             }
-            requestAnimationFrame(step);
+            return URL.createObjectURL(new Blob([buffer], {type: "audio/wav"}));
         }
+
+        function scheduleCrossfade() {
+            if (!isPlaying) return;
+            
+            // The magic happens here. We schedule the fade on the hardware clock.
+            // audioCtx.currentTime is reliable even when screen is locked.
+            const now = audioCtx.currentTime;
+            const masterVol = parseFloat(document.getElementById('vol-slider').value);
+
+            // Scale the normalized curve by master volume
+            const curveIn = new Float32Array(fadeCurveInverse.length);
+            const curveOut = new Float32Array(fadeCurve.length);
+            for(let i=0; i<fadeCurve.length; i++) {
+                curveIn[i] = fadeCurveInverse[i] * masterVol;
+                curveOut[i] = fadeCurve[i] * masterVol;
+            }
+
+            if (activePlayer === 1) {
+                // Fade 1 -> 2
+                // A2 starts playing slightly before the fade
+                a2.play();
+                
+                // Hardware Automation
+                gainNode1.gain.setValueCurveAtTime(curveOut, now, FADE_DURATION);
+                gainNode2.gain.setValueCurveAtTime(curveIn, now, FADE_DURATION);
+                
+                activePlayer = 2;
+            } else {
+                // Fade 2 -> 1
+                a1.play();
+                
+                gainNode1.gain.setValueCurveAtTime(curveIn, now, FADE_DURATION);
+                gainNode2.gain.setValueCurveAtTime(curveOut, now, FADE_DURATION);
+                
+                activePlayer = 1;
+            }
+
+            // Schedule next switch. Loop duration minus fade duration to overlap.
+            const nextSwitchTime = (LOOP_DURATION - FADE_DURATION) * 1000;
+            switchTimer = setTimeout(scheduleCrossfade, nextSwitchTime);
+        }
+
+        // --- INTERACTION ---
 
         toggleBtn.onclick = async function() {
+            if (!audioCtx) initAudioContext();
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+
             if (isPlaying) {
+                // Stop
                 isPlaying = false;
                 clearTimeout(switchTimer);
-                a1.pause(); a2.pause();
+                
+                // Ramp down smoothly to avoid click
+                const now = audioCtx.currentTime;
+                gainNode1.gain.linearRampToValueAtTime(0, now + 0.1);
+                gainNode2.gain.linearRampToValueAtTime(0, now + 0.1);
+                
+                setTimeout(() => { a1.pause(); a2.pause(); }, 150);
+                
                 this.textContent = 'PLAY';
                 this.classList.remove('playing');
-                return;
-            }
+                document.getElementById('status-indicator').innerText = "";
+            } else {
+                // Play
+                this.textContent = 'STOP';
+                this.classList.add('playing');
+                document.getElementById('status-indicator').innerText = "Buffering...";
+                
+                if (!a1.src) {
+                    const blob = await generateWavBlob();
+                    a1.src = blob; a2.src = blob;
+                }
 
-            this.textContent = 'STOP';
-            this.classList.add('playing');
-            isPlaying = true;
-            
-            const blobUrl = await createWav();
-            a1.src = blobUrl; a2.src = blobUrl;
-            
-            a1.volume = parseFloat(document.getElementById('vol-slider').value);
-            a1.play();
-            activePlayer = 1;
-            
-            // Start crossfade cycle before the first 15s ends
-            switchTimer = setTimeout(runCrossfade, (DURATION * 1000) - FADE_DURATION - 1000);
+                isPlaying = true;
+                
+                // Reset Gains
+                const masterVol = parseFloat(document.getElementById('vol-slider').value);
+                gainNode1.gain.value = masterVol;
+                gainNode2.gain.value = 0;
+                
+                // Start A1 immediately
+                a1.currentTime = 0;
+                a1.play();
+                activePlayer = 1;
+                document.getElementById('status-indicator').innerText = "Loop Active";
+
+                // Start the cycle
+                const firstSwitchTime = (LOOP_DURATION - FADE_DURATION) * 1000;
+                switchTimer = setTimeout(scheduleCrossfade, firstSwitchTime);
+            }
         };
 
         applyBtn.onclick = async () => {
             const wasPlaying = isPlaying;
-            if (wasPlaying) {
-                isPlaying = false;
-                clearTimeout(switchTimer);
-                a1.pause(); a2.pause();
-            }
-            applyBtn.textContent = "Generating...";
-            const blobUrl = await createWav();
-            a1.src = blobUrl; a2.src = blobUrl;
+            if (wasPlaying) toggleBtn.click(); // Stop first
+            
+            applyBtn.textContent = "Rendering...";
+            const blob = await generateWavBlob();
+            a1.src = blob; a2.src = blob;
             applyBtn.textContent = "Generate & Apply";
-            if (wasPlaying) {
-                isPlaying = true;
-                a1.volume = parseFloat(document.getElementById('vol-slider').value);
-                a1.play();
-                activePlayer = 1;
-                switchTimer = setTimeout(runCrossfade, (DURATION * 1000) - FADE_DURATION - 1000);
-            }
+            
             setCookie('bass', document.getElementById('bass-slider').value);
             setCookie('muffle', document.getElementById('muffle-slider').value);
+            
+            if (wasPlaying) toggleBtn.click(); // Restart
         };
 
+        // Volume slider now updates the hardware gain directly
         document.getElementById('vol-slider').oninput = (e) => {
-            const v = e.target.value;
-            if (activePlayer === 1) a1.volume = v; else a2.volume = v;
-            setCookie('volume', v);
+            const val = parseFloat(e.target.value);
+            setCookie('volume', val);
+            
+            if (!isPlaying || !audioCtx) return;
+            
+            // If we are mid-fade, this might be tricky, but usually 
+            // updating the active node is enough for perception.
+            if (activePlayer === 1) {
+                gainNode1.gain.setTargetAtTime(val, audioCtx.currentTime, 0.1);
+            } else {
+                gainNode2.gain.setTargetAtTime(val, audioCtx.currentTime, 0.1);
+            }
         };
 
         document.getElementById('settings-btn').onclick = () => document.getElementById('settings-menu').classList.add('open');
@@ -251,8 +392,8 @@
 
         window.onload = () => {
             document.getElementById('vol-slider').value = getCookie('volume') || 0.5;
-            document.getElementById('bass-slider').value = getCookie('bass') || 15;
-            document.getElementById('muffle-slider').value = getCookie('muffle') || 1500;
+            document.getElementById('bass-slider').value = getCookie('bass') || 10;
+            document.getElementById('muffle-slider').value = getCookie('muffle') || 1000;
         };
     </script>
 </body>
