@@ -6,8 +6,8 @@
     <title>Seamless Brown Noise</title>
     <style>
         :root {
-            --bg-color: #0a0a0a;
-            --accent-color: #7d4e24;
+            --bg-color: #080808;
+            --accent-color: #63422b;
             --text-color: #d1d1d1;
         }
 
@@ -35,6 +35,7 @@
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         #master-toggle.playing {
@@ -51,7 +52,7 @@
 
         #settings-menu {
             position: fixed; bottom: -100%; left: 0; width: 100%;
-            background: #161616; padding: 30px 20px;
+            background: #121212; padding: 30px 20px;
             box-sizing: border-box; transition: bottom 0.4s ease;
             border-top: 2px solid var(--accent-color);
             z-index: 100; text-align: center;
@@ -60,12 +61,12 @@
         #settings-menu.open { bottom: 0; }
 
         .control-group { max-width: 400px; margin: 0 auto 20px; text-align: left; }
-        label { display: block; margin-bottom: 8px; font-size: 0.7rem; color: #777; letter-spacing: 1px; }
+        label { display: block; margin-bottom: 8px; font-size: 0.7rem; color: #666; letter-spacing: 1px; }
         input[type=range] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
         
         .btn-row { display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin: 0 auto; }
         .ui-btn { 
-            background: #2a2a2a; border: none; color: white; 
+            background: #222; border: none; color: white; 
             padding: 12px; border-radius: 8px; cursor: pointer;
         }
         .apply-btn { background: var(--accent-color); font-weight: bold; }
@@ -80,9 +81,6 @@
     <div class="button-container">
         <button id="master-toggle">PLAY</button>
     </div>
-
-    <audio id="audio-a"></audio>
-    <audio id="audio-b"></audio>
 
     <div id="settings-menu">
         <div class="control-group">
@@ -99,19 +97,15 @@
         </div>
         
         <div class="btn-row">
-            <button class="ui-btn apply-btn" id="apply-btn">Apply & Seamless Loop</button>
+            <button class="ui-btn apply-btn" id="apply-btn">Apply Settings</button>
             <button class="ui-btn" id="close-btn">Done</button>
         </div>
     </div>
 
     <script>
         const DEFAULTS = { volume: 0.5, bass: 12, muffle: 2500 };
-        const players = [document.getElementById('audio-a'), document.getElementById('audio-b')];
-        let currentPlayerIndex = 0;
+        let audioCtx, source, gainNode, bassFilter, lpFilter;
         let isPlaying = false;
-        let loopTimeout;
-        const LOOP_DURATION = 10; // Seconds
-        const CROSSFADE_TIME = 0.5; // Smooth transition
 
         function setCookie(name, val) { document.cookie = `${name}=${val};max-age=31536000;path=/`; }
         function getCookie(name) { 
@@ -119,140 +113,91 @@
             return v ? v[2] : null;
         }
 
-        async function generateAudioBlob() {
-            const bass = parseFloat(document.getElementById('bass-slider').value);
-            const muffle = parseFloat(document.getElementById('muffle-slider').value);
-            const sampleRate = 44100;
-            const ctx = new OfflineAudioContext(1, sampleRate * LOOP_DURATION, sampleRate);
+        function initAudio() {
+            // Create Audio Context with a fix for iOS locking
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            gainNode = audioCtx.createGain();
+            bassFilter = audioCtx.createBiquadFilter();
+            lpFilter = audioCtx.createBiquadFilter();
 
-            // Noise generation
-            const buffer = ctx.createBuffer(1, sampleRate * LOOP_DURATION, sampleRate);
+            bassFilter.type = "lowshelf";
+            bassFilter.frequency.value = 200;
+            lpFilter.type = "lowpass";
+
+            lpFilter.connect(bassFilter);
+            bassFilter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            updateFromUI();
+        }
+
+        function generateBrownNoiseBuffer() {
+            const bufferSize = audioCtx.sampleRate * 5; // 5 seconds of unique noise
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             let lastOut = 0.0;
-            for (let i = 0; i < data.length; i++) {
+            
+            for (let i = 0; i < bufferSize; i++) {
                 let white = Math.random() * 2 - 1;
                 data[i] = (lastOut + (0.02 * white)) / 1.02;
                 lastOut = data[i];
                 data[i] *= 3.5;
             }
+            return buffer;
+        }
 
-            const source = ctx.createBufferSource();
-            source.buffer = buffer;
+        function updateFromUI() {
+            if (!gainNode) return;
+            gainNode.gain.value = document.getElementById('vol-slider').value;
+            bassFilter.gain.value = document.getElementById('bass-slider').value;
+            lpFilter.frequency.value = document.getElementById('muffle-slider').value;
+        }
 
-            const lp = ctx.createBiquadFilter();
-            lp.type = "lowpass"; lp.frequency.value = muffle;
+        async function start() {
+            if (!audioCtx) initAudio();
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+            source = audioCtx.createBufferSource();
+            source.buffer = generateBrownNoiseBuffer();
+            source.loop = true; // THIS IS THE KEY: Hardware-level seamless loop
             
-            const bs = ctx.createBiquadFilter();
-            bs.type = "lowshelf"; bs.frequency.value = 200; bs.gain.value = bass;
-
-            source.connect(lp); lp.connect(bs); bs.connect(ctx.destination);
-            source.start();
-
-            const rendered = await ctx.startRendering();
-            return bufferToWav(rendered);
-        }
-
-        // Standard WAV conversion
-        function bufferToWav(abuffer) {
-            let numOfChan = abuffer.numberOfChannels, length = abuffer.length * numOfChan * 2 + 44,
-                buffer = new ArrayBuffer(length), view = new DataView(buffer), pos = 0;
-            const setU16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
-            const setU32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
-            setU32(0x46464952); setU32(length - 8); setU32(0x45564157); setU32(0x20746d66);
-            setU32(16); setU16(1); setU16(numOfChan); setU32(abuffer.sampleRate);
-            setU32(abuffer.sampleRate * 2 * numOfChan); setU16(numOfChan * 2); setU16(16);
-            setU32(0x61746164); setU32(length - pos - 4);
-            let offset = 0;
-            while(pos < length) {
-                for(let i=0; i<numOfChan; i++) {
-                    let s = Math.max(-1, Math.min(1, abuffer.getChannelData(i)[offset]));
-                    view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-                    pos += 2;
-                }
-                offset++;
-            }
-            return URL.createObjectURL(new Blob([buffer], {type: "audio/wav"}));
-        }
-
-        async function switchPlayer() {
-            if (!isPlaying) return;
-
-            const nextPlayerIndex = 1 - currentPlayerIndex;
-            const current = players[currentPlayerIndex];
-            const next = players[nextPlayerIndex];
-
-            // Prep next player
-            next.currentTime = 0;
-            next.volume = 0;
-            next.play();
-
-            // Crossfade
-            let steps = 20;
-            let interval = (CROSSFADE_TIME * 1000) / steps;
-            let masterVol = parseFloat(document.getElementById('vol-slider').value);
-
-            for (let i = 1; i <= steps; i++) {
-                if (!isPlaying) break;
-                await new Promise(r => setTimeout(r, interval));
-                next.volume = (i / steps) * masterVol;
-                current.volume = ((steps - i) / steps) * masterVol;
-            }
-
-            current.pause();
-            currentPlayerIndex = nextPlayerIndex;
-
-            // Schedule next switch (slightly before the end of the 10s file)
-            loopTimeout = setTimeout(switchPlayer, (LOOP_DURATION - CROSSFADE_TIME) * 1000);
-        }
-
-        async function startPlayback() {
-            const blob = await generateAudioBlob();
-            players.forEach(p => { p.src = blob; p.volume = 0; });
-            
+            source.connect(lpFilter);
+            source.start(0);
             isPlaying = true;
-            players[currentPlayerIndex].volume = getCookie('volume') || DEFAULTS.volume;
-            players[currentPlayerIndex].play();
-            
-            loopTimeout = setTimeout(switchPlayer, (LOOP_DURATION - CROSSFADE_TIME) * 1000);
         }
 
-        document.getElementById('master-toggle').onclick = async function() {
+        function stop() {
+            if (source) {
+                source.stop();
+                source.disconnect();
+            }
+            isPlaying = false;
+        }
+
+        document.getElementById('master-toggle').onclick = function() {
             if (!isPlaying) {
                 this.textContent = 'STOP';
                 this.classList.add('playing');
-                await startPlayback();
+                start();
             } else {
                 this.textContent = 'PLAY';
                 this.classList.remove('playing');
-                isPlaying = false;
-                clearTimeout(loopTimeout);
-                players.forEach(p => p.pause());
+                stop();
             }
         };
 
-        document.getElementById('apply-btn').onclick = async function() {
-            this.textContent = "Updating...";
-            const wasPlaying = isPlaying;
-            if (wasPlaying) {
-                isPlaying = false;
-                clearTimeout(loopTimeout);
-                players.forEach(p => p.pause());
-            }
-            
+        document.getElementById('apply-btn').onclick = function() {
+            updateFromUI();
             setCookie('bass', document.getElementById('bass-slider').value);
             setCookie('muffle', document.getElementById('muffle-slider').value);
-            
-            if (wasPlaying) await startPlayback();
-            else await generateAudioBlob(); // Just prep it
-            
-            this.textContent = "Apply & Seamless Loop";
+            this.textContent = "Applied!";
+            setTimeout(() => this.textContent = "Apply Settings", 1000);
         };
 
-        // UI Handlers
         document.getElementById('vol-slider').oninput = (e) => {
-            const val = e.target.value;
-            players[currentPlayerIndex].volume = val;
-            setCookie('volume', val);
+            if (gainNode) gainNode.gain.value = e.target.value;
+            setCookie('volume', e.target.value);
         };
 
         document.getElementById('settings-btn').onclick = () => document.getElementById('settings-menu').classList.add('open');
