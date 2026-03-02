@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Brown Noise</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --accent-color: #a0522d; /* Sienna Brown */
+            --text-color: #f0f0f0;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Fixed the clipping issue by ensuring overflow is visible and using a safe container */
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 300px;
+            height: 300px;
+        }
+
+        #master-toggle {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            border: 4px solid var(--accent-color);
+            background: transparent;
+            color: var(--accent-color);
+            font-size: 1.4rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            outline: none;
+            box-shadow: 0 0 0 rgba(160, 82, 45, 0);
+        }
+
+        #master-toggle:hover {
+            transform: scale(1.1);
+            background: rgba(160, 82, 45, 0.1);
+            box-shadow: 0 0 20px rgba(160, 82, 45, 0.2);
+        }
+
+        #master-toggle.playing {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            transform: scale(1.15); /* Grows without clipping */
+            border-color: #fff;
+        }
+
+        #settings-btn {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            fill: var(--text-color);
+            opacity: 0.5;
+            transition: 0.3s;
+        }
+
+        #settings-btn:hover { opacity: 1; transform: rotate(45deg); }
+
+        #settings-menu {
+            position: fixed;
+            bottom: -100%;
+            left: 0;
+            width: 100%;
+            background: #1e1e1e;
+            padding: 40px 20px;
+            box-sizing: border-box;
+            transition: bottom 0.5s ease;
+            border-top: 3px solid var(--accent-color);
+            z-index: 100;
+            text-align: center;
+        }
+
+        #settings-menu.open { bottom: 0; }
+
+        .control-group {
+            max-width: 400px;
+            margin: 0 auto 25px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: #888;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .ui-btn {
+            background: #333;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .ui-btn:hover { background: #444; }
+        .reset-btn { color: #ff6b6b; }
+    </style>
+</head>
+<body>
+
+    <button id="settings-btn">
+        <svg width="32" height="32" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    </button>
+
+    <div class="button-container">
+        <button id="master-toggle">PLAY</button>
+    </div>
+
+    <div id="settings-menu">
+        <div class="control-group">
+            <label>VOLUME</label>
+            <input type="range" id="vol-slider" min="0" max="1" step="0.01">
+        </div>
+        <div class="control-group">
+            <label>BASS POWER</label>
+            <input type="range" id="bass-slider" min="-20" max="25" step="1">
+        </div>
+        <div class="control-group">
+            <label>MUFFLE (LOW PASS)</label>
+            <input type="range" id="muffle-slider" min="200" max="10000" step="100">
+        </div>
+        
+        <div class="btn-row">
+            <button class="ui-btn reset-btn" id="reset-btn">Reset Defaults</button>
+            <button class="ui-btn" id="close-btn">Done</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG & DEFAULTS ---
+        const DEFAULTS = { volume: 0.5, bass: 5, muffle: 4000 };
+        let audioCtx, brownNoiseNode, gainNode, bassNode, lpFilter;
+        let isPlaying = false;
+
+        // --- COOKIE HELPERS ---
+        function setCookie(name, value) {
+            const date = new Date();
+            date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000)); // 1 year
+            document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+        }
+
+        function getCookie(name) {
+            const val = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return val ? val.pop() : null;
+        }
+
+        // --- AUDIO LOGIC ---
+        function createBrownNoise() {
+            const bufferSize = 4096;
+            let lastOut = 0.0;
+            const node = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+            node.onaudioprocess = (e) => {
+                const output = e.outputBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    output[i] = (lastOut + (0.02 * white)) / 1.02;
+                    lastOut = output[i];
+                    output[i] *= 3.5;
+                }
+            };
+            return node;
+        }
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            brownNoiseNode = createBrownNoise();
+            
+            gainNode = audioCtx.createGain();
+            bassNode = audioCtx.createBiquadFilter();
+            bassNode.type = "lowshelf";
+            bassNode.frequency.value = 200;
+
+            lpFilter = audioCtx.createBiquadFilter();
+            lpFilter.type = "lowpass";
+
+            brownNoiseNode.connect(lpFilter);
+            lpFilter.connect(bassNode);
+            bassNode.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            applySettings();
+        }
+
+        function applySettings() {
+            const vol = getCookie('volume') || DEFAULTS.volume;
+            const bass = getCookie('bass') || DEFAULTS.bass;
+            const muffle = getCookie('muffle') || DEFAULTS.muffle;
+
+            // Update UI
+            document.getElementById('vol-slider').value = vol;
+            document.getElementById('bass-slider').value = bass;
+            document.getElementById('muffle-slider').value = muffle;
+
+            // Update Audio Nodes
+            if(gainNode) gainNode.gain.value = vol;
+            if(bassNode) bassNode.gain.value = bass;
+            if(lpFilter) lpFilter.frequency.value = muffle;
+        }
+
+        // --- INTERACTION ---
+        const toggleBtn = document.getElementById('master-toggle');
+        
+        toggleBtn.addEventListener('click', () => {
+            if (!audioCtx) initAudio();
+            if (!isPlaying) {
+                audioCtx.resume();
+                toggleBtn.textContent = 'STOP';
+                toggleBtn.classList.add('playing');
+            } else {
+                audioCtx.suspend();
+                toggleBtn.textContent = 'PLAY';
+                toggleBtn.classList.remove('playing');
+            }
+            isPlaying = !isPlaying;
+        });
+
+        // Sliders update cookies and audio
+        document.querySelectorAll('input[type=range]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const id = e.target.id.split('-')[0]; // vol, bass, or muffle
+                const val = e.target.value;
+                setCookie(id === 'vol' ? 'volume' : id, val);
+                
+                if (audioCtx) {
+                    if (id === 'vol') gainNode.gain.value = val;
+                    if (id === 'bass') bassNode.gain.value = val;
+                    if (id === 'muffle') lpFilter.frequency.value = val;
+                }
+            });
+        });
+
+        document.getElementById('reset-btn').onclick = () => {
+            setCookie('volume', DEFAULTS.volume);
+            setCookie('bass', DEFAULTS.bass);
+            setCookie('muffle', DEFAULTS.muffle);
+            applySettings();
+        };
+
+        // Menu Toggle
+        document.getElementById('settings-btn').onclick = () => document.getElementById('settings-menu').classList.add('open');
+        document.getElementById('close-btn').onclick = () => document.getElementById('settings-menu').classList.remove('open');
+
+        // Initial load
+        window.onload = applySettings;
+    </script>
+</body>
+</html>
