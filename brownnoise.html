@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seamless Deep Brown</title>
+    <title>Deep Brown Noise - Pure Loop</title>
     <style>
         :root {
             --bg-color: #050505;
@@ -91,7 +91,7 @@
             <input type="range" id="vol-slider" min="0" max="1" step="0.01">
         </div>
         <div class="control-group">
-            <label>Bass (Low Rumble)</label>
+            <label>Bass Power</label>
             <input type="range" id="bass-slider" min="-10" max="30" step="1">
         </div>
         <div class="control-group">
@@ -100,7 +100,7 @@
         </div>
         
         <div class="btn-row">
-            <button class="ui-btn apply-btn" id="apply-btn">Update & Apply</button>
+            <button class="ui-btn apply-btn" id="apply-btn">Generate & Apply</button>
             <button class="ui-btn" id="close-btn">Done</button>
         </div>
     </div>
@@ -113,9 +113,9 @@
         
         let isPlaying = false;
         let switchTimer;
-        let currentActive = 1;
+        let activePlayer = 1;
         const DURATION = 60; // seconds
-        const CROSS_INTERVAL = 30; // seconds between switches
+        const SWITCH_INTERVAL = 30; // swap players every 30s
 
         function setCookie(name, val) { document.cookie = `${name}=${val};max-age=31536000;path=/`; }
         function getCookie(name) { 
@@ -123,7 +123,7 @@
             return v ? v[2] : null;
         }
 
-        async function createBlob() {
+        async function generateWavBlob() {
             const bass = parseFloat(document.getElementById('bass-slider').value);
             const muffle = parseFloat(document.getElementById('muffle-slider').value);
             const sr = 44100;
@@ -150,7 +150,7 @@
             source.start();
             const rendered = await ctx.startRendering();
             
-            // WAV conversion
+            // Standard WAV Header construction
             let len = rendered.length * 2 + 44, buf = new ArrayBuffer(len), view = new DataView(buf), pos = 0;
             const setU32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
             const setU16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
@@ -165,38 +165,31 @@
             return URL.createObjectURL(new Blob([buf], {type: "audio/wav"}));
         }
 
-        async function handleCrossfade() {
+        function instantSwitch() {
             if (!isPlaying) return;
             const masterVol = parseFloat(document.getElementById('vol-slider').value);
-            
-            // Toggle logic: If 1 is playing, fade in 2 and fade out 1
-            if (currentActive === 1) {
-                a2.volume = 0;
-                a2.currentTime = 0;
-                a2.play(); // Start before lock
-                fade(a1, a2, masterVol);
-                currentActive = 2;
-            } else {
-                a1.volume = 0;
-                a1.currentTime = 0;
-                a1.play(); // Start before lock
-                fade(a2, a1, masterVol);
-                currentActive = 1;
-            }
-            switchTimer = setTimeout(handleCrossfade, CROSS_INTERVAL * 1000);
-        }
 
-        function fade(outAud, inAud, targetVol) {
-            const steps = 50;
-            const stepTime = 40; // 2 second crossfade
-            for (let i = 0; i <= steps; i++) {
-                setTimeout(() => {
-                    if (!isPlaying) return;
-                    inAud.volume = (i / steps) * targetVol;
-                    outAud.volume = ((steps - i) / steps) * targetVol;
-                    if (i === steps) outAud.pause();
-                }, i * stepTime);
+            if (activePlayer === 1) {
+                // Prep A2
+                a2.currentTime = 0;
+                a2.volume = masterVol;
+                a2.play();
+                // Kill A1 immediately
+                a1.volume = 0;
+                a1.pause();
+                activePlayer = 2;
+            } else {
+                // Prep A1
+                a1.currentTime = 0;
+                a1.volume = masterVol;
+                a1.play();
+                // Kill A2 immediately
+                a2.volume = 0;
+                a2.pause();
+                activePlayer = 1;
             }
+            
+            switchTimer = setTimeout(instantSwitch, SWITCH_INTERVAL * 1000);
         }
 
         toggleBtn.onclick = async function() {
@@ -213,7 +206,7 @@
             this.classList.add('playing');
             isPlaying = true;
             
-            const blobUrl = await createBlob();
+            const blobUrl = await generateWavBlob();
             a1.src = blobUrl;
             a2.src = blobUrl;
             
@@ -221,28 +214,37 @@
             a1.volume = masterVol;
             a1.play();
             
-            // Set first switch for 30 seconds from now
-            switchTimer = setTimeout(handleCrossfade, CROSS_INTERVAL * 1000);
+            // Start the switch cycle
+            switchTimer = setTimeout(instantSwitch, SWITCH_INTERVAL * 1000);
         };
 
         applyBtn.onclick = async () => {
-            if (isPlaying) {
+            const wasPlaying = isPlaying;
+            if (wasPlaying) {
                 isPlaying = false;
                 clearTimeout(switchTimer);
                 a1.pause(); a2.pause();
-                toggleBtn.textContent = 'PLAY';
-                toggleBtn.classList.remove('playing');
             }
             applyBtn.textContent = "Updating...";
-            await createBlob(); // Just verify it works
-            applyBtn.textContent = "Update & Apply";
+            // This forces a re-render of the sound file
+            const blobUrl = await generateWavBlob();
+            a1.src = blobUrl;
+            a2.src = blobUrl;
+            
+            applyBtn.textContent = "Generate & Apply";
+            if (wasPlaying) {
+                isPlaying = true;
+                a1.volume = parseFloat(document.getElementById('vol-slider').value);
+                a1.play();
+                switchTimer = setTimeout(instantSwitch, SWITCH_INTERVAL * 1000);
+            }
             setCookie('bass', document.getElementById('bass-slider').value);
             setCookie('muffle', document.getElementById('muffle-slider').value);
         };
 
         document.getElementById('vol-slider').oninput = (e) => {
             const v = e.target.value;
-            if (currentActive === 1) a1.volume = v; else a2.volume = v;
+            if (activePlayer === 1) a1.volume = v; else a2.volume = v;
             setCookie('volume', v);
         };
 
