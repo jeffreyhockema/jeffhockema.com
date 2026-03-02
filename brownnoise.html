@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deep Brown Noise</title>
+    <title>Seamless Deep Brown</title>
     <style>
         :root {
             --bg-color: #050505;
@@ -82,7 +82,8 @@
         <button id="master-toggle">PLAY</button>
     </div>
 
-    <audio id="main-audio" loop playsinline></audio>
+    <audio id="audio1" loop playsinline></audio>
+    <audio id="audio2" loop playsinline></audio>
 
     <div id="settings-menu">
         <div class="control-group">
@@ -90,7 +91,7 @@
             <input type="range" id="vol-slider" min="0" max="1" step="0.01">
         </div>
         <div class="control-group">
-            <label>Low End Thump (Bass)</label>
+            <label>Bass (Low Rumble)</label>
             <input type="range" id="bass-slider" min="-10" max="30" step="1">
         </div>
         <div class="control-group">
@@ -99,17 +100,22 @@
         </div>
         
         <div class="btn-row">
-            <button class="ui-btn apply-btn" id="apply-btn">Generate & Apply</button>
+            <button class="ui-btn apply-btn" id="apply-btn">Update & Apply</button>
             <button class="ui-btn" id="close-btn">Done</button>
         </div>
     </div>
 
     <script>
-        const audioEl = document.getElementById('main-audio');
+        const a1 = document.getElementById('audio1');
+        const a2 = document.getElementById('audio2');
         const toggleBtn = document.getElementById('master-toggle');
         const applyBtn = document.getElementById('apply-btn');
         
-        const DEFAULTS = { volume: 0.5, bass: 15, muffle: 1500 };
+        let isPlaying = false;
+        let switchTimer;
+        let currentActive = 1;
+        const DURATION = 60; // seconds
+        const CROSS_INTERVAL = 30; // seconds between switches
 
         function setCookie(name, val) { document.cookie = `${name}=${val};max-age=31536000;path=/`; }
         function getCookie(name) { 
@@ -117,14 +123,12 @@
             return v ? v[2] : null;
         }
 
-        async function createLongNoiseFile() {
+        async function createBlob() {
             const bass = parseFloat(document.getElementById('bass-slider').value);
             const muffle = parseFloat(document.getElementById('muffle-slider').value);
-            const sampleRate = 44100;
-            const duration = 60; // 60 seconds reduces the chance of hearing a gap
-            
-            const ctx = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
-            const buffer = ctx.createBuffer(1, sampleRate * duration, sampleRate);
+            const sr = 44100;
+            const ctx = new OfflineAudioContext(1, sr * DURATION, sr);
+            const buffer = ctx.createBuffer(1, sr * DURATION, sr);
             const data = buffer.getChannelData(0);
             
             let lastOut = 0.0;
@@ -137,7 +141,6 @@
 
             const source = ctx.createBufferSource();
             source.buffer = buffer;
-
             const lp = ctx.createBiquadFilter();
             lp.type = "lowpass"; lp.frequency.value = muffle;
             const bs = ctx.createBiquadFilter();
@@ -145,72 +148,111 @@
 
             source.connect(lp); lp.connect(bs); bs.connect(ctx.destination);
             source.start();
-
             const rendered = await ctx.startRendering();
-            return bufferToWav(rendered);
-        }
-
-        function bufferToWav(abuffer) {
-            let numOfChan = abuffer.numberOfChannels, length = abuffer.length * numOfChan * 2 + 44,
-                buffer = new ArrayBuffer(length), view = new DataView(buffer), pos = 0;
-            const setU16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
-            const setU32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
-            setU32(0x46464952); setU32(length - 8); setU32(0x45564157); setU32(0x20746d66);
-            setU32(16); setU16(1); setU16(numOfChan); setU32(abuffer.sampleRate);
-            setU32(abuffer.sampleRate * 2 * numOfChan); setU16(numOfChan * 2); setU16(16);
-            setU32(0x61746164); setU32(length - pos - 4);
-            let offset = 0;
-            while(pos < length) {
-                for(let i=0; i<numOfChan; i++) {
-                    let s = Math.max(-1, Math.min(1, abuffer.getChannelData(i)[offset]));
-                    view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-                    pos += 2;
-                }
-                offset++;
-            }
-            return URL.createObjectURL(new Blob([buffer], {type: "audio/wav"}));
-        }
-
-        async function updateSound() {
-            const wasPlaying = !audioEl.paused;
-            applyBtn.textContent = "Updating Noise...";
-            const blobUrl = await createLongNoiseFile();
-            audioEl.src = blobUrl;
-            if (wasPlaying) audioEl.play();
-            applyBtn.textContent = "Generate & Apply";
             
-            setCookie('bass', document.getElementById('bass-slider').value);
-            setCookie('muffle', document.getElementById('muffle-slider').value);
+            // WAV conversion
+            let len = rendered.length * 2 + 44, buf = new ArrayBuffer(len), view = new DataView(buf), pos = 0;
+            const setU32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
+            const setU16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
+            setU32(0x46464952); setU32(len - 8); setU32(0x45564157); setU32(0x20746d66);
+            setU32(16); setU16(1); setU16(1); setU32(sr); setU32(sr * 2); setU16(2); setU16(16);
+            setU32(0x61746164); setU32(len - pos - 4);
+            let d_chan = rendered.getChannelData(0);
+            for(let i=0; i<d_chan.length; i++) {
+                let s = Math.max(-1, Math.min(1, d_chan[i]));
+                view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true); pos += 2;
+            }
+            return URL.createObjectURL(new Blob([buf], {type: "audio/wav"}));
+        }
+
+        async function handleCrossfade() {
+            if (!isPlaying) return;
+            const masterVol = parseFloat(document.getElementById('vol-slider').value);
+            
+            // Toggle logic: If 1 is playing, fade in 2 and fade out 1
+            if (currentActive === 1) {
+                a2.volume = 0;
+                a2.currentTime = 0;
+                a2.play(); // Start before lock
+                fade(a1, a2, masterVol);
+                currentActive = 2;
+            } else {
+                a1.volume = 0;
+                a1.currentTime = 0;
+                a1.play(); // Start before lock
+                fade(a2, a1, masterVol);
+                currentActive = 1;
+            }
+            switchTimer = setTimeout(handleCrossfade, CROSS_INTERVAL * 1000);
+        }
+
+        function fade(outAud, inAud, targetVol) {
+            const steps = 50;
+            const stepTime = 40; // 2 second crossfade
+            for (let i = 0; i <= steps; i++) {
+                setTimeout(() => {
+                    if (!isPlaying) return;
+                    inAud.volume = (i / steps) * targetVol;
+                    outAud.volume = ((steps - i) / steps) * targetVol;
+                    if (i === steps) outAud.pause();
+                }, i * stepTime);
+            }
         }
 
         toggleBtn.onclick = async function() {
-            if (!audioEl.src) await updateSound();
-            
-            if (audioEl.paused) {
-                audioEl.play();
-                this.textContent = 'STOP';
-                this.classList.add('playing');
-            } else {
-                audioEl.pause();
+            if (isPlaying) {
+                isPlaying = false;
+                clearTimeout(switchTimer);
+                a1.pause(); a2.pause();
                 this.textContent = 'PLAY';
                 this.classList.remove('playing');
+                return;
             }
+
+            this.textContent = 'STOP';
+            this.classList.add('playing');
+            isPlaying = true;
+            
+            const blobUrl = await createBlob();
+            a1.src = blobUrl;
+            a2.src = blobUrl;
+            
+            const masterVol = parseFloat(document.getElementById('vol-slider').value);
+            a1.volume = masterVol;
+            a1.play();
+            
+            // Set first switch for 30 seconds from now
+            switchTimer = setTimeout(handleCrossfade, CROSS_INTERVAL * 1000);
         };
 
-        applyBtn.onclick = updateSound;
+        applyBtn.onclick = async () => {
+            if (isPlaying) {
+                isPlaying = false;
+                clearTimeout(switchTimer);
+                a1.pause(); a2.pause();
+                toggleBtn.textContent = 'PLAY';
+                toggleBtn.classList.remove('playing');
+            }
+            applyBtn.textContent = "Updating...";
+            await createBlob(); // Just verify it works
+            applyBtn.textContent = "Update & Apply";
+            setCookie('bass', document.getElementById('bass-slider').value);
+            setCookie('muffle', document.getElementById('muffle-slider').value);
+        };
+
         document.getElementById('vol-slider').oninput = (e) => {
-            audioEl.volume = e.target.value;
-            setCookie('volume', e.target.value);
+            const v = e.target.value;
+            if (currentActive === 1) a1.volume = v; else a2.volume = v;
+            setCookie('volume', v);
         };
 
-        document.getElementById('settings-btn').onclick = () => document.getElementById('settings-menu').classList.add('open');
         document.getElementById('close-btn').onclick = () => document.getElementById('settings-menu').classList.remove('open');
+        document.getElementById('settings-btn').onclick = () => document.getElementById('settings-menu').classList.add('open');
 
         window.onload = () => {
-            document.getElementById('vol-slider').value = getCookie('volume') || DEFAULTS.volume;
-            document.getElementById('bass-slider').value = getCookie('bass') || DEFAULTS.bass;
-            document.getElementById('muffle-slider').value = getCookie('muffle') || DEFAULTS.muffle;
-            audioEl.volume = document.getElementById('vol-slider').value;
+            document.getElementById('vol-slider').value = getCookie('volume') || 0.5;
+            document.getElementById('bass-slider').value = getCookie('bass') || 15;
+            document.getElementById('muffle-slider').value = getCookie('muffle') || 1500;
         };
     </script>
 </body>
