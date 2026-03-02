@@ -3,136 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deep Brown Noise</title>
+    <title>Custom Brown Noise</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --accent-color: #a0522d; /* Sienna Brown */
-            --text-color: #f0f0f0;
+            --bg-color: #0d0d0d;
+            --accent-color: #8b5a2b;
+            --text-color: #efefef;
         }
 
         body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
+            margin: 0; padding: 0; height: 100%;
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
         }
 
-        /* Fixed the clipping issue by ensuring overflow is visible and using a safe container */
         .button-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 300px;
-            height: 300px;
+            width: 300px; height: 300px;
+            display: flex; justify-content: center; align-items: center;
         }
 
         #master-toggle {
-            width: 160px;
-            height: 160px;
+            width: 160px; height: 160px;
             border-radius: 50%;
             border: 4px solid var(--accent-color);
             background: transparent;
             color: var(--accent-color);
-            font-size: 1.4rem;
-            font-weight: 800;
+            font-size: 1.4rem; font-weight: bold;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            outline: none;
-            box-shadow: 0 0 0 rgba(160, 82, 45, 0);
-        }
-
-        #master-toggle:hover {
-            transform: scale(1.1);
-            background: rgba(160, 82, 45, 0.1);
-            box-shadow: 0 0 20px rgba(160, 82, 45, 0.2);
+            z-index: 5;
         }
 
         #master-toggle.playing {
             background: var(--accent-color);
             color: var(--bg-color);
-            transform: scale(1.15); /* Grows without clipping */
-            border-color: #fff;
+            transform: scale(1.1);
         }
 
         #settings-btn {
-            position: absolute;
-            top: 30px;
-            right: 30px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            fill: var(--text-color);
-            opacity: 0.5;
-            transition: 0.3s;
+            position: absolute; top: 25px; right: 25px;
+            background: none; border: none;
+            fill: var(--text-color); opacity: 0.5; cursor: pointer;
         }
 
-        #settings-btn:hover { opacity: 1; transform: rotate(45deg); }
-
         #settings-menu {
-            position: fixed;
-            bottom: -100%;
-            left: 0;
-            width: 100%;
-            background: #1e1e1e;
-            padding: 40px 20px;
-            box-sizing: border-box;
-            transition: bottom 0.5s ease;
+            position: fixed; bottom: -100%; left: 0; width: 100%;
+            background: #1a1a1a; padding: 30px 20px;
+            box-sizing: border-box; transition: bottom 0.4s ease;
             border-top: 3px solid var(--accent-color);
-            z-index: 100;
-            text-align: center;
+            z-index: 100; text-align: center;
         }
 
         #settings-menu.open { bottom: 0; }
 
-        .control-group {
-            max-width: 400px;
-            margin: 0 auto 25px;
-            text-align: left;
+        .control-group { max-width: 400px; margin: 0 auto 20px; text-align: left; }
+        label { display: block; margin-bottom: 8px; font-size: 0.75rem; color: #888; letter-spacing: 1px; }
+        input[type=range] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
+        
+        .btn-row { display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin: 0 auto; }
+        .ui-btn { 
+            background: #333; border: none; color: white; 
+            padding: 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;
         }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 0.8rem;
-            letter-spacing: 2px;
-            color: #888;
-        }
-
-        input[type=range] {
-            width: 100%;
-            cursor: pointer;
-            accent-color: var(--accent-color);
-        }
-
-        .btn-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        .ui-btn {
-            background: #333;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .ui-btn:hover { background: #444; }
-        .reset-btn { color: #ff6b6b; }
+        .apply-btn { background: var(--accent-color); font-weight: bold; }
+        .reset-btn { color: #ff6b6b; background: #222; }
     </style>
 </head>
 <body>
@@ -145,6 +82,8 @@
         <button id="master-toggle">PLAY</button>
     </div>
 
+    <audio id="bg-audio" loop></audio>
+
     <div id="settings-menu">
         <div class="control-group">
             <label>VOLUME</label>
@@ -152,135 +91,171 @@
         </div>
         <div class="control-group">
             <label>BASS POWER</label>
-            <input type="range" id="bass-slider" min="-20" max="25" step="1">
+            <input type="range" id="bass-slider" min="-10" max="30" step="1">
         </div>
         <div class="control-group">
             <label>MUFFLE (LOW PASS)</label>
-            <input type="range" id="muffle-slider" min="200" max="10000" step="100">
+            <input type="range" id="muffle-slider" min="400" max="8000" step="100">
         </div>
         
         <div class="btn-row">
+            <button class="ui-btn apply-btn" id="apply-btn">Update Sound Profile</button>
             <button class="ui-btn reset-btn" id="reset-btn">Reset Defaults</button>
-            <button class="ui-btn" id="close-btn">Done</button>
+            <button class="ui-btn" id="close-btn">Close</button>
         </div>
     </div>
 
     <script>
-        // --- CONFIG & DEFAULTS ---
-        const DEFAULTS = { volume: 0.5, bass: 5, muffle: 4000 };
-        let audioCtx, brownNoiseNode, gainNode, bassNode, lpFilter;
-        let isPlaying = false;
-
-        // --- COOKIE HELPERS ---
-        function setCookie(name, value) {
-            const date = new Date();
-            date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000)); // 1 year
-            document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
-        }
-
-        function getCookie(name) {
-            const val = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-            return val ? val.pop() : null;
-        }
-
-        // --- AUDIO LOGIC ---
-        function createBrownNoise() {
-            const bufferSize = 4096;
-            let lastOut = 0.0;
-            const node = audioCtx.createScriptProcessor(bufferSize, 1, 1);
-            node.onaudioprocess = (e) => {
-                const output = e.outputBuffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    const white = Math.random() * 2 - 1;
-                    output[i] = (lastOut + (0.02 * white)) / 1.02;
-                    lastOut = output[i];
-                    output[i] *= 3.5;
-                }
-            };
-            return node;
-        }
-
-        function initAudio() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            brownNoiseNode = createBrownNoise();
-            
-            gainNode = audioCtx.createGain();
-            bassNode = audioCtx.createBiquadFilter();
-            bassNode.type = "lowshelf";
-            bassNode.frequency.value = 200;
-
-            lpFilter = audioCtx.createBiquadFilter();
-            lpFilter.type = "lowpass";
-
-            brownNoiseNode.connect(lpFilter);
-            lpFilter.connect(bassNode);
-            bassNode.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            applySettings();
-        }
-
-        function applySettings() {
-            const vol = getCookie('volume') || DEFAULTS.volume;
-            const bass = getCookie('bass') || DEFAULTS.bass;
-            const muffle = getCookie('muffle') || DEFAULTS.muffle;
-
-            // Update UI
-            document.getElementById('vol-slider').value = vol;
-            document.getElementById('bass-slider').value = bass;
-            document.getElementById('muffle-slider').value = muffle;
-
-            // Update Audio Nodes
-            if(gainNode) gainNode.gain.value = vol;
-            if(bassNode) bassNode.gain.value = bass;
-            if(lpFilter) lpFilter.frequency.value = muffle;
-        }
-
-        // --- INTERACTION ---
+        const DEFAULTS = { volume: 0.5, bass: 10, muffle: 3000 };
+        const audioEl = document.getElementById('bg-audio');
         const toggleBtn = document.getElementById('master-toggle');
+        const applyBtn = document.getElementById('apply-btn');
         
-        toggleBtn.addEventListener('click', () => {
-            if (!audioCtx) initAudio();
-            if (!isPlaying) {
-                audioCtx.resume();
+        function setCookie(name, val) { document.cookie = `${name}=${val};max-age=31536000;path=/`; }
+        function getCookie(name) { 
+            let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+            return v ? v[2] : null;
+        }
+
+        // --- THE "OFFLINE" RENDERER ---
+        // This generates a unique audio file based on your slider settings
+        async function generateCustomBrownNoise() {
+            const bassVal = parseFloat(document.getElementById('bass-slider').value);
+            const muffleVal = parseFloat(document.getElementById('muffle-slider').value);
+            
+            const sampleRate = 44100;
+            const duration = 10; // 10 second loop is enough for noise
+            const offlineCtx = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
+
+            // 1. Generate Raw Brown Noise
+            const buffer = offlineCtx.createBuffer(1, sampleRate * duration, sampleRate);
+            const data = buffer.getChannelData(0);
+            let lastOut = 0.0;
+            for (let i = 0; i < data.length; i++) {
+                let white = Math.random() * 2 - 1;
+                data[i] = (lastOut + (0.02 * white)) / 1.02;
+                lastOut = data[i];
+                data[i] *= 3.5; 
+            }
+
+            const source = offlineCtx.createBufferSource();
+            source.buffer = buffer;
+
+            // 2. Apply Filters to the Render
+            const lpFilter = offlineCtx.createBiquadFilter();
+            lpFilter.type = "lowpass";
+            lpFilter.frequency.value = muffleVal;
+
+            const bassFilter = offlineCtx.createBiquadFilter();
+            bassFilter.type = "lowshelf";
+            bassFilter.frequency.value = 200;
+            bassFilter.gain.value = bassVal;
+
+            source.connect(lpFilter);
+            lpFilter.connect(bassFilter);
+            bassFilter.connect(offlineCtx.destination);
+            source.start();
+
+            const renderedBuffer = await offlineCtx.startRendering();
+            
+            // 3. Convert Rendered Buffer to WAV Blob
+            return bufferToWav(renderedBuffer);
+        }
+
+        function bufferToWav(abuffer) {
+            let numOfChan = abuffer.numberOfChannels,
+                length = abuffer.length * numOfChan * 2 + 44,
+                buffer = new ArrayBuffer(length),
+                view = new DataView(buffer),
+                channels = [], i, sample,
+                offset = 0,
+                pos = 0;
+
+            function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+            function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+
+            setUint32(0x46464952); // "RIFF"
+            setUint32(length - 8); // file length - 8
+            setUint32(0x45564157); // "WAVE"
+            setUint32(0x20746d66); // "fmt "
+            setUint32(16); // length of fmt chunk
+            setUint16(1); // PCM format
+            setUint16(numOfChan);
+            setUint32(abuffer.sampleRate);
+            setUint32(abuffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2);
+            setUint16(16);
+            setUint32(0x61746164); // "data"
+            setUint32(length - pos - 4);
+
+            for(i=0; i<abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
+            while(pos < length) {
+                for(i=0; i<numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF);
+                    view.setInt16(pos, sample, true);
+                    pos += 2;
+                }
+                offset++;
+            }
+            return URL.createObjectURL(new Blob([buffer], {type: "audio/wav"}));
+        }
+
+        async function applyNewSettings() {
+            const wasPlaying = !audioEl.paused;
+            applyBtn.textContent = "Generating...";
+            applyBtn.disabled = true;
+
+            const newSrc = await generateCustomBrownNoise();
+            audioEl.src = newSrc;
+            
+            setCookie('bass', document.getElementById('bass-slider').value);
+            setCookie('muffle', document.getElementById('muffle-slider').value);
+
+            if (wasPlaying) audioEl.play();
+            
+            applyBtn.textContent = "Update Sound Profile";
+            applyBtn.disabled = false;
+        }
+
+        function loadUIFromCookies() {
+            document.getElementById('vol-slider').value = getCookie('volume') || DEFAULTS.volume;
+            document.getElementById('bass-slider').value = getCookie('bass') || DEFAULTS.bass;
+            document.getElementById('muffle-slider').value = getCookie('muffle') || DEFAULTS.muffle;
+            audioEl.volume = document.getElementById('vol-slider').value;
+        }
+
+        // Events
+        toggleBtn.addEventListener('click', async () => {
+            if (!audioEl.src) await applyNewSettings();
+            if (audioEl.paused) {
+                audioEl.play();
                 toggleBtn.textContent = 'STOP';
                 toggleBtn.classList.add('playing');
             } else {
-                audioCtx.suspend();
+                audioEl.pause();
                 toggleBtn.textContent = 'PLAY';
                 toggleBtn.classList.remove('playing');
             }
-            isPlaying = !isPlaying;
         });
 
-        // Sliders update cookies and audio
-        document.querySelectorAll('input[type=range]').forEach(slider => {
-            slider.addEventListener('input', (e) => {
-                const id = e.target.id.split('-')[0]; // vol, bass, or muffle
-                const val = e.target.value;
-                setCookie(id === 'vol' ? 'volume' : id, val);
-                
-                if (audioCtx) {
-                    if (id === 'vol') gainNode.gain.value = val;
-                    if (id === 'bass') bassNode.gain.value = val;
-                    if (id === 'muffle') lpFilter.frequency.value = val;
-                }
-            });
-        });
-
-        document.getElementById('reset-btn').onclick = () => {
-            setCookie('volume', DEFAULTS.volume);
-            setCookie('bass', DEFAULTS.bass);
-            setCookie('muffle', DEFAULTS.muffle);
-            applySettings();
+        applyBtn.onclick = applyNewSettings;
+        document.getElementById('vol-slider').oninput = (e) => {
+            audioEl.volume = e.target.value;
+            setCookie('volume', e.target.value);
         };
 
-        // Menu Toggle
+        document.getElementById('reset-btn').onclick = () => {
+            document.getElementById('vol-slider').value = DEFAULTS.volume;
+            document.getElementById('bass-slider').value = DEFAULTS.bass;
+            document.getElementById('muffle-slider').value = DEFAULTS.muffle;
+            applyNewSettings();
+        };
+
         document.getElementById('settings-btn').onclick = () => document.getElementById('settings-menu').classList.add('open');
         document.getElementById('close-btn').onclick = () => document.getElementById('settings-menu').classList.remove('open');
 
-        // Initial load
-        window.onload = applySettings;
+        window.onload = loadUIFromCookies;
     </script>
 </body>
 </html>
