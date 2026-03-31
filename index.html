@@ -6,135 +6,172 @@
   <title>Jeff Hockema</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-
-  <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
 
   <style>
     :root {
-      --text: #f8fafc;
-      --muted: rgba(248, 250, 252, 0.82);
-      --icon: rgba(255,255,255,0.75);
+      --text: rgba(255, 255, 255, 0.96);
+      --muted: rgba(255, 255, 255, 0.78);
+      --icon: rgba(255, 255, 255, 0.78);
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     html, body {
       margin: 0;
+      width: 100%;
       height: 100%;
     }
 
     body {
       font-family: "Inter", sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
       padding: 24px;
-      background-color: #1a2419;
+      background: #1b2419;
+      overflow: hidden;
+      position: relative;
     }
 
-    /* Background */
     .background {
       position: fixed;
       inset: 0;
-      background: url("bg.jpg") center / cover no-repeat;
-      z-index: -1;
+      background-image: url("bg.jpg");
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      transform: scale(1.02);
     }
 
     .background::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: rgba(0,0,0,0.15);
+      background:
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.20));
     }
 
-    /* TRUE business card ratio */
     .card {
-      width: min(90vw, 560px);
-      aspect-ratio: 1.75 / 1; /* 👈 magic */
-
+      position: relative;
+      z-index: 1;
+      width: min(88vw, 560px);
+      aspect-ratio: 1.75 / 1;
       display: flex;
-      flex-direction: column;
-      justify-content: center;
+      align-items: center;
+      padding: clamp(1.3rem, 3.2vw, 2rem);
+      border-radius: 26px;
 
-      padding: 1.8rem 2rem;
-      border-radius: 24px;
-
-      background: rgba(20, 30, 20, 0.18);
-      backdrop-filter: blur(20px) saturate(140%);
-      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      background: rgba(18, 24, 16, 0.22);
+      backdrop-filter: blur(22px) saturate(135%);
+      -webkit-backdrop-filter: blur(22px) saturate(135%);
 
       box-shadow:
-        0 20px 60px rgba(0,0,0,0.25),
-        inset 0 1px 0 rgba(255,255,255,0.06);
+        0 18px 50px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(1.8rem, 3.5vw, 2.8rem); /* smaller = more card-like */
+      color: var(--text);
+      font-size: clamp(1.8rem, 4vw, 2.7rem);
+      line-height: 0.95;
       font-weight: 700;
-      letter-spacing: -0.05em;
+      letter-spacing: -0.06em;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.14);
     }
 
     p {
-      margin: 0.5rem 0 0;
-      font-size: 0.95rem;
+      margin: 0.55rem 0 0;
       color: var(--muted);
+      font-size: clamp(0.88rem, 1.6vw, 1rem);
+      line-height: 1.35;
+      font-weight: 500;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.12);
     }
 
     .icons {
-      margin-top: 1.2rem;
+      margin-top: 1.15rem;
       display: flex;
-      gap: 1.2rem;
+      align-items: center;
+      gap: 1rem;
     }
 
     .icons a {
       color: var(--icon);
-      font-size: 1.1rem;
-      transition: all 0.2s ease;
+      font-size: 1.08rem;
+      text-decoration: none;
+      transition: transform 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+      opacity: 0.9;
     }
 
     .icons a:hover {
-      color: white;
-      transform: translateY(-2px);
+      color: #ffffff;
+      transform: translateY(-1px);
+      opacity: 1;
     }
 
-    /* Mobile tweak: allow taller card */
-    @media (max-width: 500px) {
+    @media (max-width: 480px) {
+      body {
+        padding: 16px;
+      }
+
       .card {
-        aspect-ratio: auto;
-        padding: 2rem 1.5rem;
+        width: min(92vw, 560px);
+        border-radius: 22px;
       }
 
-      h1 {
-        font-size: 2rem;
+      .icons {
+        gap: 0.9rem;
       }
     }
 
+    @media (max-height: 500px) {
+      .card {
+        width: min(72vh * 1.75, 560px);
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="background" aria-hidden="true"></div>
 
-  <div class="background"></div>
+  <main class="card" aria-label="Jeff Hockema business card">
+    <div class="content">
+      <h1>Jeff Hockema</h1>
+      <p>IT Professional in Eugene, Oregon</p>
 
-  <div class="card">
-    <h1>Jeff Hockema</h1>
-    <p>IT Professional in Eugene, Oregon</p>
-
-    <div class="icons">
-      <a href="https://www.linkedin.com/in/jeffreyhockema/" target="_blank">
-        <i class="fa-brands fa-linkedin-in"></i>
-      </a>
-      <a href="https://github.com/exception386/" target="_blank">
-        <i class="fa-brands fa-github"></i>
-      </a>
-      <a href="https://www.facebook.com/jeffreyhockema/" target="_blank">
-        <i class="fa-brands fa-facebook-f"></i>
-      </a>
+      <nav class="icons" aria-label="Social links">
+        <a href="https://www.linkedin.com/in/jeffreyhockema/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+          <i class="fa-brands fa-linkedin-in"></i>
+        </a>
+        <a href="https://github.com/exception386/" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+          <i class="fa-brands fa-github"></i>
+        </a>
+        <a href="https://www.facebook.com/jeffreyhockema/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+          <i class="fa-brands fa-facebook-f"></i>
+        </a>
+      </nav>
     </div>
-  </div>
-
+  </main>
 </body>
 </html>
