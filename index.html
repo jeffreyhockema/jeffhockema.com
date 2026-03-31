@@ -11,7 +11,6 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
   />
-
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
@@ -19,21 +18,22 @@
 
   <style>
     :root {
-      --bg: #0b1020;
-      --bg2: #121a2f;
-      --card: rgba(255, 255, 255, 0.06);
-      --border: rgba(255, 255, 255, 0.12);
-      --text: #f8fafc;
-      --muted: rgba(248, 250, 252, 0.72);
-      --icon: rgba(248, 250, 252, 0.72);
-      --shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+      --bg: #06070a;
+      --panel: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f5f7fa;
+      --muted: rgba(245, 247, 250, 0.62);
+      --icon: rgba(245, 247, 250, 0.68);
+      --glow-a: rgba(255, 255, 255, 0.05);
+      --glow-b: rgba(120, 140, 255, 0.08);
     }
 
     * {
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       width: 100%;
       height: 100%;
@@ -41,70 +41,65 @@
 
     body {
       font-family: "Inter", sans-serif;
-      color: var(--text);
       background:
-        radial-gradient(circle at 15% 20%, rgba(95, 140, 255, 0.22), transparent 28%),
-        radial-gradient(circle at 85% 75%, rgba(125, 211, 252, 0.12), transparent 25%),
-        linear-gradient(135deg, var(--bg), var(--bg2));
-      overflow: hidden;
+        radial-gradient(circle at 20% 20%, var(--glow-b), transparent 26%),
+        radial-gradient(circle at 80% 70%, var(--glow-a), transparent 24%),
+        linear-gradient(180deg, #040508 0%, #090b10 100%);
+      color: var(--text);
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
       position: relative;
     }
 
-    .aurora {
+    .ambient {
       position: absolute;
-      inset: -20%;
+      inset: -10%;
       background:
-        radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.18), transparent 22%),
-        radial-gradient(circle at 70% 40%, rgba(56, 189, 248, 0.14), transparent 24%),
-        radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.05), transparent 18%);
-      filter: blur(50px);
-      animation: drift 16s ease-in-out infinite alternate;
+        radial-gradient(circle at 30% 40%, rgba(130, 160, 255, 0.08), transparent 18%),
+        radial-gradient(circle at 70% 55%, rgba(255, 255, 255, 0.035), transparent 16%);
+      filter: blur(60px);
+      animation: breathe 14s ease-in-out infinite alternate;
       pointer-events: none;
     }
 
-    .grid {
-      position: absolute;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: radial-gradient(circle at center, black 30%, transparent 85%);
-      -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 85%);
-      opacity: 0.2;
-      pointer-events: none;
-    }
-
-    .card {
+    .panel {
       position: relative;
       z-index: 1;
-      width: min(90vw, 640px);
-      padding: 3rem 2.5rem;
+      width: min(88vw, 560px);
+      padding: 3.25rem 2.5rem 2.5rem;
       text-align: center;
-      background: var(--card);
+      background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 28px;
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      box-shadow: var(--shadow);
+      border-radius: 32px;
+      box-shadow:
+        0 20px 80px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .line {
+      width: 42px;
+      height: 1px;
+      margin: 0 auto 1.75rem;
+      background: rgba(255, 255, 255, 0.24);
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(2.4rem, 6vw, 4.25rem);
+      font-size: clamp(2.4rem, 6vw, 4.1rem);
+      font-weight: 700;
+      letter-spacing: -0.06em;
       line-height: 0.95;
-      font-weight: 800;
-      letter-spacing: -0.05em;
     }
 
     p {
-      margin: 0.9rem 0 0;
-      font-size: 1.05rem;
-      font-weight: 500;
+      margin: 0.95rem 0 0;
       color: var(--muted);
+      font-size: 1rem;
+      font-weight: 400;
       letter-spacing: 0.01em;
     }
 
@@ -112,69 +107,50 @@
       margin-top: 2rem;
       display: flex;
       justify-content: center;
-      gap: 1.25rem;
+      gap: 1.5rem;
     }
 
     .icons a {
-      width: 48px;
-      height: 48px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
       color: var(--icon);
       text-decoration: none;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      transition:
-        transform 0.2s ease,
-        background 0.2s ease,
-        border-color 0.2s ease,
-        color 0.2s ease;
+      font-size: 1.18rem;
+      transition: transform 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+      opacity: 0.9;
     }
 
     .icons a:hover {
-      transform: translateY(-2px);
-      color: white;
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      transform: translateY(-1px);
+      opacity: 1;
     }
 
-    .icons i {
-      font-size: 1.2rem;
-    }
-
-    @keyframes drift {
+    @keyframes breathe {
       0% {
-        transform: translate3d(-2%, -1%, 0) scale(1);
+        transform: scale(1) translate3d(0, 0, 0);
       }
       100% {
-        transform: translate3d(2%, 1%, 0) scale(1.06);
+        transform: scale(1.04) translate3d(1%, -1%, 0);
       }
     }
 
     @media (max-width: 640px) {
-      .card {
-        padding: 2.25rem 1.5rem;
-        border-radius: 22px;
+      .panel {
+        width: min(92vw, 560px);
+        padding: 2.5rem 1.5rem 2rem;
+        border-radius: 26px;
       }
 
       .icons {
-        gap: 1rem;
-      }
-
-      .icons a {
-        width: 44px;
-        height: 44px;
+        gap: 1.25rem;
       }
     }
   </style>
 </head>
 <body>
-  <div class="aurora" aria-hidden="true"></div>
-  <div class="grid" aria-hidden="true"></div>
+  <div class="ambient" aria-hidden="true"></div>
 
-  <main class="card">
+  <main class="panel">
+    <div class="line" aria-hidden="true"></div>
     <h1>Jeff Hockema</h1>
     <p>IT Professional in Eugene, Oregon</p>
 
