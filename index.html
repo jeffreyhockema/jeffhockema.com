@@ -7,50 +7,39 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-    rel="stylesheet"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <style>
     :root {
-      --text: rgba(255, 255, 255, 0.96);
-      --muted: rgba(255, 255, 255, 0.78);
-      --icon: rgba(255, 255, 255, 0.78);
+      --text: rgba(255,255,255,0.96);
+      --muted: rgba(255,255,255,0.78);
+      --icon: rgba(255,255,255,0.78);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html, body {
       margin: 0;
-      width: 100%;
       height: 100%;
     }
 
     body {
       font-family: "Inter", sans-serif;
-      min-height: 100vh;
       display: grid;
       place-items: center;
       padding: 24px;
       background: #1b2419;
       overflow: hidden;
-      position: relative;
     }
 
+    /* Background */
     .background {
       position: fixed;
       inset: 0;
-      background-image: url("bg.jpg");
-      background-size: cover;
-      background-position: center center;
-      background-repeat: no-repeat;
+      background: url("bg.jpg") center / cover no-repeat;
       transform: scale(1.02);
     }
 
@@ -58,70 +47,65 @@
       content: "";
       position: absolute;
       inset: 0;
-      background:
-        linear-gradient(to bottom, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.20));
+      background: rgba(0,0,0,0.18);
     }
 
+    /* Business card */
     .card {
       position: relative;
       z-index: 1;
-      width: min(88vw, 560px);
+
+      width: min(88vw, 450px);
       aspect-ratio: 1.75 / 1;
+
       display: flex;
       align-items: center;
-      padding: clamp(1.3rem, 3.2vw, 2rem);
-      border-radius: 26px;
+
+      padding: 1.4rem 1.6rem;
+      border-radius: 22px;
 
       background: rgba(18, 24, 16, 0.22);
-      backdrop-filter: blur(22px) saturate(135%);
-      -webkit-backdrop-filter: blur(22px) saturate(135%);
+
+      backdrop-filter: blur(20px) saturate(135%);
+      -webkit-backdrop-filter: blur(20px) saturate(135%);
 
       box-shadow:
-        0 18px 50px rgba(0, 0, 0, 0.24),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        0 16px 40px rgba(0,0,0,0.25),
+        inset 0 1px 0 rgba(255,255,255,0.05);
     }
 
     .content {
-      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      justify-content: center;
-      gap: 0;
     }
 
     h1 {
       margin: 0;
-      color: var(--text);
-      font-size: clamp(1.8rem, 4vw, 2.7rem);
-      line-height: 0.95;
+      font-size: clamp(1.6rem, 3.6vw, 2.2rem);
       font-weight: 700;
-      letter-spacing: -0.06em;
-      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.14);
+      letter-spacing: -0.05em;
+      color: var(--text);
     }
 
-    p {
-      margin: 0.55rem 0 0;
+    .tagline {
+      margin-top: 0.4rem;
+      font-size: clamp(0.8rem, 1.5vw, 0.9rem);
       color: var(--muted);
-      font-size: clamp(0.88rem, 1.6vw, 1rem);
-      line-height: 1.35;
-      font-weight: 500;
-      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.12);
+      letter-spacing: 0.06em;
     }
 
     .icons {
-      margin-top: 1.15rem;
+      margin-top: 0.9rem;
       display: flex;
-      align-items: center;
-      gap: 1rem;
+      gap: 0.9rem;
     }
 
     .icons a {
       color: var(--icon);
-      font-size: 1.08rem;
-      text-decoration: none;
-      transition: transform 0.18s ease, color 0.18s ease, opacity 0.18s ease;
-      opacity: 0.9;
+      font-size: 1rem;
+      transition: all 0.18s ease;
+      opacity: 0.85;
     }
 
     .icons a:hover {
@@ -131,47 +115,34 @@
     }
 
     @media (max-width: 480px) {
-      body {
-        padding: 16px;
-      }
-
       .card {
-        width: min(92vw, 560px);
-        border-radius: 22px;
-      }
-
-      .icons {
-        gap: 0.9rem;
-      }
-    }
-
-    @media (max-height: 500px) {
-      .card {
-        width: min(72vh * 1.75, 560px);
+        width: min(92vw, 450px);
       }
     }
   </style>
 </head>
 <body>
-  <div class="background" aria-hidden="true"></div>
 
-  <main class="card" aria-label="Jeff Hockema business card">
+  <div class="background"></div>
+
+  <div class="card">
     <div class="content">
       <h1>Jeff Hockema</h1>
-      <p>IT Professional in Eugene, Oregon</p>
+      <div class="tagline">INFRASTRUCTURE • SYSTEMS • AUTOMATION</div>
 
-      <nav class="icons" aria-label="Social links">
-        <a href="https://www.linkedin.com/in/jeffreyhockema/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+      <div class="icons">
+        <a href="https://www.linkedin.com/in/jeffreyhockema/" target="_blank">
           <i class="fa-brands fa-linkedin-in"></i>
         </a>
-        <a href="https://github.com/exception386/" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+        <a href="https://github.com/exception386/" target="_blank">
           <i class="fa-brands fa-github"></i>
         </a>
-        <a href="https://www.facebook.com/jeffreyhockema/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+        <a href="https://www.facebook.com/jeffreyhockema/" target="_blank">
           <i class="fa-brands fa-facebook-f"></i>
         </a>
-      </nav>
+      </div>
     </div>
-  </main>
+  </div>
+
 </body>
 </html>
