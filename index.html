@@ -1,49 +1,361 @@
-<!DOCTYPE HTML>
-<!--
-	Aerial by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
-<html>
-	<head>
-		<title>Jeff Hockema</title>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-		<link rel="stylesheet" href="assets/css/main.css" />
-		<link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
-		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
-	</head>
-	<body class="is-preload">
-		<div id="wrapper">
-			<div id="bg2"></div>
-			<div id="main">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jeff Hockema</title>
+  <meta
+    name="description"
+    content="Jeff Hockema - IT infrastructure professional focused on systems, virtualization, storage, identity, and automation."
+  />
+  <link rel="icon" href="favicon.ico" />
 
-				<!-- Header -->
-					<header id="header">
-						<h1>Jeff Hockema</h1>
-						<p>IT Professional and technology enthusiast in Eugene, Oregon</p>
-						<nav>
-							<ul>
-								<li><a href="https://www.facebook.com/jeffreyhockema/" class="icon fa-facebook"><span class="label">Facebook</span></a></li>
-								<li><a href="https://www.github.com/exception386/" class="icon fa-github"><span class="label">Github</span></a></li>
-								<li><a href="https://www.linkedin.com/in/jeffreyhockema/" class="icon fa-linkedin"><span class="label">LinkedIn</span></a></li>
-								<li><a href="tel:+15412500002" class="icon fa-phone"><span class="label">Phone</span></a></li>
-							</ul>
-						</nav>
-					</header>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
 
-				<!-- Footer -->
-					<footer id="footer">
-						<span class="copyright"><a href="pcx86/index.html">π</a></span>
-					</footer>
-					
+  <style>
+    :root {
+      --bg-1: #0b1220;
+      --bg-2: #111827;
+      --bg-3: #1f2937;
+      --text: #f8fafc;
+      --muted: rgba(248, 250, 252, 0.72);
+      --soft: rgba(248, 250, 252, 0.12);
+      --border: rgba(255, 255, 255, 0.14);
+      --card: rgba(255, 255, 255, 0.08);
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --radius: 28px;
+      --max-width: 760px;
+    }
 
-			</div>
-		</div>
-		<script>
-			window.onload = function() { document.body.classList.remove('is-preload'); }
-			window.ontouchmove = function() { return false; }
-			window.onorientationchange = function() { document.body.scrollTop = 0; }
-		</script>
-	</body>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.18), transparent 30%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2) 45%, var(--bg-3));
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    .background-grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.08;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+      -webkit-mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+    }
+
+    .card {
+      width: min(100%, var(--max-width));
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      padding: 40px 32px;
+      position: relative;
+      animation: fadeUp 0.7s ease both;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .hero {
+      display: grid;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .profile-photo {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255,255,255,0.06);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+      flex-shrink: 0;
+    }
+
+    .profile-text {
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.1rem, 5vw, 4rem);
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      font-size: 1.08rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .intro {
+      margin: 0;
+      max-width: 62ch;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+
+    .highlights {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255,255,255,0.86);
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: white;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.24);
+    }
+
+    .button.primary {
+      background: #ffffff;
+      color: #0f172a;
+      border-color: #ffffff;
+    }
+
+    .button.primary:hover {
+      background: rgba(255,255,255,0.92);
+    }
+
+    .socials {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 4px;
+    }
+
+    .social-link {
+      color: rgba(255,255,255,0.82);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 10px 12px;
+      border-radius: 12px;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .social-link:hover {
+      background: rgba(255,255,255,0.08);
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    .footer {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: rgba(255,255,255,0.55);
+      font-size: 0.92rem;
+    }
+
+    .footer a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      color: white;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .card {
+        padding: 28px 20px;
+        border-radius: 22px;
+      }
+
+      .profile {
+        align-items: flex-start;
+      }
+
+      .profile-photo {
+        width: 78px;
+        height: 78px;
+      }
+
+      .intro {
+        font-size: 0.98rem;
+      }
+
+      .footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="background-grid" aria-hidden="true"></div>
+
+  <main class="card">
+    <div class="eyebrow">IT Infrastructure • Systems • Automation</div>
+
+    <section class="hero">
+      <div class="profile">
+        <!-- Replace with your real image path, or delete this img tag if you do not want a photo -->
+        <img
+          src="images/profile.jpg"
+          alt="Jeff Hockema"
+          class="profile-photo"
+        />
+
+        <div class="profile-text">
+          <h1>Jeff Hockema</h1>
+          <p class="subtitle">IT Professional in Eugene, Oregon</p>
+        </div>
+      </div>
+
+      <p class="intro">
+        I work across infrastructure, systems administration, virtualization, storage,
+        identity, and troubleshooting. I enjoy building reliable environments,
+        solving difficult technical problems, and automating repetitive work.
+      </p>
+
+      <div class="highlights" aria-label="Areas of focus">
+        <span class="tag">Systems Administration</span>
+        <span class="tag">Virtualization</span>
+        <span class="tag">Storage</span>
+        <span class="tag">Identity</span>
+        <span class="tag">Automation</span>
+        <span class="tag">Troubleshooting</span>
+      </div>
+
+      <nav class="socials" aria-label="Social links">
+        <a
+          href="https://www.linkedin.com/in/jeffreyhockema/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="social-link"
+        >
+          LinkedIn
+        </a>
+        <a
+          href="https://github.com/exception386/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="social-link"
+        >
+          GitHub
+        </a>
+        <a
+          href="https://www.facebook.com/jeffreyhockema/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="social-link"
+        >
+          Facebook
+        </a>
+      </nav>
+    </section>
+
+    <footer class="footer">
+      <span>© <span id="year"></span> Jeff Hockema</span>
+      <span><a href="pcx86/index.html">π</a></span>
+    </footer>
+  </main>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
 </html>
