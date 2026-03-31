@@ -5,94 +5,190 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Jeff Hockema</title>
 
-  <!-- Modern font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
 
-  <!-- Font Awesome (fixes your icon issue) -->
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
   />
 
   <style>
-    body {
+    :root {
+      --bg: #0b1020;
+      --bg2: #121a2f;
+      --card: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #f8fafc;
+      --muted: rgba(248, 250, 252, 0.72);
+      --icon: rgba(248, 250, 252, 0.72);
+      --shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
       margin: 0;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(95, 140, 255, 0.22), transparent 28%),
+        radial-gradient(circle at 85% 75%, rgba(125, 211, 252, 0.12), transparent 25%),
+        linear-gradient(135deg, var(--bg), var(--bg2));
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      color: white;
+      position: relative;
+    }
+
+    .aurora {
+      position: absolute;
+      inset: -20%;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.18), transparent 22%),
+        radial-gradient(circle at 70% 40%, rgba(56, 189, 248, 0.14), transparent 24%),
+        radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.05), transparent 18%);
+      filter: blur(50px);
+      animation: drift 16s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    .grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at center, black 30%, transparent 85%);
+      -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 85%);
+      opacity: 0.2;
+      pointer-events: none;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      width: min(90vw, 640px);
+      padding: 3rem 2.5rem;
       text-align: center;
-    }
-
-    .container {
-      padding: 2rem;
-    }
-
-    .profile {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      object-fit: cover;
-      margin-bottom: 1.5rem;
-      border: 2px solid rgba(255,255,255,0.2);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
     }
 
     h1 {
       margin: 0;
-      font-size: 2.5rem;
+      font-size: clamp(2.4rem, 6vw, 4.25rem);
+      line-height: 0.95;
       font-weight: 800;
+      letter-spacing: -0.05em;
     }
 
     p {
-      margin-top: 0.5rem;
-      color: rgba(255,255,255,0.7);
-      font-size: 1rem;
+      margin: 0.9rem 0 0;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.01em;
     }
 
     .icons {
-      margin-top: 1.5rem;
+      margin-top: 2rem;
       display: flex;
-      gap: 1.5rem;
       justify-content: center;
-      font-size: 1.5rem;
+      gap: 1.25rem;
     }
 
     .icons a {
-      color: rgba(255,255,255,0.7);
-      transition: 0.2s ease;
+      width: 48px;
+      height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      color: var(--icon);
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
     }
 
     .icons a:hover {
-      color: white;
       transform: translateY(-2px);
+      color: white;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .icons i {
+      font-size: 1.2rem;
+    }
+
+    @keyframes drift {
+      0% {
+        transform: translate3d(-2%, -1%, 0) scale(1);
+      }
+      100% {
+        transform: translate3d(2%, 1%, 0) scale(1.06);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .card {
+        padding: 2.25rem 1.5rem;
+        border-radius: 22px;
+      }
+
+      .icons {
+        gap: 1rem;
+      }
+
+      .icons a {
+        width: 44px;
+        height: 44px;
+      }
     }
   </style>
 </head>
-
 <body>
-  <div class="container">
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grid" aria-hidden="true"></div>
 
-    <!-- Replace with your image path -->
-    <img src="images/profile.jpg" alt="Jeff Hockema" class="profile" />
-
+  <main class="card">
     <h1>Jeff Hockema</h1>
     <p>IT Professional in Eugene, Oregon</p>
 
-    <div class="icons">
-      <a href="https://www.linkedin.com/in/jeffreyhockema/" target="_blank">
-        <i class="fa-brands fa-linkedin"></i>
+    <nav class="icons" aria-label="Social links">
+      <a href="https://www.linkedin.com/in/jeffreyhockema/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+        <i class="fa-brands fa-linkedin-in"></i>
       </a>
-      <a href="https://github.com/exception386/" target="_blank">
+      <a href="https://github.com/exception386/" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
         <i class="fa-brands fa-github"></i>
       </a>
-      <a href="https://www.facebook.com/jeffreyhockema/" target="_blank">
-        <i class="fa-brands fa-facebook"></i>
+      <a href="https://www.facebook.com/jeffreyhockema/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+        <i class="fa-brands fa-facebook-f"></i>
       </a>
-    </div>
-
-  </div>
+    </nav>
+  </main>
 </body>
 </html>
