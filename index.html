@@ -7,31 +7,22 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-    rel="stylesheet"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
   <style>
     :root {
       --text: #f8fafc;
       --muted: rgba(248, 250, 252, 0.82);
-      --card-bg: rgba(20, 24, 18, 0.22);
-      --card-border: rgba(255, 255, 255, 0.18);
-      --icon: rgba(255, 255, 255, 0.82);
-      --shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+      --icon: rgba(255, 255, 255, 0.75);
     }
 
     * {
       box-sizing: border-box;
     }
 
-    html,
-    body {
+    html, body {
       margin: 0;
       width: 100%;
       height: 100%;
@@ -40,7 +31,6 @@
     body {
       font-family: "Inter", sans-serif;
       color: var(--text);
-      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -50,7 +40,7 @@
       background-color: #1a2419;
     }
 
-    /* Full-screen background image */
+    /* Background image */
     .background {
       position: fixed;
       inset: 0;
@@ -61,97 +51,90 @@
       transform: scale(1.02);
     }
 
-    /* Soft darkening layer for readability */
+    /* Subtle dark overlay for readability */
     .background::after {
       content: "";
       position: absolute;
       inset: 0;
-      background:
-        linear-gradient(
-          to bottom,
-          rgba(0, 0, 0, 0.18),
-          rgba(0, 0, 0, 0.16)
-        );
+      background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.18),
+        rgba(0,0,0,0.15)
+      );
     }
 
-    /* Floating business card */
+    /* Premium glass card */
     .card {
       position: relative;
       z-index: 1;
-      width: min(92vw, 500px);
+      width: min(92vw, 520px);
       padding: 2.75rem 2.25rem;
       text-align: center;
       border-radius: 28px;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px) saturate(130%);
-      -webkit-backdrop-filter: blur(18px) saturate(130%);
+
+      /* Neutral glass (key change) */
+      background: rgba(20, 30, 20, 0.18);
+
+      backdrop-filter: blur(22px) saturate(140%);
+      -webkit-backdrop-filter: blur(22px) saturate(140%);
+
+      /* No border */
+      border: none;
+
+      /* Soft premium depth */
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        inset 0 -1px 0 rgba(0,0,0,0.2);
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(2.2rem, 6vw, 4rem);
+      font-size: clamp(2.3rem, 6vw, 4rem);
       line-height: 0.95;
-      letter-spacing: -0.05em;
+      letter-spacing: -0.06em;
       font-weight: 700;
-      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.18);
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.2);
     }
 
     p {
-      margin: 0.9rem 0 0;
+      margin: 0.85rem 0 0;
       font-size: 1rem;
-      line-height: 1.5;
       font-weight: 500;
       color: var(--muted);
-      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.14);
+      letter-spacing: 0.01em;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
     }
 
     .icons {
       margin-top: 1.9rem;
       display: flex;
       justify-content: center;
-      gap: 1.35rem;
+      gap: 1.4rem;
     }
 
+    /* Clean icon style (no circles) */
     .icons a {
-      width: 46px;
-      height: 46px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      text-decoration: none;
       color: var(--icon);
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      transition:
-        transform 0.2s ease,
-        background 0.2s ease,
-        border-color 0.2s ease,
-        color 0.2s ease;
+      text-decoration: none;
+      font-size: 1.3rem;
+      transition: transform 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+      opacity: 0.85;
     }
 
     .icons a:hover {
+      color: white;
       transform: translateY(-2px);
-      background: rgba(255, 255, 255, 0.14);
-      border-color: rgba(255, 255, 255, 0.22);
-      color: #ffffff;
+      opacity: 1;
     }
 
-    .icons i {
-      font-size: 1.1rem;
-    }
-
-    /* Mobile portrait: keep image full height and crop sides naturally */
     @media (max-width: 640px) {
       body {
         padding: 18px;
       }
 
       .card {
-        width: min(100%, 520px);
-        padding: 2.15rem 1.35rem;
+        padding: 2.2rem 1.4rem;
         border-radius: 24px;
       }
 
@@ -160,59 +143,26 @@
       }
 
       .icons {
-        gap: 1rem;
-      }
-
-      .icons a {
-        width: 44px;
-        height: 44px;
-      }
-
-      .background {
-        background-position: center center;
-      }
-    }
-
-    /* Optional: slightly favor the center-left if your subject matter looks best there */
-    @media (min-aspect-ratio: 16/9) {
-      .background {
-        background-position: center center;
+        gap: 1.1rem;
       }
     }
   </style>
 </head>
 <body>
-  <div class="background" aria-hidden="true"></div>
+  <div class="background"></div>
 
   <main class="card">
     <h1>Jeff Hockema</h1>
     <p>IT Professional in Eugene, Oregon</p>
 
-    <nav class="icons" aria-label="Social links">
-      <a
-        href="https://www.linkedin.com/in/jeffreyhockema/"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="LinkedIn"
-      >
+    <nav class="icons">
+      <a href="https://www.linkedin.com/in/jeffreyhockema/" target="_blank" rel="noopener noreferrer">
         <i class="fa-brands fa-linkedin-in"></i>
       </a>
-
-      <a
-        href="https://github.com/exception386/"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="GitHub"
-      >
+      <a href="https://github.com/exception386/" target="_blank" rel="noopener noreferrer">
         <i class="fa-brands fa-github"></i>
       </a>
-
-      <a
-        href="https://www.facebook.com/jeffreyhockema/"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Facebook"
-      >
+      <a href="https://www.facebook.com/jeffreyhockema/" target="_blank" rel="noopener noreferrer">
         <i class="fa-brands fa-facebook-f"></i>
       </a>
     </nav>
