@@ -19,16 +19,23 @@
       padding: 40px 20px;
     }
 
-    h1 {
-      font-size: 36px;
-      margin-bottom: 10px;
-      text-align: center;
+    .logo {
+      display: block;
+      margin: 0 auto 20px auto;
+      max-width: 280px;
+      height: auto;
     }
 
     h2 {
       margin-top: 50px;
       border-bottom: 1px solid #1e293b;
       padding-bottom: 8px;
+      text-align: center;
+    }
+
+    h3 {
+      margin-top: 20px;
+      text-align: center;
     }
 
     p {
@@ -52,35 +59,12 @@
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
     }
 
-    .buttons {
-      text-align: center;
-      margin-top: 30px;
-    }
-
-    a.button {
-      display: inline-block;
-      text-decoration: none;
-      padding: 12px 20px;
-      margin: 5px;
-      border-radius: 10px;
-      font-weight: 600;
-    }
-
-    .primary {
-      background: #ffd700;
-      color: #000;
-    }
-
-    .secondary {
-      background: #1e293b;
-      color: #fff;
-      border: 1px solid #334155;
-    }
-
     ul {
       color: #cbd5e1;
       line-height: 1.7;
       padding-left: 20px;
+      max-width: 600px;
+      margin: 0 auto;
     }
 
     li {
@@ -92,16 +76,18 @@
       border: 1px solid #1e293b;
       border-radius: 18px;
       padding: 24px;
-      margin-top: 24px;
-    }
-
-    .contact-box p {
-      margin: 8px 0;
-      text-align: left;
+      margin-top: 40px;
+      text-align: center;
     }
 
     a {
       color: #ffd700;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    a:hover {
+      text-decoration: underline;
     }
 
     footer {
@@ -114,7 +100,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>Hockema Labs LLC</h1>
+
+    <!-- Logo -->
+    <img src="hockemalabslogo.png" alt="Hockema Labs LLC Logo" class="logo">
+
     <p class="tagline">
       Software and mobile app development.
     </p>
@@ -131,40 +120,33 @@
       </p>
     </div>
 
-    <h2>About Hockema Labs</h2>
-    <p>
-      Hockema Labs LLC develops consumer software products with a focus on
-      polished user experiences, educational gameplay, and mobile-first design.
-    </p>
+    <h2>Featured Products</h2>
 
-    <h2>Featured Product</h2>
+    <h3>
+      <a href="https://houseedgecasino.com" target="_blank">
+        House Edge Casino
+      </a>
+    </h3>
+
     <ul>
       <li>
-        <strong>House Edge Casino</strong> — An iOS casino simulation game featuring
-        blackjack, slots, roulette, and video poker.
+        An iOS casino simulation game featuring blackjack, slots, roulette, and video poker.
       </li>
       <li>
-        Includes strategy guidance, learning tools, Game Center leaderboards,
-        and achievements.
+        Includes strategy guidance, learning tools, Game Center leaderboards, and achievements.
       </li>
       <li>
         Designed for entertainment and education only. No real-money gambling.
       </li>
     </ul>
 
-    <h2>Contact Information</h2>
     <div class="contact-box">
-      <p><strong>Business Name:</strong> Hockema Labs LLC</p>
-      <p><strong>Email:</strong> <a href="mailto:hockemalabs@jeffhockema.com">hockemalabs@jeffhockema.com</a></p>
-      <p><strong>Website:</strong> <a href="/hockemalabs">jeffhockema.com/hockemalabs</a></p>
+      <p>
+        Contact us via email at 
+        <a href="mailto:hockemalabs@jeffhockema.com">hockemalabs@jeffhockema.com</a>
+      </p>
     </div>
-
-    <div class="buttons">
-      <a class="button primary" href="index.html">House Edge Casino</a>
-      <a class="button secondary" href="support.html">Support</a>
-      <a class="button secondary" href="privacypolicy.html">Privacy Policy</a>
-    </div>
-
+    
     <footer>
       © 2026 Hockema Labs LLC
     </footer>
