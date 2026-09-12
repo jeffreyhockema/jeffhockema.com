@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "generator": "tools/build_item_icons.py",
+  "source": "CraftPix zombie TDS items (PNG_version_2)",
+  "size": 64,
+  "icons": {
+    "knife": {
+      "file": "knife.png",
+      "width": 50,
+      "height": 64,
+      "source": "items_0015_knife.png",
+      "variant": null
+    },
+    "pistol": {
+      "file": "pistol.png",
+      "width": 64,
+      "height": 32,
+      "source": "items_0014_gun.png",
+      "variant": null
+    },
+    "shotgun": {
+      "file": "shotgun.png",
+      "width": 64,
+      "height": 20,
+      "source": "items_0001_fire.png",
+      "variant": null
+    },
+    "rifle": {
+      "file": "rifle.png",
+      "width": 64,
+      "height": 14,
+      "source": "items_0000_gun.png",
+      "variant": null
+    },
+    "rocketlauncher": {
+      "file": "rocketlauncher.png",
+      "width": 64,
+      "height": 20,
+      "source": "items_0001_fire.png",
+      "variant": "black"
+    },
+    "plasmagun": {
+      "file": "plasmagun.png",
+      "width": 64,
+      "height": 20,
+      "source": "items_0001_fire.png",
+      "variant": "blue"
+    },
+    "bfg": {
+      "file": "bfg.png",
+      "width": 64,
+      "height": 35,
+      "source": "items_0001_fire.png",
+      "variant": "green"
+    },
+    "health": {
+      "file": "health.png",
+      "width": 64,
+      "height": 61,
+      "source": "items_0005_health.png",
+      "variant": null
+    },
+    "ammo_pistol": {
+      "file": "ammo_pistol.png",
+      "width": 64,
+      "height": 15,
+      "source": "items_0003_magazine_gun.png",
+      "variant": null
+    },
+    "ammo_rifle": {
+      "file": "ammo_rifle.png",
+      "width": 64,
+      "height": 24,
+      "source": "items_0004_magazine_riffle.png",
+      "variant": null
+    },
+    "ammo_shotgun": {
+      "file": "ammo_shotgun.png",
+      "width": 51,
+      "height": 64,
+      "source": "items_0012_cylinder.png",
+      "variant": null
+    },
+    "ammo_rocket": {
+      "file": "ammo_rocket.png",
+      "width": 51,
+      "height": 64,
+      "source": "items_0012_cylinder.png",
+      "variant": "black"
+    },
+    "ammo_plasma": {
+      "file": "ammo_plasma.png",
+      "width": 51,
+      "height": 64,
+      "source": "items_0012_cylinder.png",
+      "variant": "blue"
+    },
+    "ammo_bfg": {
+      "file": "ammo_bfg.png",
+      "width": 64,
+      "height": 64,
+      "source": "items_0012_cylinder.png",
+      "variant": "green"
+    }
+  }
+}
