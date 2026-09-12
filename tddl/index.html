@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top-Down Doom-like Game - Modular Edition</title>
+
+    <!-- External Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Audio needs no dependency: js/audio-engine.js synthesises every sound
+         directly on the Web Audio API. Tone.js used to be loaded here, and when
+         the CDN was unreachable the game lost all sound. -->
+
+
+    <!-- Game Styles -->
+    <style>
+        /* Palette shared by the HUD and every menu */
+        :root {
+            --ui-bg: #1a1a1a;
+            --ui-panel: #232323;
+            --ui-panel-edge: #4a4a4a;
+            --ui-text: #e0e0e0;
+            --ui-muted: #8a8a8a;
+            --ui-red: #ff4136;
+            --ui-red-dark: #c0392b;
+            --ui-amber: #ffa500;
+            --ui-green: #2ecc40;
+        }
+
+        /* Main game styling with retro aesthetic */
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: var(--ui-bg);
+            color: var(--ui-text);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Game container with fullscreen responsive design */
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #2a2a2a;
+            border: none; /* Remove border for fullscreen */
+            box-shadow: none; /* Remove shadow for fullscreen */
+        }
+
+        /* Main game canvas - responsive to any aspect ratio */
+        canvas {
+            display: block;
+            background-color: #333;
+            cursor: crosshair;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Bottom UI overlay for player stats */
+        #uiContainer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 15px;
+            font-size: 14px;
+            color: #cccccc;
+            background-color: rgba(0, 0, 0, 0.75);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            box-sizing: border-box;
+            z-index: 5;
+        }
+
+        /* Readouts: a muted label and a bright value */
+        .hud-stat {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .hud-label {
+            color: var(--ui-muted);
+            font-size: 10px;
+        }
+
+        #healthDisplay, #scoreDisplay, #waveDisplay {
+            color: var(--ui-red);
+        }
+
+        #healthDisplayContainer.low #healthDisplay {
+            animation: hud-pulse 0.8s ease-in-out infinite;
+        }
+
+        @keyframes hud-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        /* Key collection display */
+        #keysDisplayContainer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #keysDisplay {
+            display: flex;
+            gap: 5px;
+        }
+
+        /* Individual key icons */
+        .key-icon {
+            width: 18px;
+            height: 18px;
+            border: 1px solid #888;
+            border-radius: 3px;
+            display: inline-block;
+            opacity: 0.3;
+        }
+
+        .key-icon.red { background-color: red; }
+        .key-icon.yellow { background-color: yellow; }
+        .key-icon.blue { background-color: blue; }
+        .key-icon.collected { opacity: 1; }
+
+        /* Weapon information container */
+        #weaponInfoContainer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Weapon inventory display */
+        #weaponInventoryIcons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        #weaponInventoryIcons > span:first-child {
+            color: var(--ui-muted);
+            font-size: 10px;
+            margin-right: 8px;
+        }
+
+        /* Individual weapon display icons */
+        .weapon-icon-display {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            opacity: 0.3;
+            border: 1px solid transparent;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .weapon-icon-display .weapon-char {
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .weapon-icon-display .ammo-text-display {
+            font-size: 10px;
+            min-width: 20px;
+        }
+
+        /* Weapon ownership and selection states */
+        .weapon-icon-display.owned {
+            opacity: 0.7;
+            border-color: #555;
+        }
+
+        .weapon-icon-display.selected-weapon-icon {
+            opacity: 1;
+            border-color: var(--ui-red);
+            background-color: rgba(255, 65, 54, 0.1);
+        }
+
+        /* Difficulty selection styling */
+        .difficulty-button {
+            padding: 10px 20px;
+            margin: 0 6px;
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .difficulty-button:hover {
+            background-color: #555;
+            border-color: #777;
+        }
+
+        .difficulty-button.selected {
+            background-color: var(--ui-red);
+            border-color: #ff6b5a;
+            color: #fff;
+        }
+
+        #difficultyHint {
+            min-height: 2.6em;
+            margin: 10px 0 0;
+            font-size: 10px;
+            line-height: 1.6;
+            color: var(--ui-muted);
+        }
+
+        /* Game control buttons */
+        .game-button {
+            padding: 15px 30px;
+            background-color: var(--ui-red);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px var(--ui-red-dark);
+        }
+
+        .game-button:hover {
+            background-color: #e74c3c;
+            transform: translateY(2px);
+            box-shadow: 0 2px var(--ui-red-dark);
+        }
+
+        .game-button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        .game-button.secondary {
+            background-color: #555;
+            box-shadow: 0 4px #222;
+        }
+
+        .game-button.secondary:hover {
+            background-color: #666;
+            box-shadow: 0 2px #222;
+        }
+
+        /* Modal overlays */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--ui-panel);
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid var(--ui-panel-edge);
+            box-shadow: 0 0 0 4px var(--ui-bg), 0 0 40px rgba(0, 0, 0, 0.8);
+            text-align: center;
+            width: min(720px, 92vw);
+            max-height: 86vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .modal-content h2 {
+            color: var(--ui-red);
+            font-size: 20px;
+            margin: 0 0 20px;
+            text-shadow: 3px 3px 0 #000;
+        }
+
+        .modal-content p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        #messageText {
+            font-size: 12px;
+            color: #cfcfcf;
+        }
+
+        /* The end-of-level and end-of-run tally */
+        #levelSummary {
+            margin: 18px auto 6px;
+            max-width: 440px;
+            text-align: left;
+        }
+
+        .summary-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 7px 0;
+            font-size: 12px;
+            border-bottom: 1px dotted #3a3a3a;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-row .summary-label {
+            color: var(--ui-muted);
+            white-space: nowrap;
+        }
+
+        .summary-row .summary-leader {
+            flex: 1;
+        }
+
+        .summary-row .summary-value {
+            color: var(--ui-text);
+            white-space: nowrap;
+        }
+
+        .summary-row .summary-value.good  { color: var(--ui-green); }
+        .summary-row .summary-value.score { color: var(--ui-amber); }
+
+        .summary-row.total {
+            margin-top: 4px;
+            padding-top: 12px;
+            border-top: 1px solid var(--ui-panel-edge);
+            font-size: 13px;
+        }
+
+        #overlayHint {
+            margin: 14px 0 0;
+            font-size: 9px;
+            color: var(--ui-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .button-row {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        /* Instructions styling */
+        #instructionsTextContent {
+            font-size: 11px;
+        }
+
+        .instructions-section {
+            text-align: left;
+            margin: 14px 0;
+        }
+
+        .instructions-section h3 {
+            color: var(--ui-amber);
+            font-size: 12px;
+            margin: 0 0 7px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .instructions-section p {
+            font-size: 10px;
+            line-height: 1.5;
+            margin: 0 0 6px;
+            color: #cfcfcf;
+        }
+
+        .instructions-section p b {
+            color: var(--ui-text);
+        }
+
+        .instructions-section.cheats h3 {
+            color: var(--ui-muted);
+        }
+
+        /* Key bindings sit in two columns when there is room for them */
+        .key-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            column-gap: 28px;
+        }
+
+        @media (min-width: 640px) {
+            .key-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .key-binding {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin: 5px 0;
+            padding: 3px 0;
+            font-size: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .key-binding .key {
+            color: var(--ui-red);
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .key-binding span:last-child {
+            text-align: right;
+            color: #cfcfcf;
+        }
+
+        /* Small tags, used to colour the key names in the instructions */
+        .tag {
+            display: inline-block;
+            padding: 1px 5px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            font-size: 9px;
+            color: #000;
+        }
+        .tag.red    { background: #ff4136; }
+        .tag.yellow { background: #ffdc00; }
+        .tag.blue   { background: #6c8cff; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+
+    <!-- Main Game Container -->
+    <div id="gameContainer" class="rounded-lg overflow-hidden shadow-2xl">
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Bottom UI Overlay -->
+        <div id="uiContainer">
+            <!-- Player Health -->
+            <div id="healthDisplayContainer" class="hud-stat">
+                <span class="hud-label">Health</span><span id="healthDisplay">100</span>
+            </div>
+
+            <!-- Current level -->
+            <div id="levelDisplayContainer" class="hud-stat">
+                <span class="hud-label">Level</span><span id="waveDisplay">1</span>
+            </div>
+
+            <!-- Score Display -->
+            <div id="scoreDisplayContainer" class="hud-stat">
+                <span class="hud-label">Score</span><span id="scoreDisplay">0</span>
+            </div>
+
+            <!-- Weapon Information -->
+            <div id="weaponInfoContainer">
+                <div id="weaponInventoryIcons">
+                    <span class="text-gray-400 mr-1">Weapons</span>
+                    <span class="weapon-icon-display" data-weapon-name="Knife" id="knifeIconDisplay" title="1: Knife">
+                        <span class="weapon-char">K</span> <span class="ammo-text-display">∞</span>
+                    </span>
+                    <span class="weapon-icon-display" data-weapon-name="Pistol" id="pistolIconDisplay" title="2: Pistol">
+                        <span class="weapon-char">P</span> <span class="ammo-text-display">50</span>
+                    </span>
+                    <span class="weapon-icon-display" data-weapon-name="Shotgun" id="shotgunIconDisplay" title="3: Shotgun">
+                        <span class="weapon-char">SG</span> <span class="ammo-text-display">--</span>
+                    </span>
+                    <span class="weapon-icon-display" data-weapon-name="Rifle" id="rifleIconDisplay" title="4: Rifle">
+                        <span class="weapon-char">R</span> <span class="ammo-text-display">--</span>
+                    </span>
+                    <span class="weapon-icon-display" data-weapon-name="Rocket Launcher" id="rocketLauncherIconDisplay" title="5: Rocket Launcher">
+                        <span class="weapon-char">RL</span> <span class="ammo-text-display">--</span>
+                    </span>
+                    <span class="weapon-icon-display" data-weapon-name="Plasma Gun" id="plasmaGunIconDisplay" title="6: Plasma Gun">
+                        <span class="weapon-char">PG</span> <span class="ammo-text-display">--</span>
+                    </span>
+                    <span class="weapon-icon-display" data-weapon-name="BFG" id="bfgIconDisplay" title="7: BFG">
+                        <span class="weapon-char">BFG</span> <span class="ammo-text-display">--</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Key Collection Display -->
+            <div id="keysDisplayContainer">
+                <span class="hud-label">Keys</span>
+                <div id="keysDisplay">
+                    <span class="key-icon red" id="redKeyIcon" title="Red key"></span>
+                    <span class="key-icon yellow" id="yellowKeyIcon" title="Yellow key"></span>
+                    <span class="key-icon blue" id="blueKeyIcon" title="Blue key"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Message Overlay: the start screen, the end-of-level tally and Game Over -->
+    <div id="messageOverlay" class="overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="messageTitle">Game Title</h2>
+            <p id="messageText">Game message content</p>
+
+            <!-- Filled in by GameState.renderSummary() at the end of a level or run -->
+            <div id="levelSummary" style="display: none;"></div>
+
+            <div id="difficultySelection" style="display: flex; flex-direction: column; align-items: center; margin: 20px 0;">
+                <div style="display: flex; justify-content: center;">
+                    <button class="difficulty-button" data-difficulty="easy">Easy</button>
+                    <button class="difficulty-button selected" data-difficulty="medium">Medium</button>
+                    <button class="difficulty-button" data-difficulty="hard">Hard</button>
+                </div>
+                <p id="difficultyHint"></p>
+            </div>
+
+            <div class="button-row">
+                <button id="continueButton" class="game-button" style="display: none;">Continue</button>
+                <button id="restartButton" class="game-button">Start Game</button>
+                <button id="mainMenuButton" class="game-button secondary" style="display: none;">Main Menu</button>
+                <button id="instructionsButton" class="game-button secondary">Instructions</button>
+            </div>
+            <p id="overlayHint"></p>
+        </div>
+    </div>
+
+    <!-- Instructions Overlay -->
+    <div id="instructionsOverlay" class="overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>How to Play</h2>
+            <div id="instructionsTextContent">
+                <div class="instructions-section">
+                    <h3>Objective</h3>
+                    <p>&bull; <b>Reach the exit.</b> You need not kill everything, but a boss
+                       seals the exit until it is dead.</p>
+                    <p>&bull; Keys open doors of their colour, in order:
+                       <span class="tag red">red</span> to
+                       <span class="tag yellow">yellow</span> to
+                       <span class="tag blue">blue</span> to the exit. Push into a locked door
+                       with its key to open it for good.</p>
+                </div>
+
+                <div class="instructions-section">
+                    <h3>Controls</h3>
+                    <div class="key-grid">
+                        <div>
+                            <div class="key-binding"><span class="key">WASD / Arrows</span><span>Move</span></div>
+                            <div class="key-binding"><span class="key">Shift</span><span>Run</span></div>
+                            <div class="key-binding"><span class="key">Mouse</span><span>Aim</span></div>
+                            <div class="key-binding"><span class="key">Click</span><span>Shoot, hold to keep firing</span></div>
+                        </div>
+                        <div>
+                            <div class="key-binding"><span class="key">1 - 7</span><span>Weapon</span></div>
+                            <div class="key-binding"><span class="key">- / =</span><span>Zoom</span></div>
+                            <div class="key-binding"><span class="key">M / C / F3</span><span>Minimap, stats, profiler</span></div>
+                            <div class="key-binding"><span class="key">Enter / Esc</span><span>Continue, close</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="instructions-section">
+                    <h3>Staying Alive</h3>
+                    <p>&bull; Your flashlight lights a cone ahead. Past it you make out grey shapes
+                       in a wide arc in front, and nothing behind you.</p>
+                    <p>&bull; Enemies sleep until they see you or <b>hear a shot</b>. Caught in each
+                       other's fire, they turn on each other.</p>
+                    <p>&bull; <b>Green barrels</b> chain-explode. <b>Lava</b> kills fast, <b>waste</b>
+                       burns slowly, <b>water</b> slows you. None is ever the only way through.</p>
+                    <p>&bull; The pistol and rifle share bullets; the plasma gun and BFG share cells.</p>
+                </div>
+
+                <div class="instructions-section">
+                    <h3>Secrets</h3>
+                    <p>&bull; Some walls are not walls: push into them. A <b>switch</b> is pressed
+                       by walking into it or shooting it, and slides a wall aside nearby.</p>
+                </div>
+
+                <div class="instructions-section cheats">
+                    <h3>Cheats (for testing)</h3>
+                    <div class="key-grid">
+                        <div>
+                            <div class="key-binding"><span class="key">I</span><span>Walk through walls</span></div>
+                            <div class="key-binding"><span class="key">K</span><span>All keys</span></div>
+                        </div>
+                        <div>
+                            <div class="key-binding"><span class="key">G</span><span>All weapons</span></div>
+                            <div class="key-binding"><span class="key">L</span><span>Next level</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button id="closeInstructionsButton" class="game-button">Close</button>
+        </div>
+    </div>
+
+    <!-- Sprite Images (hidden) -->
+
+    <!-- Game Module Scripts (loaded in dependency order) -->
+    <!--
+      Single entry point. main.js imports the whole module graph, so listing each
+      module as its own <script type="module"> only added extra top-level fetches.
+    -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

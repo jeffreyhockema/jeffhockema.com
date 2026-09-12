@@ -1,0 +1,6660 @@
+{
+ "version": 1,
+ "generator": "tools/build_enemy_sprites.py",
+ "source": "CraftPix top-down character packs",
+ "bodyHeight": 64,
+ "frameRates": {
+  "idle": 10,
+  "idle_blink": 10,
+  "walk": 14,
+  "run": 18,
+  "attack": 16,
+  "hurt": 14,
+  "dying": 12
+ },
+ "oneShot": [
+  "attack",
+  "hurt",
+  "dying"
+ ],
+ "directions": [
+  "down",
+  "up",
+  "left",
+  "right"
+ ],
+ "characters": {
+  "anubis": {
+   "name": "Anubis",
+   "pack": "craftpix-net-270646-mythology-2d-character-assets-anubis-medusa-horus",
+   "file": "anubis.png",
+   "frameWidth": 87,
+   "frameHeight": 81,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.31,
+   "anchorY": 64.61,
+   "bodyWidth": 42.6,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "arch-vile": {
+   "name": "Arch-vile",
+   "pack": "craftpix-net-270646-mythology-2d-character-assets-anubis-medusa-horus",
+   "file": "arch-vile.png",
+   "frameWidth": 87,
+   "frameHeight": 81,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.31,
+   "anchorY": 64.61,
+   "bodyWidth": 42.6,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "anubis"
+  },
+  "armored-ogre": {
+   "name": "Armored Ogre",
+   "pack": "craftpix-net-191083-top-down-fantasy-boss-characters-pack-2-yeti-ogre-cyclops",
+   "file": "armored-ogre.png",
+   "frameWidth": 108,
+   "frameHeight": 91,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 57.11,
+   "anchorY": 73.28,
+   "bodyWidth": 40.79,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "assassin": {
+   "name": "Assassin",
+   "pack": "craftpix-net-218811-free-medieval-bandit-4-direction-character-pack",
+   "file": "assassin.png",
+   "frameWidth": 84,
+   "frameHeight": 75,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 42.28,
+   "anchorY": 64.84,
+   "bodyWidth": 53.51,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "aztec": {
+   "name": "Aztec",
+   "pack": "craftpix-net-197730-tribal-4-direction-character-sprite-asset-pack",
+   "file": "aztec.png",
+   "frameWidth": 79,
+   "frameHeight": 82,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 38.57,
+   "anchorY": 68.13,
+   "bodyWidth": 49.36,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "aztec-leader": {
+   "name": "Aztec Leader",
+   "pack": "craftpix-net-176111-free-tribal-warrior-boss-characters-asset-pack",
+   "file": "aztec-leader.png",
+   "frameWidth": 106,
+   "frameHeight": 88,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 55.03,
+   "anchorY": 72.14,
+   "bodyWidth": 36.69,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "baron": {
+   "name": "Baron of Hell",
+   "pack": "craftpix-net-907874-free-top-down-boss-character-4-direction-pack",
+   "file": "baron.png",
+   "frameWidth": 109,
+   "frameHeight": 92,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 57.64,
+   "anchorY": 74.4,
+   "bodyWidth": 41.32,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "giant-goblin"
+  },
+  "caveman-boss": {
+   "name": "Caveman Boss",
+   "pack": "craftpix-net-907874-free-top-down-boss-character-4-direction-pack",
+   "file": "caveman-boss.png",
+   "frameWidth": 109,
+   "frameHeight": 91,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 56.75,
+   "anchorY": 74.38,
+   "bodyWidth": 37.83,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "chaingunner": {
+   "name": "Heavy Weapon Dude",
+   "pack": "craftpix-net-907874-free-top-down-boss-character-4-direction-pack",
+   "file": "chaingunner.png",
+   "frameWidth": 109,
+   "frameHeight": 91,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 56.75,
+   "anchorY": 74.38,
+   "bodyWidth": 37.83,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "caveman-boss"
+  },
+  "chief-goblin": {
+   "name": "Chief Goblin",
+   "pack": "craftpix-net-228980-free-top-down-goblin-character-sprite",
+   "file": "chief-goblin.png",
+   "frameWidth": 82,
+   "frameHeight": 77,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 41.88,
+   "anchorY": 65.85,
+   "bodyWidth": 51.24,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "cyclops": {
+   "name": "Cyclops",
+   "pack": "craftpix-net-191083-top-down-fantasy-boss-characters-pack-2-yeti-ogre-cyclops",
+   "file": "cyclops.png",
+   "frameWidth": 115,
+   "frameHeight": 96,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 59.8,
+   "anchorY": 78.39,
+   "bodyWidth": 39.87,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "demon": {
+   "name": "Demon",
+   "pack": "craftpix-net-545831-top-down-boss-characters-pack-3-rock-earth-ice-monsters",
+   "file": "demon.png",
+   "frameWidth": 108,
+   "frameHeight": 91,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 56.44,
+   "anchorY": 73.75,
+   "bodyWidth": 38.29,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "earth-monster"
+  },
+  "earth-monster": {
+   "name": "Earth Monster",
+   "pack": "craftpix-net-545831-top-down-boss-characters-pack-3-rock-earth-ice-monsters",
+   "file": "earth-monster.png",
+   "frameWidth": 108,
+   "frameHeight": 91,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 56.44,
+   "anchorY": 73.75,
+   "bodyWidth": 38.29,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "female-archer": {
+   "name": "Female Archer",
+   "pack": "craftpix-net-807914-fantasy-archer-top-down-characters-pack",
+   "file": "female-archer.png",
+   "frameWidth": 64,
+   "frameHeight": 68,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 31.02,
+   "anchorY": 64.0,
+   "bodyWidth": 44.63,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "female-goblin": {
+   "name": "Female Goblin",
+   "pack": "craftpix-net-228980-free-top-down-goblin-character-sprite",
+   "file": "female-goblin.png",
+   "frameWidth": 76,
+   "frameHeight": 76,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 38.4,
+   "anchorY": 66.76,
+   "bodyWidth": 60.26,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "giant-goblin": {
+   "name": "Giant Goblin",
+   "pack": "craftpix-net-907874-free-top-down-boss-character-4-direction-pack",
+   "file": "giant-goblin.png",
+   "frameWidth": 109,
+   "frameHeight": 92,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 57.64,
+   "anchorY": 74.4,
+   "bodyWidth": 41.32,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "goblin-archer": {
+   "name": "Goblin Archer",
+   "pack": "craftpix-net-807914-fantasy-archer-top-down-characters-pack",
+   "file": "goblin-archer.png",
+   "frameWidth": 61,
+   "frameHeight": 71,
+   "columns": 17,
+   "frameCount": 240,
+   "anchorX": 28.81,
+   "anchorY": 64.0,
+   "bodyWidth": 52.68,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "hell-knight": {
+   "name": "Hell Knight",
+   "pack": "craftpix-net-907874-free-top-down-boss-character-4-direction-pack",
+   "file": "hell-knight.png",
+   "frameWidth": 109,
+   "frameHeight": 92,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 57.64,
+   "anchorY": 74.4,
+   "bodyWidth": 41.32,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "giant-goblin"
+  },
+  "horus": {
+   "name": "Horus",
+   "pack": "craftpix-net-270646-mythology-2d-character-assets-anubis-medusa-horus",
+   "file": "horus.png",
+   "frameWidth": 83,
+   "frameHeight": 82,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 40.76,
+   "anchorY": 67.54,
+   "bodyWidth": 42.93,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "ice-monster": {
+   "name": "Ice Monster",
+   "pack": "craftpix-net-545831-top-down-boss-characters-pack-3-rock-earth-ice-monsters",
+   "file": "ice-monster.png",
+   "frameWidth": 114,
+   "frameHeight": 96,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 59.6,
+   "anchorY": 77.87,
+   "bodyWidth": 40.43,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "imp": {
+   "name": "Imp",
+   "pack": "craftpix-net-228980-free-top-down-goblin-character-sprite",
+   "file": "imp.png",
+   "frameWidth": 86,
+   "frameHeight": 78,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.89,
+   "anchorY": 67.11,
+   "bodyWidth": 56.22,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "male-goblin"
+  },
+  "lost-soul": {
+   "name": "Lost Soul",
+   "pack": "craftpix-net-630832-top-down-pirate-2d-character-pack",
+   "file": "lost-soul.png",
+   "frameWidth": 89,
+   "frameHeight": 83,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.62,
+   "anchorY": 66.96,
+   "bodyWidth": 41.19,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "pirate-skeleton"
+  },
+  "male-archer": {
+   "name": "Male Archer",
+   "pack": "craftpix-net-807914-fantasy-archer-top-down-characters-pack",
+   "file": "male-archer.png",
+   "frameWidth": 66,
+   "frameHeight": 71,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 32.0,
+   "anchorY": 66.03,
+   "bodyWidth": 45.97,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "male-goblin": {
+   "name": "Male Goblin",
+   "pack": "craftpix-net-228980-free-top-down-goblin-character-sprite",
+   "file": "male-goblin.png",
+   "frameWidth": 86,
+   "frameHeight": 78,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.89,
+   "anchorY": 67.11,
+   "bodyWidth": 56.22,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "mancubus": {
+   "name": "Mancubus",
+   "pack": "craftpix-net-545831-top-down-boss-characters-pack-3-rock-earth-ice-monsters",
+   "file": "mancubus.png",
+   "frameWidth": 122,
+   "frameHeight": 102,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 63.29,
+   "anchorY": 82.69,
+   "bodyWidth": 42.93,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "rock-monster"
+  },
+  "maya": {
+   "name": "Maya",
+   "pack": "craftpix-net-197730-tribal-4-direction-character-sprite-asset-pack",
+   "file": "maya.png",
+   "frameWidth": 83,
+   "frameHeight": 82,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 40.42,
+   "anchorY": 67.72,
+   "bodyWidth": 50.3,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "maya-leader": {
+   "name": "Maya Leader",
+   "pack": "craftpix-net-176111-free-tribal-warrior-boss-characters-asset-pack",
+   "file": "maya-leader.png",
+   "frameWidth": 104,
+   "frameHeight": 87,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 54.12,
+   "anchorY": 70.77,
+   "bodyWidth": 36.8,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "medusa": {
+   "name": "Medusa",
+   "pack": "craftpix-net-270646-mythology-2d-character-assets-anubis-medusa-horus",
+   "file": "medusa.png",
+   "frameWidth": 87,
+   "frameHeight": 79,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 42.36,
+   "anchorY": 64.0,
+   "bodyWidth": 46.15,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "minotaur": {
+   "name": "Minotaur",
+   "pack": "craftpix-net-947906-ancient-mythology-boss-characters-top-down-asset-pack",
+   "file": "minotaur.png",
+   "frameWidth": 117,
+   "frameHeight": 98,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 60.8,
+   "anchorY": 79.7,
+   "bodyWidth": 41.45,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "mushroom-head-archer": {
+   "name": "Mushroom Head Archer",
+   "pack": "craftpix-net-933216-fantasy-top-down-mushroom-character-asset-pack",
+   "file": "mushroom-head-archer.png",
+   "frameWidth": 57,
+   "frameHeight": 69,
+   "columns": 17,
+   "frameCount": 240,
+   "anchorX": 28.93,
+   "anchorY": 65.67,
+   "bodyWidth": 47.07,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "mushroom-head-knight": {
+   "name": "Mushroom Head Knight",
+   "pack": "craftpix-net-933216-fantasy-top-down-mushroom-character-asset-pack",
+   "file": "mushroom-head-knight.png",
+   "frameWidth": 76,
+   "frameHeight": 77,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 37.36,
+   "anchorY": 64.36,
+   "bodyWidth": 50.36,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "mushroom-head-wizard": {
+   "name": "Mushroom Head Wizard",
+   "pack": "craftpix-net-933216-fantasy-top-down-mushroom-character-asset-pack",
+   "file": "mushroom-head-wizard.png",
+   "frameWidth": 75,
+   "frameHeight": 78,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 36.46,
+   "anchorY": 64.71,
+   "bodyWidth": 45.46,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "nordic": {
+   "name": "Nordic",
+   "pack": "craftpix-net-197730-tribal-4-direction-character-sprite-asset-pack",
+   "file": "nordic.png",
+   "frameWidth": 90,
+   "frameHeight": 81,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 44.28,
+   "anchorY": 64.0,
+   "bodyWidth": 48.26,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "nordic-leader": {
+   "name": "Nordic Leader",
+   "pack": "craftpix-net-176111-free-tribal-warrior-boss-characters-asset-pack",
+   "file": "nordic-leader.png",
+   "frameWidth": 113,
+   "frameHeight": 96,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 58.96,
+   "anchorY": 76.86,
+   "bodyWidth": 39.89,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "pain-elemental": {
+   "name": "Pain Elemental",
+   "pack": "craftpix-net-270646-mythology-2d-character-assets-anubis-medusa-horus",
+   "file": "pain-elemental.png",
+   "frameWidth": 87,
+   "frameHeight": 79,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 42.36,
+   "anchorY": 64.0,
+   "bodyWidth": 46.15,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "medusa"
+  },
+  "pharaoh": {
+   "name": "Pharaoh",
+   "pack": "craftpix-net-947906-ancient-mythology-boss-characters-top-down-asset-pack",
+   "file": "pharaoh.png",
+   "frameWidth": 117,
+   "frameHeight": 98,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 60.95,
+   "anchorY": 79.89,
+   "bodyWidth": 41.24,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "pirate-captain": {
+   "name": "Pirate Captain",
+   "pack": "craftpix-net-630832-top-down-pirate-2d-character-pack",
+   "file": "pirate-captain.png",
+   "frameWidth": 88,
+   "frameHeight": 83,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.74,
+   "anchorY": 67.53,
+   "bodyWidth": 49.25,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "pirate-guy": {
+   "name": "Pirate Guy",
+   "pack": "craftpix-net-630832-top-down-pirate-2d-character-pack",
+   "file": "pirate-guy.png",
+   "frameWidth": 84,
+   "frameHeight": 85,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 40.92,
+   "anchorY": 70.14,
+   "bodyWidth": 49.73,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "pirate-skeleton": {
+   "name": "Pirate Skeleton",
+   "pack": "craftpix-net-630832-top-down-pirate-2d-character-pack",
+   "file": "pirate-skeleton.png",
+   "frameWidth": 89,
+   "frameHeight": 83,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.62,
+   "anchorY": 66.96,
+   "bodyWidth": 41.19,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "robber": {
+   "name": "Robber",
+   "pack": "craftpix-net-218811-free-medieval-bandit-4-direction-character-pack",
+   "file": "robber.png",
+   "frameWidth": 82,
+   "frameHeight": 78,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 41.32,
+   "anchorY": 67.52,
+   "bodyWidth": 48.67,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "rock-monster": {
+   "name": "Rock Monster",
+   "pack": "craftpix-net-545831-top-down-boss-characters-pack-3-rock-earth-ice-monsters",
+   "file": "rock-monster.png",
+   "frameWidth": 122,
+   "frameHeight": 102,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 63.29,
+   "anchorY": 82.69,
+   "bodyWidth": 42.93,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "shotgun-guy": {
+   "name": "Shotgun Guy",
+   "pack": "craftpix-net-218811-free-medieval-bandit-4-direction-character-pack",
+   "file": "shotgun-guy.png",
+   "frameWidth": 88,
+   "frameHeight": 82,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 44.86,
+   "anchorY": 64.63,
+   "bodyWidth": 40.37,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "thug"
+  },
+  "skeleton-archer": {
+   "name": "Skeleton Archer",
+   "pack": "craftpix-net-229181-top-down-skeleton-characters-pack-wizard-knight-archer",
+   "file": "skeleton-archer.png",
+   "frameWidth": 60,
+   "frameHeight": 69,
+   "columns": 16,
+   "frameCount": 230,
+   "anchorX": 27.69,
+   "anchorY": 64.0,
+   "bodyWidth": 44.72,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      60,
+      10
+     ],
+     "up": [
+      70,
+      10
+     ],
+     "left": [
+      80,
+      10
+     ],
+     "right": [
+      90,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      100,
+      10
+     ],
+     "up": [
+      110,
+      10
+     ],
+     "left": [
+      120,
+      10
+     ],
+     "right": [
+      130,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      140,
+      10
+     ],
+     "up": [
+      150,
+      10
+     ],
+     "left": [
+      160,
+      10
+     ],
+     "right": [
+      170,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      180,
+      10
+     ],
+     "up": [
+      190,
+      10
+     ],
+     "left": [
+      200,
+      10
+     ],
+     "right": [
+      210,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      220,
+      10
+     ]
+    }
+   }
+  },
+  "skeleton-knight": {
+   "name": "Skeleton Knight",
+   "pack": "craftpix-net-229181-top-down-skeleton-characters-pack-wizard-knight-archer",
+   "file": "skeleton-knight.png",
+   "frameWidth": 90,
+   "frameHeight": 80,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 44.3,
+   "anchorY": 64.87,
+   "bodyWidth": 40.27,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "skeleton-wizard": {
+   "name": "Skeleton Wizard",
+   "pack": "craftpix-net-229181-top-down-skeleton-characters-pack-wizard-knight-archer",
+   "file": "skeleton-wizard.png",
+   "frameWidth": 87,
+   "frameHeight": 88,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 43.15,
+   "anchorY": 71.64,
+   "bodyWidth": 61.52,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "thug": {
+   "name": "Thug",
+   "pack": "craftpix-net-218811-free-medieval-bandit-4-direction-character-pack",
+   "file": "thug.png",
+   "frameWidth": 88,
+   "frameHeight": 82,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 44.86,
+   "anchorY": 64.63,
+   "bodyWidth": 40.37,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "viking-leader": {
+   "name": "Viking Leader",
+   "pack": "craftpix-net-907874-free-top-down-boss-character-4-direction-pack",
+   "file": "viking-leader.png",
+   "frameWidth": 107,
+   "frameHeight": 91,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 56.41,
+   "anchorY": 73.74,
+   "bodyWidth": 39.8,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "wizard-female": {
+   "name": "Wizard Female",
+   "pack": "craftpix-net-954187-top-down-wizard-characters-pack-male-veteran-female",
+   "file": "wizard-female.png",
+   "frameWidth": 92,
+   "frameHeight": 83,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 46.14,
+   "anchorY": 66.19,
+   "bodyWidth": 45.37,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "wizard-male": {
+   "name": "Wizard Male",
+   "pack": "craftpix-net-954187-top-down-wizard-characters-pack-male-veteran-female",
+   "file": "wizard-male.png",
+   "frameWidth": 88,
+   "frameHeight": 81,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 43.73,
+   "anchorY": 65.97,
+   "bodyWidth": 44.05,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "wizard-veteran": {
+   "name": "Wizard Veteran",
+   "pack": "craftpix-net-954187-top-down-wizard-characters-pack-male-veteran-female",
+   "file": "wizard-veteran.png",
+   "frameWidth": 85,
+   "frameHeight": 86,
+   "columns": 16,
+   "frameCount": 240,
+   "anchorX": 41.96,
+   "anchorY": 71.25,
+   "bodyWidth": 58.57,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "yeti": {
+   "name": "Yeti",
+   "pack": "craftpix-net-191083-top-down-fantasy-boss-characters-pack-2-yeti-ogre-cyclops",
+   "file": "yeti.png",
+   "frameWidth": 114,
+   "frameHeight": 95,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 59.25,
+   "anchorY": 77.66,
+   "bodyWidth": 39.5,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "zeus": {
+   "name": "Zeus",
+   "pack": "craftpix-net-947906-ancient-mythology-boss-characters-top-down-asset-pack",
+   "file": "zeus.png",
+   "frameWidth": 120,
+   "frameHeight": 100,
+   "columns": 14,
+   "frameCount": 240,
+   "anchorX": 62.28,
+   "anchorY": 81.64,
+   "bodyWidth": 42.15,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   }
+  },
+  "zombieman": {
+   "name": "Zombieman",
+   "pack": "craftpix-net-218811-free-medieval-bandit-4-direction-character-pack",
+   "file": "zombieman.png",
+   "frameWidth": 82,
+   "frameHeight": 78,
+   "columns": 15,
+   "frameCount": 240,
+   "anchorX": 41.32,
+   "anchorY": 67.52,
+   "bodyWidth": 48.67,
+   "bodyHeight": 64.0,
+   "animations": {
+    "idle": {
+     "down": [
+      0,
+      10
+     ],
+     "up": [
+      10,
+      10
+     ],
+     "left": [
+      20,
+      10
+     ],
+     "right": [
+      30,
+      10
+     ]
+    },
+    "idle_blink": {
+     "down": [
+      40,
+      10
+     ],
+     "left": [
+      50,
+      10
+     ],
+     "right": [
+      60,
+      10
+     ]
+    },
+    "walk": {
+     "down": [
+      70,
+      10
+     ],
+     "up": [
+      80,
+      10
+     ],
+     "left": [
+      90,
+      10
+     ],
+     "right": [
+      100,
+      10
+     ]
+    },
+    "run": {
+     "down": [
+      110,
+      10
+     ],
+     "up": [
+      120,
+      10
+     ],
+     "left": [
+      130,
+      10
+     ],
+     "right": [
+      140,
+      10
+     ]
+    },
+    "attack": {
+     "down": [
+      150,
+      10
+     ],
+     "up": [
+      160,
+      10
+     ],
+     "left": [
+      170,
+      10
+     ],
+     "right": [
+      180,
+      10
+     ]
+    },
+    "hurt": {
+     "down": [
+      190,
+      10
+     ],
+     "up": [
+      200,
+      10
+     ],
+     "left": [
+      210,
+      10
+     ],
+     "right": [
+      220,
+      10
+     ]
+    },
+    "dying": {
+     "all": [
+      230,
+      10
+     ]
+    }
+   },
+   "doomVariantOf": "robber"
+  }
+ }
+}

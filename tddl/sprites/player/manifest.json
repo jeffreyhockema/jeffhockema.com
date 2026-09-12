@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "generator": "tools/build_player_sprites.py",
+  "source": "CraftPix zombie TDS main characters (version_2 animations)",
+  "bodyWidth": 64,
+  "sourceAngle": 1.570796,
+  "frameRates": {
+    "idle": 10,
+    "walk": 14,
+    "attack": 18,
+    "death": 10
+  },
+  "oneShot": [
+    "attack",
+    "death"
+  ],
+  "weapons": [
+    "pistol",
+    "rifle",
+    "flamethrower",
+    "flamethrower_black",
+    "flamethrower_blue",
+    "flamethrower_green",
+    "bat",
+    "knife"
+  ],
+  "characters": {
+    "man": {
+      "name": "Man",
+      "file": "man.png",
+      "frameWidth": 146,
+      "frameHeight": 243,
+      "columns": 18,
+      "frameCount": 188,
+      "pivotX": 84.62,
+      "pivotY": 56.89,
+      "bodyX": 52.62,
+      "bodyY": 32.71,
+      "bodyWidth": 64.0,
+      "bodyHeight": 48.36,
+      "muzzle": {
+        "flamethrower": [
+          -13.51,
+          64.95
+        ],
+        "flamethrower_black": [
+          -13.51,
+          64.95
+        ],
+        "flamethrower_blue": [
+          -13.51,
+          64.95
+        ],
+        "flamethrower_green": [
+          -13.51,
+          64.95
+        ],
+        "pistol": [
+          -15.41,
+          53.1
+        ],
+        "rifle": [
+          -14.93,
+          74.9
+        ]
+      },
+      "animations": {
+        "death": {
+          "none": [
+            0,
+            6
+          ]
+        },
+        "idle": {
+          "pistol": [
+            6,
+            8
+          ],
+          "rifle": [
+            25,
+            8
+          ],
+          "flamethrower": [
+            48,
+            8
+          ],
+          "flamethrower_black": [
+            71,
+            8
+          ],
+          "flamethrower_blue": [
+            94,
+            8
+          ],
+          "flamethrower_green": [
+            117,
+            8
+          ],
+          "bat": [
+            140,
+            8
+          ],
+          "knife": [
+            166,
+            8
+          ]
+        },
+        "walk": {
+          "pistol": [
+            14,
+            6
+          ],
+          "rifle": [
+            33,
+            6
+          ],
+          "flamethrower": [
+            56,
+            6
+          ],
+          "flamethrower_black": [
+            79,
+            6
+          ],
+          "flamethrower_blue": [
+            102,
+            6
+          ],
+          "flamethrower_green": [
+            125,
+            6
+          ],
+          "bat": [
+            148,
+            6
+          ],
+          "knife": [
+            174,
+            6
+          ]
+        },
+        "attack": {
+          "pistol": [
+            20,
+            5
+          ],
+          "rifle": [
+            39,
+            9
+          ],
+          "flamethrower": [
+            62,
+            9
+          ],
+          "flamethrower_black": [
+            85,
+            9
+          ],
+          "flamethrower_blue": [
+            108,
+            9
+          ],
+          "flamethrower_green": [
+            131,
+            9
+          ],
+          "bat": [
+            154,
+            12
+          ],
+          "knife": [
+            180,
+            8
+          ]
+        }
+      }
+    }
+  }
+}
