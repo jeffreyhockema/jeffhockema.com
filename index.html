@@ -35,21 +35,18 @@
       text-align: center;
     }
 
-    .avatar-ring {
-      width: 56px;
-      height: 56px;
+    .headshot {
+      width: 96px;
+      height: 96px;
       border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      font-size: 1.05rem;
-      letter-spacing: -0.04em;
-      color: #1a1a12;
-      background: linear-gradient(145deg, #ffe3a3, var(--accent) 60%, #e8b45a);
-      box-shadow:
-        0 8px 24px rgba(255, 200, 100, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      object-fit: cover;
+      display: block;
       margin-bottom: 1.1rem;
+      border: 3px solid rgba(255, 255, 255, 0.85);
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.25),
+        0 10px 30px rgba(0, 0, 0, 0.35),
+        0 0 0 6px var(--accent-soft);
     }
 
     h1 {
@@ -138,7 +135,7 @@
   </nav>
 
   <main class="card glass rise">
-    <div class="avatar-ring" aria-hidden="true">JH</div>
+    <img class="headshot" src="/headshot.jpg" width="96" height="96" alt="Jeff Hockema" />
 
     <h1>Jeff Hockema</h1>
     <p class="tagline">
