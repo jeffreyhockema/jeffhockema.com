@@ -52,15 +52,6 @@
       text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
     }
 
-    header p {
-      margin: 0.8rem auto 0;
-      max-width: 46ch;
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 0.98rem;
-      line-height: 1.55;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 2px 18px rgba(0, 0, 0, 0.55);
-    }
-
     .list {
       display: flex;
       flex-direction: column;
@@ -120,7 +111,7 @@
       border-radius: 14px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-      margin-bottom: 1.2rem;
+      margin: 0.2rem 0 1.1rem;
       background: #090b10;
     }
 
@@ -137,11 +128,13 @@
       margin-left: auto;
     }
 
-    h2 {
-      margin: 0 0 0.5rem;
-      font-size: 1.35rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
     }
 
     .lede {
@@ -162,41 +155,12 @@
 
     .project p + p { margin-top: 0.6rem; }
 
-    .facts {
-      list-style: none;
-      margin: 0.9rem 0 0;
-      padding: 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-    }
-
-    .facts li {
-      font-size: 0.74rem;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.78);
-      padding: 0.3em 0.7em;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.09);
-    }
-
     .project .actions {
       margin-top: 1.3rem;
       display: flex;
       align-items: center;
       gap: 0.6rem;
       flex-wrap: wrap;
-    }
-
-    .url {
-      flex: 1 1 0;
-      min-width: 0;
-      font-size: 0.78rem;
-      color: var(--faint);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
     /* Per-project tints for the icon tile */
@@ -212,17 +176,41 @@
 
     .labs-head {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
+      justify-content: space-between;
       gap: 1.2rem;
       flex-wrap: wrap;
     }
 
-    .labs .mark { width: 56px; height: 56px; border-radius: 16px; }
-    .labs .text { flex: 1 1 320px; }
-    .labs h2 { margin-bottom: 0.4rem; }
+    .labs .text { flex: 1 1 300px; }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 0.55rem;
+    }
+
+    .brand img {
+      width: 44px;
+      height: 42px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 12px rgba(0, 150, 255, 0.35));
+    }
+
+    .wordmark {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .wordmark b { font-weight: 600; color: #4fb6ff; }
+
     .labs .lede { margin-bottom: 0; }
     .labs p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.6; max-width: 68ch; }
-    .labs-head .btn { align-self: center; }
 
     .labs-grid {
       margin-top: 1.3rem;
@@ -252,7 +240,7 @@
       justify-content: space-between;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 0.9rem;
+      margin-bottom: 0.8rem;
     }
 
     .sub-logo {
@@ -265,13 +253,6 @@
       object-fit: contain;
       object-position: left center;
       filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
-    }
-
-    .sub h3 {
-      margin: 0 0 0.4rem;
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: -0.015em;
     }
 
     .sub p { flex: 1; }
@@ -308,12 +289,12 @@
     @media (max-width: 480px) {
       body { padding: 88px 14px 40px; }
       .project { padding: 1.3rem 1.25rem 1.2rem; }
-      .project-top, .sub-top {
+      .sub-top {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
       }
-      .project-top .tag, .sub-top .tag { margin-left: 0; }
+      .sub-top .tag { margin-left: 0; }
       .logo { height: 52px; }
       .shot { border-radius: 12px; margin-bottom: 1rem; }
       .labs { padding: 1.3rem 1.25rem 1.2rem; }
@@ -333,7 +314,6 @@
     <header class="rise">
       <span class="eyebrow">Projects &amp; demos</span>
       <h1>Things I've built</h1>
-      <p>A retro game server, a looping instrument and a Doom-like shooter. The last two run right here in the browser.</p>
     </header>
 
     <section class="list" aria-label="Projects">
@@ -341,71 +321,42 @@
       <article class="project glass rise">
         <div class="project-top">
           <img class="logo" src="/projects/rgb-logo.webp" width="900" height="120" alt="Retro Game Browser: Play / Explore / Relive" />
-          <span class="tag">Emulation · Netplay</span>
         </div>
-        <h2>Retro Game Browser</h2>
+        <h2 class="sr-only">Retro Game Browser</h2>
         <p class="lede">Your LaunchBox library, in any web browser, playable from anywhere, with friends.</p>
         <p>Turns the LaunchBox collection on a Windows PC into a website: box art, videos and manuals for the whole library, and a Play button that runs the game in the browser through EmulatorJS, a WebAssembly build of MAME, js-dos and ScummVM. Send a friend a link and they're in, with rollback netcode for the consoles and over 1,300 arcade games, video streaming for the rest, and IPX LAN play for 255 DOS games. Offline copies, sign-in, an admin page, and a Cloudflare Tunnel to reach it from anywhere.</p>
-        <ul class="facts" aria-label="Details">
-          <li>Node.js server</li>
-          <li>EmulatorJS · MAME 0.244 · js-dos · ScummVM</li>
-          <li>WebRTC rollback netplay</li>
-          <li>Up to 4 players</li>
-          <li>Windows installer</li>
-          <li>GPL-3.0</li>
-        </ul>
         <div class="actions">
           <a class="btn btn-accent" href="https://rgb.jeffhockema.com" target="_blank" rel="noopener">Open Retro Game Browser</a>
           <a class="btn" href="https://github.com/jeffreyhockema/RetroGameBrowser" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
             Source
           </a>
-          <span class="url">rgb.jeffhockema.com</span>
         </div>
       </article>
 
       <article class="project glass rise">
         <div class="project-top">
           <img class="logo logo-jlooper" src="/projects/jlooper-logo.webp" width="766" height="192" alt="jLooper" />
-          <span class="tag">Audio · Live demo</span>
         </div>
         <img class="shot" src="/projects/jlooper-screenshot.webp" width="1400" height="875" alt="jLooper with a loop playing on track 1 and track 2 recording" loading="lazy" />
-        <h2>jLooper</h2>
+        <h2 class="sr-only">jLooper</h2>
         <p class="lede">Play something and it loops. Play again and it layers.</p>
         <p>Eight tracks of built-in synth voices, TR-707, TR-808 and TR-909 drum kits, or a live mic. The first loop you record sets the tempo and becomes the master loop, every other loop is a whole multiple of it, and overdubs stack on top with scenes for alternate takes. The engine is native code compiled to WebAssembly running inside an AudioWorklet, shared with the desktop app along with its .looper session format. The on-screen Launchkey is drawn to scale and every pad and button is clickable.</p>
-        <ul class="facts" aria-label="Details">
-          <li>Web Audio · AudioWorklet</li>
-          <li>WebAssembly engine</li>
-          <li>8 tracks · scenes · overdub</li>
-          <li>Built-in voices + mic input</li>
-          <li>MIDI controller support</li>
-        </ul>
         <div class="actions">
           <a class="btn btn-accent" href="/jlooper/">Open jLooper</a>
-          <span class="url">/jlooper</span>
         </div>
       </article>
 
       <article class="project glass rise">
         <div class="project-top">
           <img class="logo logo-tddl" src="/projects/tddl-logo.webp" width="1200" height="412" alt="TDDL: Top-Down Doom-like" />
-          <span class="tag">Game · Live demo</span>
         </div>
         <img class="shot" src="/projects/tddl-screenshot.webp" width="1200" height="412" alt="TDDL: the player's flashlight lights a corridor with a zombieman ahead" loading="lazy" />
-        <h2>TDDL</h2>
+        <h2 class="sr-only">TDDL</h2>
         <p class="lede">A top-down Doom-like shooter in plain JavaScript, with no build step.</p>
         <p>Procedural levels with red, yellow and blue key doors in order, secret walls, switches, chain-exploding barrels, and lava, waste and water. The monsters are Doom's own, with their original stats and AI ported from id's p_enemy.c: they wake to sight or sound, chase in eight-direction zig-zags, and turn on each other in crossfire. A flashlight cone and ray-cast shadows decide what you see, seven weapons share Doom's ammo pools, and a boss seals the exit until it's dead.</p>
-        <ul class="facts" aria-label="Details">
-          <li>Vanilla JS · ES modules</li>
-          <li>HTML5 Canvas</li>
-          <li>Procedural levels</li>
-          <li>Doom monster AI</li>
-          <li>Dynamic lighting</li>
-          <li>Web Audio</li>
-        </ul>
         <div class="actions">
           <a class="btn btn-accent" href="/tddl/">Play TDDL</a>
-          <span class="url">/tddl</span>
         </div>
       </article>
 
@@ -413,11 +364,12 @@
 
     <section class="labs glass rise" aria-labelledby="labs-title">
       <div class="labs-head">
-        <div class="mark mark-labs" aria-hidden="true">
-          <img src="/projects/hockema-labs-mark.webp" width="474" height="455" alt="" />
-        </div>
         <div class="text">
-          <h2 id="labs-title">Hockema Labs</h2>
+          <a class="brand" href="https://hockemalabs.com" target="_blank" rel="noopener" aria-label="Hockema Labs">
+            <img src="/projects/hockema-labs-mark.webp" width="474" height="455" alt="" />
+            <span class="wordmark">Hockema <b>Labs</b></span>
+          </a>
+          <h2 id="labs-title" class="sr-only">Hockema Labs</h2>
           <p class="lede">A home for my projects with commercial potential.</p>
         </div>
         <a class="btn" href="https://hockemalabs.com" target="_blank" rel="noopener">
@@ -433,7 +385,7 @@
             <img class="sub-logo" src="/projects/house-edge-casino-logo.webp" width="640" height="321" alt="House Edge Casino" />
             <span class="tag">iOS</span>
           </div>
-          <h3>House Edge Casino</h3>
+          <h3 class="sr-only">House Edge Casino</h3>
           <p>A free casino simulator and strategy trainer for iPhone and iPad. Blackjack, video poker, roulette and slots with real casino odds and real-time strategy hints. No ads, no coin packs, and no real-money gambling.</p>
           <div class="actions">
             <a class="btn btn-accent btn-sm" href="https://apps.apple.com/us/app/house-edge-casino/id6758695813" target="_blank" rel="noopener">App Store</a>
@@ -446,7 +398,7 @@
             <img class="sub-logo" src="/projects/playnext-karaoke-logo.webp" width="1006" height="287" alt="PlayNext Karaoke" />
             <span class="tag tag-soon">In development</span>
           </div>
-          <h3>PlayNext Karaoke</h3>
+          <h3 class="sr-only">PlayNext Karaoke</h3>
           <p>A karaoke app for home parties that runs in the browser. One laptop hosts the whole night; guests scan a QR code, pick a name and avatar, and add songs from their phones, and a round-robin queue gives everyone a turn before anyone sings twice.</p>
           <div class="actions">
             <a class="btn btn-sm" href="https://hockemalabs.com" target="_blank" rel="noopener">Learn more</a>
