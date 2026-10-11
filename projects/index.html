@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Projects — Jeff Hockema</title>
+  <meta name="description" content="Projects and live demos by Jeff Hockema: Retro Game Browser, jLooper and TDDL." />
+  <meta name="theme-color" content="#1b2419" />
+  <link rel="icon" href="/favicon.ico" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+
+  <style>
+    body {
+      padding: 96px 20px 48px;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 860px);
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 0 8px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    header p {
+      margin: 0.8rem auto 0;
+      max-width: 46ch;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 0.98rem;
+      line-height: 1.55;
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .project {
+      display: flex;
+      flex-direction: column;
+      padding: 1.6rem 1.7rem 1.5rem;
+      transition: transform 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .project:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.42),
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .project-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      flex: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .mark svg { width: 25px; height: 25px; }
+
+    .logo {
+      display: block;
+      width: min(100%, 440px);
+      height: auto;
+      filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+    }
+
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--faint);
+      padding: 0.35em 0.75em;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      white-space: nowrap;
+    }
+
+    h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .lede {
+      margin: 0 0 0.75rem;
+      color: var(--text);
+      font-weight: 500;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .project p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.65;
+      max-width: 68ch;
+    }
+
+    .project p + p { margin-top: 0.6rem; }
+
+    .facts {
+      list-style: none;
+      margin: 0.9rem 0 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .facts li {
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.78);
+      padding: 0.3em 0.7em;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+
+    .project .actions {
+      margin-top: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .url {
+      flex: 1 1 0;
+      min-width: 0;
+      font-size: 0.78rem;
+      color: var(--faint);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Per-project tints for the icon tile */
+    .mark-jlooper { background: linear-gradient(135deg, #2dd4bf, #8b5cf6); color: #fff; }
+    .mark-tddl    { background: linear-gradient(135deg, #ff6a3d, #b4231a); color: #fff; }
+    .mark-labs    { background: linear-gradient(135deg, #ffe3a3, #e8b45a); color: #1a1a12; }
+
+    /* Hockema Labs banner */
+    .labs {
+      margin-top: 18px;
+      padding: 1.5rem 1.7rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      background: var(--glass-bg-strong);
+    }
+
+    .labs .mark { width: 52px; height: 52px; border-radius: 16px; }
+    .labs .mark svg { width: 28px; height: 28px; }
+
+    .labs .text { flex: 1 1 280px; }
+    .labs h2 { margin-bottom: 0.3rem; }
+    .labs p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.55; }
+
+    footer {
+      margin-top: 2.2rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--faint);
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    footer a { color: var(--muted); border-bottom: 1px solid rgba(255,255,255,0.2); }
+    footer a:hover { color: var(--text); border-color: rgba(255,255,255,0.5); }
+
+    /* stagger the entrance */
+    .list .rise:nth-child(1) { animation-delay: 0.04s; }
+    .list .rise:nth-child(2) { animation-delay: 0.10s; }
+    .list .rise:nth-child(3) { animation-delay: 0.16s; }
+    .labs.rise { animation-delay: 0.22s; }
+
+    @media (max-width: 480px) {
+      body { padding: 88px 14px 40px; }
+      .project { padding: 1.3rem 1.25rem 1.2rem; }
+      .project-top { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="background" aria-hidden="true"></div>
+
+  <nav class="nav glass" aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/projects/" aria-current="page">Projects</a>
+  </nav>
+
+  <main class="page">
+    <header class="rise">
+      <span class="eyebrow">Projects &amp; demos</span>
+      <h1>Things I've built</h1>
+      <p>A retro game server, a looping instrument and a Doom-like shooter. Two of them run right here in the browser.</p>
+    </header>
+
+    <section class="list" aria-label="Projects">
+
+      <article class="project glass rise">
+        <div class="project-top">
+          <img class="logo" src="/projects/rgb-logo.webp" width="900" height="120" alt="Retro Game Browser: Play / Explore / Relive" />
+          <span class="tag">Emulation · Netplay</span>
+        </div>
+        <h2>Retro Game Browser</h2>
+        <p class="lede">Your LaunchBox library, in any web browser, playable from anywhere, with friends.</p>
+        <p>Retro Game Browser turns the LaunchBox collection on a Windows PC into a website. Open it on a laptop, tablet or phone and the whole library is there: box art, gameplay videos, screenshots, manuals, maps and hint books, filterable by platform, genre, decade and players. Press Play and the game runs in the browser with nothing to install, on EmulatorJS for the consoles, a WebAssembly build of MAME for arcade and Apple IIGS, js-dos for the eXoDOS and Windows 3.x/9x collections, and ScummVM for adventure games. It only ever reads the LaunchBox folder, so LaunchBox carries on exactly as before.</p>
+        <p>Press "Play with a friend", send the link, and they're in with no account, no install and no port forwarding. Rollback netcode keeps the 8- and 16-bit consoles and over 1,300 arcade games frame-perfect in step; everything else streams video from the host's browser with controllers sent back; and 255 DOS games get the IPX network they were written for. Any game can be downloaded as an offline copy that plays with no server at all. Sign in with Google or local accounts, decide who can play, watch what's being played from the admin page, and reach it from anywhere through a Cloudflare Tunnel.</p>
+        <ul class="facts" aria-label="Details">
+          <li>Node.js server</li>
+          <li>EmulatorJS · MAME 0.244 · js-dos · ScummVM</li>
+          <li>WebRTC rollback netplay</li>
+          <li>Up to 4 players</li>
+          <li>Windows installer</li>
+          <li>GPL-3.0</li>
+        </ul>
+        <div class="actions">
+          <a class="btn btn-accent" href="https://rgb.jeffhockema.com" target="_blank" rel="noopener">Open Retro Game Browser</a>
+          <a class="btn" href="https://github.com/jeffreyhockema/RetroGameBrowser" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+            Source
+          </a>
+          <span class="url">rgb.jeffhockema.com</span>
+        </div>
+      </article>
+
+      <article class="project glass rise">
+        <div class="project-top">
+          <div class="mark mark-jlooper" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-4M8 18V6M12 15V9M16 20V4M20 13v-2"/></svg>
+          </div>
+          <span class="tag">Audio · Live demo</span>
+        </div>
+        <h2>jLooper</h2>
+        <p class="lede">A live-looping instrument in the browser. Play something and it loops. Play again and it layers.</p>
+        <p>Eight tracks sound together. The first loop you record sets the tempo and becomes the master loop; every other loop is a whole multiple of it, so everything arrives in phase. Record a take, overdub layers on top, drop the newest layer when it isn't working, and stack alternate takes as scenes you can launch one row at a time. Each track plays a built-in synth voice, a drum rack with TR-707, TR-808 and TR-909 kits, or a live microphone input, and you can swap the sound after the loop is recorded.</p>
+        <p>The audio engine is native code compiled to WebAssembly and runs inside an AudioWorklet, held to the same rules as a desktop audio callback: nothing in the audio thread allocates, locks or waits on the UI. It is the same engine as the desktop app, and sessions save to the same .looper file. The on-screen Novation Launchkey is drawn to scale with every pad and button clickable, or play from your computer keyboard with the white keys on the home row.</p>
+        <ul class="facts" aria-label="Details">
+          <li>Web Audio · AudioWorklet</li>
+          <li>WebAssembly engine</li>
+          <li>8 tracks · scenes · overdub</li>
+          <li>Built-in voices + mic input</li>
+          <li>MIDI controller support</li>
+        </ul>
+        <div class="actions">
+          <a class="btn btn-accent" href="/jlooper/">Open jLooper</a>
+          <span class="url">/jlooper</span>
+        </div>
+      </article>
+
+      <article class="project glass rise">
+        <div class="project-top">
+          <div class="mark mark-tddl" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
+          </div>
+          <span class="tag">Game · Live demo</span>
+        </div>
+        <h2>TDDL</h2>
+        <p class="lede">A top-down Doom-like shooter, written in plain JavaScript on a canvas with no build step.</p>
+        <p>Every level is procedurally generated: rooms and corridors laid out so the red, yellow and blue keys come in order, with secret walls to push through, switches that slide a wall aside, green barrels that chain-explode, and lava, toxic waste and water that each change how you move. Reach the exit; a boss seals it until it is dead. Seven weapons, from fists to the BFG, with the pistol and rifle sharing bullets and the plasma gun and BFG sharing cells.</p>
+        <p>The monsters are Doom's own bestiary with their original hit points, speeds, sizes, pain chances and attack timings, and their AI is a port of the monster half of id Software's p_enemy.c: they sleep until they see you or hear a shot, chase in eight directions with the famous zig-zag, and turn on each other when caught in crossfire. Your flashlight lights a cone ahead; ray-cast shadow polygons decide what you can see and what you remember. Sounds are a 16-bit remaster of Doom's effects, placed in the world with Doom's own panning and falloff.</p>
+        <ul class="facts" aria-label="Details">
+          <li>Vanilla JS · ES modules</li>
+          <li>HTML5 Canvas</li>
+          <li>Procedural levels</li>
+          <li>Doom monster AI</li>
+          <li>Dynamic lighting</li>
+          <li>Web Audio</li>
+        </ul>
+        <div class="actions">
+          <a class="btn btn-accent" href="/tddl/">Play TDDL</a>
+          <span class="url">/tddl</span>
+        </div>
+      </article>
+
+    </section>
+
+    <a class="labs glass rise" href="https://hockemalabs.com" target="_blank" rel="noopener">
+      <div class="mark mark-labs" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6.5L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9.5V3"/><path d="M7.5 15h9"/></svg>
+      </div>
+      <div class="text">
+        <h2>Hockema Labs</h2>
+        <p>Where the bigger ideas live. Hockema Labs is the home for my larger projects, tooling and infrastructure work beyond these demos.</p>
+      </div>
+      <span class="btn">
+        hockemalabs.com
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </span>
+    </a>
+
+    <footer>
+      <a href="/">← Back home</a>
+    </footer>
+  </main>
+
+</body>
+</html>

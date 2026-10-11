@@ -1,0 +1,195 @@
+/* jeffhockema.com — shared styles
+   A full-bleed photo, a warm dim veil, and frosted-glass panels on top. */
+
+:root {
+  --text: rgba(255, 255, 255, 0.96);
+  --muted: rgba(255, 255, 255, 0.70);
+  --faint: rgba(255, 255, 255, 0.50);
+  --accent: #ffd27a;              /* the sun in bg.jpg */
+  --accent-soft: rgba(255, 210, 122, 0.22);
+
+  --glass-bg: rgba(16, 20, 12, 0.30);
+  --glass-bg-strong: rgba(16, 20, 12, 0.42);
+  --glass-edge: rgba(255, 255, 255, 0.14);
+  --glass-edge-hi: rgba(255, 255, 255, 0.38);
+  --glass-blur: 22px;
+  --radius: 24px;
+
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  font-family: var(--font);
+  color: var(--text);
+  background: #1b2419;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: inherit; text-decoration: none; }
+
+::selection { background: var(--accent-soft); color: #fff; }
+
+/* ---------- Background ---------- */
+
+.background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: url("/bg.jpg") center / cover no-repeat;
+  transform: scale(1.04);
+  animation: drift 48s ease-in-out infinite alternate;
+}
+
+.background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* darker toward the edges so the glass reads against the bright sun */
+  background:
+    radial-gradient(120% 90% at 50% 40%, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.42) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.28));
+}
+
+@keyframes drift {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to   { transform: scale(1.09) translate3d(-1.2%, 0.8%, 0); }
+}
+
+/* ---------- Glass ---------- */
+
+.glass {
+  position: relative;
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  isolation: isolate;
+}
+
+/* A hairline border that is brighter where light would catch it (top-left)
+   and fades toward the bottom-right, like the edge of real glass. */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--glass-edge-hi) 0%,
+    var(--glass-edge) 40%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* A faint grain so the blur does not look like flat plastic. */
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Nav pill ---------- */
+
+.nav {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  --radius: 999px;
+}
+
+.nav a {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.nav a:hover { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+
+.nav a[aria-current="page"] {
+  color: #1a1a12;
+  background: var(--accent);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.7em 1.15em;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+
+.btn-accent {
+  color: #1a1a12;
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.btn-accent:hover { background: #ffdc96; border-color: transparent; }
+
+.btn svg { width: 1em; height: 1em; }
+
+/* ---------- Motion / a11y ---------- */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .background { animation: none; }
+  .rise { animation: none; }
+  * { transition: none !important; }
+}
