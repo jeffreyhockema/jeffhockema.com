@@ -34,6 +34,7 @@
 
     .eyebrow {
       display: inline-block;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 2px 16px rgba(0, 0, 0, 0.5);
       font-size: 0.72rem;
       font-weight: 600;
       letter-spacing: 0.22em;
@@ -54,10 +55,10 @@
     header p {
       margin: 0.8rem auto 0;
       max-width: 46ch;
-      color: rgba(255, 255, 255, 0.86);
+      color: rgba(255, 255, 255, 0.9);
       font-size: 0.98rem;
       line-height: 1.55;
-      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 2px 18px rgba(0, 0, 0, 0.55);
     }
 
     .list {
@@ -110,6 +111,17 @@
       object-fit: contain;
       object-position: left center;
       filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+    }
+
+    .shot {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      margin-bottom: 1.2rem;
+      background: #090b10;
     }
 
     .tag {
@@ -296,7 +308,15 @@
     @media (max-width: 480px) {
       body { padding: 88px 14px 40px; }
       .project { padding: 1.3rem 1.25rem 1.2rem; }
-      .project-top { flex-wrap: wrap; }
+      .project-top, .sub-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .project-top .tag, .sub-top .tag { margin-left: 0; }
+      .logo { height: 52px; }
+      .shot { border-radius: 12px; margin-bottom: 1rem; }
+      .labs { padding: 1.3rem 1.25rem 1.2rem; }
     }
   </style>
 </head>
