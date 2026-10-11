@@ -185,7 +185,8 @@
     /* Per-project tints for the icon tile */
     .mark-jlooper { background: linear-gradient(135deg, #2dd4bf, #8b5cf6); color: #fff; }
     .mark-tddl    { background: linear-gradient(135deg, #ff6a3d, #b4231a); color: #fff; }
-    .mark-labs    { background: linear-gradient(135deg, #ffe3a3, #e8b45a); color: #1a1a12; }
+    .mark-labs    { background: linear-gradient(145deg, #0b1322, #04060b); padding: 8px; }
+    .mark-labs img { width: 100%; height: 100%; object-fit: contain; }
 
     /* Hockema Labs banner */
     .labs {
@@ -198,12 +199,14 @@
       background: var(--glass-bg-strong);
     }
 
-    .labs .mark { width: 52px; height: 52px; border-radius: 16px; }
-    .labs .mark svg { width: 28px; height: 28px; }
+    .labs { align-items: flex-start; }
+    .labs .mark { width: 56px; height: 56px; border-radius: 16px; }
 
-    .labs .text { flex: 1 1 280px; }
-    .labs h2 { margin-bottom: 0.3rem; }
-    .labs p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.55; }
+    .labs .text { flex: 1 1 320px; }
+    .labs h2 { margin-bottom: 0.4rem; }
+    .labs .lede { margin-bottom: 0.6rem; }
+    .labs p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.6; max-width: 68ch; }
+    .labs .btn { align-self: center; }
 
     footer {
       margin-top: 2.2rem;
@@ -327,11 +330,12 @@
 
     <a class="labs glass rise" href="https://hockemalabs.com" target="_blank" rel="noopener">
       <div class="mark mark-labs" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6.5L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9.5V3"/><path d="M7.5 15h9"/></svg>
+        <img src="/projects/hockema-labs-mark.webp" width="474" height="455" alt="" />
       </div>
       <div class="text">
         <h2>Hockema Labs</h2>
-        <p>Where the bigger ideas live. Hockema Labs is the home for my larger projects, tooling and infrastructure work beyond these demos.</p>
+        <p class="lede">A home for my projects with commercial potential.</p>
+        <p>Hockema Labs is where the apps I publish live, starting with House Edge Casino, a free casino simulator and strategy trainer for iPhone and iPad, with a browser-based karaoke app for home parties in the works.</p>
       </div>
       <span class="btn">
         hockemalabs.com
