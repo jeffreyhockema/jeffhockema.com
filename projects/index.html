@@ -101,26 +101,16 @@
 
     .mark svg { width: 25px; height: 25px; }
 
+    /* Every card logo shares one height so the row tops line up */
     .logo {
       display: block;
-      width: min(100%, 440px);
-      height: auto;
+      height: 58px;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      object-position: left center;
       filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
     }
-
-    .shot {
-      display: block;
-      width: 100%;
-      height: auto;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-      margin-bottom: 1.2rem;
-      background: #090b10;
-    }
-
-    .logo-jlooper { width: auto; height: 52px; }
-    .logo-tddl { width: min(100%, 300px); }
 
     .tag {
       font-size: 0.68rem;
@@ -378,10 +368,10 @@
 
       <article class="project glass rise">
         <div class="project-top">
-          <img class="logo logo-tddl" src="/projects/tddl-logo.webp" width="1400" height="498" alt="TDDL: Top-Down Doom-like" />
+          <img class="logo logo-tddl" src="/projects/tddl-logo.webp" width="1200" height="412" alt="TDDL: Top-Down Doom-like" />
           <span class="tag">Game · Live demo</span>
         </div>
-        <img class="shot" src="/projects/tddl-screenshot.webp" width="1400" height="875" alt="TDDL: the player's flashlight lights a corridor with a zombieman ahead" loading="lazy" />
+        <img class="shot" src="/projects/tddl-screenshot.webp" width="1200" height="412" alt="TDDL: the player's flashlight lights a corridor with a zombieman ahead" loading="lazy" />
         <h2>TDDL</h2>
         <p class="lede">A top-down Doom-like shooter in plain JavaScript, with no build step.</p>
         <p>Procedural levels with red, yellow and blue key doors in order, secret walls, switches, chain-exploding barrels, and lava, waste and water. The monsters are Doom's own, with their original stats and AI ported from id's p_enemy.c: they wake to sight or sound, chase in eight-direction zig-zags, and turn on each other in crossfire. A flashlight cone and ray-cast shadows decide what you see, seven weapons share Doom's ammo pools, and a boss seals the exit until it's dead.</p>
