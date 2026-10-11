@@ -27,7 +27,7 @@
 
     .card {
       z-index: 1;
-      width: min(90vw, 520px);
+      width: min(100%, 520px);
       padding: clamp(2rem, 5vw, 2.9rem) clamp(1.5rem, 5vw, 2.6rem);
       display: flex;
       flex-direction: column;
@@ -117,11 +117,17 @@
 
     .icons svg { width: 20px; height: 20px; }
 
-    .cta { margin-top: 1.5rem; }
-
     @media (max-width: 480px) {
-      .card { width: min(94vw, 520px); }
+      .card { padding-left: 1.1rem; padding-right: 1.1rem; }
+      .tagline { font-size: 0.64rem; letter-spacing: 0.1em; gap: 0.35em 0.6em; }
+      .tagline span + span::before { margin-right: 0.6em; }
       .icons a { width: 44px; height: 44px; }
+    }
+
+    /* Narrow phones: stack the tagline so a separator never starts a line */
+    @media (max-width: 365px) {
+      .tagline { flex-direction: column; gap: 0.3em; }
+      .tagline span + span::before { display: none; }
     }
   </style>
 </head>
@@ -158,10 +164,6 @@
       </a>
     </div>
 
-    <a class="btn btn-accent cta" href="/projects/">
-      Projects &amp; demos
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </a>
   </main>
 
 </body>
