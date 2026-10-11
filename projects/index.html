@@ -101,10 +101,14 @@
 
     .mark svg { width: 25px; height: 25px; }
 
+    /* Every card logo shares one height so the row tops line up */
     .logo {
       display: block;
-      width: min(100%, 440px);
-      height: auto;
+      height: 58px;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      object-position: left center;
       filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
     }
 
@@ -118,6 +122,7 @@
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       white-space: nowrap;
+      margin-left: auto;
     }
 
     h2 {
@@ -183,30 +188,93 @@
     }
 
     /* Per-project tints for the icon tile */
-    .mark-jlooper { background: linear-gradient(135deg, #2dd4bf, #8b5cf6); color: #fff; }
-    .mark-tddl    { background: linear-gradient(135deg, #ff6a3d, #b4231a); color: #fff; }
     .mark-labs    { background: linear-gradient(145deg, #0b1322, #04060b); padding: 8px; }
     .mark-labs img { width: 100%; height: 100%; object-fit: contain; }
 
-    /* Hockema Labs banner */
+    /* Hockema Labs */
     .labs {
       margin-top: 18px;
-      padding: 1.5rem 1.7rem;
-      display: flex;
-      align-items: center;
-      gap: 1.2rem;
-      flex-wrap: wrap;
+      padding: 1.6rem 1.7rem 1.5rem;
       background: var(--glass-bg-strong);
     }
 
-    .labs { align-items: flex-start; }
-    .labs .mark { width: 56px; height: 56px; border-radius: 16px; }
+    .labs-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
 
+    .labs .mark { width: 56px; height: 56px; border-radius: 16px; }
     .labs .text { flex: 1 1 320px; }
     .labs h2 { margin-bottom: 0.4rem; }
-    .labs .lede { margin-bottom: 0.6rem; }
+    .labs .lede { margin-bottom: 0; }
     .labs p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.6; max-width: 68ch; }
-    .labs .btn { align-self: center; }
+    .labs-head .btn { align-self: center; }
+
+    .labs-grid {
+      margin-top: 1.3rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .sub {
+      display: flex;
+      flex-direction: column;
+      padding: 1.2rem 1.25rem 1.1rem;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      transition: background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .sub:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .sub-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 0.9rem;
+    }
+
+    .sub-logo {
+      display: block;
+      flex: 0 1 auto;
+      min-width: 0;
+      height: 64px;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      object-position: left center;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+    }
+
+    .sub h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+    }
+
+    .sub p { flex: 1; }
+
+    .sub .actions {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm { padding: 0.55em 0.95em; font-size: 0.8rem; }
+
+    .tag-soon { color: var(--accent); border-color: rgba(255, 210, 122, 0.35); }
 
     footer {
       margin-top: 2.2rem;
@@ -245,7 +313,7 @@
     <header class="rise">
       <span class="eyebrow">Projects &amp; demos</span>
       <h1>Things I've built</h1>
-      <p>A retro game server, a looping instrument and a Doom-like shooter. Two of them run right here in the browser.</p>
+      <p>A retro game server, a looping instrument and a Doom-like shooter. The last two run right here in the browser.</p>
     </header>
 
     <section class="list" aria-label="Projects">
@@ -257,8 +325,7 @@
         </div>
         <h2>Retro Game Browser</h2>
         <p class="lede">Your LaunchBox library, in any web browser, playable from anywhere, with friends.</p>
-        <p>Retro Game Browser turns the LaunchBox collection on a Windows PC into a website. Open it on a laptop, tablet or phone and the whole library is there: box art, gameplay videos, screenshots, manuals, maps and hint books, filterable by platform, genre, decade and players. Press Play and the game runs in the browser with nothing to install, on EmulatorJS for the consoles, a WebAssembly build of MAME for arcade and Apple IIGS, js-dos for the eXoDOS and Windows 3.x/9x collections, and ScummVM for adventure games. It only ever reads the LaunchBox folder, so LaunchBox carries on exactly as before.</p>
-        <p>Press "Play with a friend", send the link, and they're in with no account, no install and no port forwarding. Rollback netcode keeps the 8- and 16-bit consoles and over 1,300 arcade games frame-perfect in step; everything else streams video from the host's browser with controllers sent back; and 255 DOS games get the IPX network they were written for. Any game can be downloaded as an offline copy that plays with no server at all. Sign in with Google or local accounts, decide who can play, watch what's being played from the admin page, and reach it from anywhere through a Cloudflare Tunnel.</p>
+        <p>Turns the LaunchBox collection on a Windows PC into a website: box art, videos and manuals for the whole library, and a Play button that runs the game in the browser through EmulatorJS, a WebAssembly build of MAME, js-dos and ScummVM. Send a friend a link and they're in, with rollback netcode for the consoles and over 1,300 arcade games, video streaming for the rest, and IPX LAN play for 255 DOS games. Offline copies, sign-in, an admin page, and a Cloudflare Tunnel to reach it from anywhere.</p>
         <ul class="facts" aria-label="Details">
           <li>Node.js server</li>
           <li>EmulatorJS · MAME 0.244 · js-dos · ScummVM</li>
@@ -279,15 +346,13 @@
 
       <article class="project glass rise">
         <div class="project-top">
-          <div class="mark mark-jlooper" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-4M8 18V6M12 15V9M16 20V4M20 13v-2"/></svg>
-          </div>
+          <img class="logo logo-jlooper" src="/projects/jlooper-logo.webp" width="766" height="192" alt="jLooper" />
           <span class="tag">Audio · Live demo</span>
         </div>
+        <img class="shot" src="/projects/jlooper-screenshot.webp" width="1400" height="875" alt="jLooper with a loop playing on track 1 and track 2 recording" loading="lazy" />
         <h2>jLooper</h2>
-        <p class="lede">A live-looping instrument in the browser. Play something and it loops. Play again and it layers.</p>
-        <p>Eight tracks sound together. The first loop you record sets the tempo and becomes the master loop; every other loop is a whole multiple of it, so everything arrives in phase. Record a take, overdub layers on top, drop the newest layer when it isn't working, and stack alternate takes as scenes you can launch one row at a time. Each track plays a built-in synth voice, a drum rack with TR-707, TR-808 and TR-909 kits, or a live microphone input, and you can swap the sound after the loop is recorded.</p>
-        <p>The audio engine is native code compiled to WebAssembly and runs inside an AudioWorklet, held to the same rules as a desktop audio callback: nothing in the audio thread allocates, locks or waits on the UI. It is the same engine as the desktop app, and sessions save to the same .looper file. The on-screen Novation Launchkey is drawn to scale with every pad and button clickable, or play from your computer keyboard with the white keys on the home row.</p>
+        <p class="lede">Play something and it loops. Play again and it layers.</p>
+        <p>Eight tracks of built-in synth voices, TR-707, TR-808 and TR-909 drum kits, or a live mic. The first loop you record sets the tempo and becomes the master loop, every other loop is a whole multiple of it, and overdubs stack on top with scenes for alternate takes. The engine is native code compiled to WebAssembly running inside an AudioWorklet, shared with the desktop app along with its .looper session format. The on-screen Launchkey is drawn to scale and every pad and button is clickable.</p>
         <ul class="facts" aria-label="Details">
           <li>Web Audio · AudioWorklet</li>
           <li>WebAssembly engine</li>
@@ -303,15 +368,13 @@
 
       <article class="project glass rise">
         <div class="project-top">
-          <div class="mark mark-tddl" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
-          </div>
+          <img class="logo logo-tddl" src="/projects/tddl-logo.webp" width="1200" height="412" alt="TDDL: Top-Down Doom-like" />
           <span class="tag">Game · Live demo</span>
         </div>
+        <img class="shot" src="/projects/tddl-screenshot.webp" width="1200" height="412" alt="TDDL: the player's flashlight lights a corridor with a zombieman ahead" loading="lazy" />
         <h2>TDDL</h2>
-        <p class="lede">A top-down Doom-like shooter, written in plain JavaScript on a canvas with no build step.</p>
-        <p>Every level is procedurally generated: rooms and corridors laid out so the red, yellow and blue keys come in order, with secret walls to push through, switches that slide a wall aside, green barrels that chain-explode, and lava, toxic waste and water that each change how you move. Reach the exit; a boss seals it until it is dead. Seven weapons, from fists to the BFG, with the pistol and rifle sharing bullets and the plasma gun and BFG sharing cells.</p>
-        <p>The monsters are Doom's own bestiary with their original hit points, speeds, sizes, pain chances and attack timings, and their AI is a port of the monster half of id Software's p_enemy.c: they sleep until they see you or hear a shot, chase in eight directions with the famous zig-zag, and turn on each other when caught in crossfire. Your flashlight lights a cone ahead; ray-cast shadow polygons decide what you can see and what you remember. Sounds are a 16-bit remaster of Doom's effects, placed in the world with Doom's own panning and falloff.</p>
+        <p class="lede">A top-down Doom-like shooter in plain JavaScript, with no build step.</p>
+        <p>Procedural levels with red, yellow and blue key doors in order, secret walls, switches, chain-exploding barrels, and lava, waste and water. The monsters are Doom's own, with their original stats and AI ported from id's p_enemy.c: they wake to sight or sound, chase in eight-direction zig-zags, and turn on each other in crossfire. A flashlight cone and ray-cast shadows decide what you see, seven weapons share Doom's ammo pools, and a boss seals the exit until it's dead.</p>
         <ul class="facts" aria-label="Details">
           <li>Vanilla JS · ES modules</li>
           <li>HTML5 Canvas</li>
@@ -328,20 +391,50 @@
 
     </section>
 
-    <a class="labs glass rise" href="https://hockemalabs.com" target="_blank" rel="noopener">
-      <div class="mark mark-labs" aria-hidden="true">
-        <img src="/projects/hockema-labs-mark.webp" width="474" height="455" alt="" />
+    <section class="labs glass rise" aria-labelledby="labs-title">
+      <div class="labs-head">
+        <div class="mark mark-labs" aria-hidden="true">
+          <img src="/projects/hockema-labs-mark.webp" width="474" height="455" alt="" />
+        </div>
+        <div class="text">
+          <h2 id="labs-title">Hockema Labs</h2>
+          <p class="lede">A home for my projects with commercial potential.</p>
+        </div>
+        <a class="btn" href="https://hockemalabs.com" target="_blank" rel="noopener">
+          hockemalabs.com
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+        </a>
       </div>
-      <div class="text">
-        <h2>Hockema Labs</h2>
-        <p class="lede">A home for my projects with commercial potential.</p>
-        <p>Hockema Labs is where the apps I publish live, starting with House Edge Casino, a free casino simulator and strategy trainer for iPhone and iPad, with a browser-based karaoke app for home parties in the works.</p>
+
+      <div class="labs-grid">
+
+        <article class="sub">
+          <div class="sub-top">
+            <img class="sub-logo" src="/projects/house-edge-casino-logo.webp" width="640" height="321" alt="House Edge Casino" />
+            <span class="tag">iOS</span>
+          </div>
+          <h3>House Edge Casino</h3>
+          <p>A free casino simulator and strategy trainer for iPhone and iPad. Blackjack, video poker, roulette and slots with real casino odds and real-time strategy hints. No ads, no coin packs, and no real-money gambling.</p>
+          <div class="actions">
+            <a class="btn btn-accent btn-sm" href="https://apps.apple.com/us/app/house-edge-casino/id6758695813" target="_blank" rel="noopener">App Store</a>
+            <a class="btn btn-sm" href="https://houseedgecasino.com" target="_blank" rel="noopener">houseedgecasino.com</a>
+          </div>
+        </article>
+
+        <article class="sub">
+          <div class="sub-top">
+            <img class="sub-logo" src="/projects/playnext-karaoke-logo.webp" width="1006" height="287" alt="PlayNext Karaoke" />
+            <span class="tag tag-soon">In development</span>
+          </div>
+          <h3>PlayNext Karaoke</h3>
+          <p>A karaoke app for home parties that runs in the browser. One laptop hosts the whole night; guests scan a QR code, pick a name and avatar, and add songs from their phones, and a round-robin queue gives everyone a turn before anyone sings twice.</p>
+          <div class="actions">
+            <a class="btn btn-sm" href="https://hockemalabs.com" target="_blank" rel="noopener">Learn more</a>
+          </div>
+        </article>
+
       </div>
-      <span class="btn">
-        hockemalabs.com
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
-      </span>
-    </a>
+    </section>
 
     <footer>
       <a href="/">← Back home</a>
