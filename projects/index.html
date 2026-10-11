@@ -188,25 +188,90 @@
     .mark-labs    { background: linear-gradient(145deg, #0b1322, #04060b); padding: 8px; }
     .mark-labs img { width: 100%; height: 100%; object-fit: contain; }
 
-    /* Hockema Labs banner */
+    /* Hockema Labs */
     .labs {
       margin-top: 18px;
-      padding: 1.5rem 1.7rem;
-      display: flex;
-      align-items: center;
-      gap: 1.2rem;
-      flex-wrap: wrap;
+      padding: 1.6rem 1.7rem 1.5rem;
       background: var(--glass-bg-strong);
     }
 
-    .labs { align-items: flex-start; }
-    .labs .mark { width: 56px; height: 56px; border-radius: 16px; }
+    .labs-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
 
+    .labs .mark { width: 56px; height: 56px; border-radius: 16px; }
     .labs .text { flex: 1 1 320px; }
     .labs h2 { margin-bottom: 0.4rem; }
-    .labs .lede { margin-bottom: 0.6rem; }
+    .labs .lede { margin-bottom: 0; }
     .labs p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.6; max-width: 68ch; }
-    .labs .btn { align-self: center; }
+    .labs-head .btn { align-self: center; }
+
+    .labs-grid {
+      margin-top: 1.3rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .sub {
+      display: flex;
+      flex-direction: column;
+      padding: 1.2rem 1.25rem 1.1rem;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      transition: background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .sub:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .sub-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 0.9rem;
+    }
+
+    .sub-logo {
+      display: block;
+      flex: 0 1 auto;
+      min-width: 0;
+      height: 64px;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      object-position: left center;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+    }
+
+    .sub h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+    }
+
+    .sub p { flex: 1; }
+
+    .sub .actions {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm { padding: 0.55em 0.95em; font-size: 0.8rem; }
+
+    .tag-soon { color: var(--accent); border-color: rgba(255, 210, 122, 0.35); }
 
     footer {
       margin-top: 2.2rem;
@@ -328,20 +393,50 @@
 
     </section>
 
-    <a class="labs glass rise" href="https://hockemalabs.com" target="_blank" rel="noopener">
-      <div class="mark mark-labs" aria-hidden="true">
-        <img src="/projects/hockema-labs-mark.webp" width="474" height="455" alt="" />
+    <section class="labs glass rise" aria-labelledby="labs-title">
+      <div class="labs-head">
+        <div class="mark mark-labs" aria-hidden="true">
+          <img src="/projects/hockema-labs-mark.webp" width="474" height="455" alt="" />
+        </div>
+        <div class="text">
+          <h2 id="labs-title">Hockema Labs</h2>
+          <p class="lede">A home for my projects with commercial potential.</p>
+        </div>
+        <a class="btn" href="https://hockemalabs.com" target="_blank" rel="noopener">
+          hockemalabs.com
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+        </a>
       </div>
-      <div class="text">
-        <h2>Hockema Labs</h2>
-        <p class="lede">A home for my projects with commercial potential.</p>
-        <p>Hockema Labs is where the apps I publish live, starting with House Edge Casino, a free casino simulator and strategy trainer for iPhone and iPad, with a browser-based karaoke app for home parties in the works.</p>
+
+      <div class="labs-grid">
+
+        <article class="sub">
+          <div class="sub-top">
+            <img class="sub-logo" src="/projects/house-edge-casino-logo.webp" width="640" height="321" alt="House Edge Casino" />
+            <span class="tag">iOS</span>
+          </div>
+          <h3>House Edge Casino</h3>
+          <p>A free casino simulator and strategy trainer for iPhone and iPad. Blackjack, video poker, roulette and slots with real casino odds and real-time strategy hints. No ads, no coin packs, and no real-money gambling.</p>
+          <div class="actions">
+            <a class="btn btn-accent btn-sm" href="https://apps.apple.com/us/app/house-edge-casino/id6758695813" target="_blank" rel="noopener">App Store</a>
+            <a class="btn btn-sm" href="https://houseedgecasino.com" target="_blank" rel="noopener">houseedgecasino.com</a>
+          </div>
+        </article>
+
+        <article class="sub">
+          <div class="sub-top">
+            <img class="sub-logo" src="/projects/playnext-karaoke-logo.webp" width="1006" height="287" alt="PlayNext Karaoke" />
+            <span class="tag tag-soon">In development</span>
+          </div>
+          <h3>PlayNext Karaoke</h3>
+          <p>A karaoke app for home parties that runs in the browser. One laptop hosts the whole night; guests scan a QR code, pick a name and avatar, and add songs from their phones, and a round-robin queue gives everyone a turn before anyone sings twice.</p>
+          <div class="actions">
+            <a class="btn btn-sm" href="https://hockemalabs.com" target="_blank" rel="noopener">Learn more</a>
+          </div>
+        </article>
+
       </div>
-      <span class="btn">
-        hockemalabs.com
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
-      </span>
-    </a>
+    </section>
 
     <footer>
       <a href="/">← Back home</a>
