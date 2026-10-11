@@ -22,6 +22,10 @@
 
 html, body { margin: 0; min-height: 100%; }
 
+/* The scaled background is fixed, but some mobile browsers still widen the
+   layout viewport for it; clip so centered content stays centered. */
+html { overflow-x: clip; }
+
 body {
   font-family: var(--font);
   color: var(--text);
