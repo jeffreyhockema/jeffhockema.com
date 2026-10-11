@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Projects — Jeff Hockema</title>
+  <meta name="description" content="Projects and live demos by Jeff Hockema." />
+  <meta name="theme-color" content="#1b2419" />
+  <link rel="icon" href="/favicon.ico" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+
+  <style>
+    body {
+      padding: 96px 20px 48px;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 960px);
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 0 8px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    header p {
+      margin: 0.8rem auto 0;
+      max-width: 46ch;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 0.98rem;
+      line-height: 1.55;
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 18px;
+    }
+
+    .project {
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem 1.5rem 1.35rem;
+      transition: transform 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .project:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.42),
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .project-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      flex: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .mark svg { width: 24px; height: 24px; }
+
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--faint);
+      padding: 0.35em 0.75em;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      white-space: nowrap;
+    }
+
+    h2 {
+      margin: 0 0 0.45rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .project p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .project .actions {
+      margin-top: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .url {
+      flex: 1 1 0;
+      min-width: 0;
+      font-size: 0.78rem;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Per-project tints for the little icon tile */
+    .mark-jlooper { background: linear-gradient(135deg, #2dd4bf, #8b5cf6); color: #fff; }
+    .mark-tddl    { background: linear-gradient(135deg, #ff6a3d, #b4231a); color: #fff; }
+    .mark-rgb     { background: conic-gradient(from 200deg, #ff3b5c, #ffcf3b, #37e36a, #35a7ff, #b05cff, #ff3b5c); color: #fff; }
+    .mark-labs    { background: linear-gradient(135deg, #ffe3a3, #e8b45a); color: #1a1a12; }
+
+    /* Hockema Labs banner */
+    .labs {
+      margin-top: 18px;
+      padding: 1.5rem 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      background: var(--glass-bg-strong);
+    }
+
+    .labs .mark { width: 52px; height: 52px; border-radius: 16px; }
+    .labs .mark svg { width: 28px; height: 28px; }
+
+    .labs .text { flex: 1 1 280px; }
+    .labs h2 { margin-bottom: 0.3rem; }
+    .labs p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.55; }
+
+    footer {
+      margin-top: 2.2rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--faint);
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    footer a { color: var(--muted); border-bottom: 1px solid rgba(255,255,255,0.2); }
+    footer a:hover { color: var(--text); border-color: rgba(255,255,255,0.5); }
+
+    /* stagger the entrance */
+    .rise:nth-child(1) { animation-delay: 0.02s; }
+    .rise:nth-child(2) { animation-delay: 0.08s; }
+    .rise:nth-child(3) { animation-delay: 0.14s; }
+
+    @media (max-width: 480px) {
+      body { padding: 88px 14px 40px; }
+      .project { padding: 1.3rem 1.25rem 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="background" aria-hidden="true"></div>
+
+  <nav class="nav glass" aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/projects/" aria-current="page">Projects</a>
+  </nav>
+
+  <main class="page">
+    <header class="rise">
+      <span class="eyebrow">Projects &amp; demos</span>
+      <h1>Things I've built</h1>
+      <p>Small, self-contained experiments that run right in the browser. Open one and play with it.</p>
+    </header>
+
+    <section class="grid" aria-label="Projects">
+
+      <article class="project glass rise">
+        <div class="project-top">
+          <div class="mark mark-jlooper" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-4M8 18V6M12 15V9M16 20V4M20 13v-2"/></svg>
+          </div>
+          <span class="tag">Audio · Live demo</span>
+        </div>
+        <h2>jLooper</h2>
+        <p>A live-looping instrument in the browser. Play something and it loops; play again and it layers. Built on the Web Audio API with an AudioWorklet engine and classic TR-707, TR-808 and TR-909 drum kits, all drawn on a single canvas.</p>
+        <div class="actions">
+          <a class="btn btn-accent" href="/jlooper/">Open jLooper</a>
+          <span class="url">/jlooper</span>
+        </div>
+      </article>
+
+      <article class="project glass rise">
+        <div class="project-top">
+          <div class="mark mark-tddl" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
+          </div>
+          <span class="tag">Game · Live demo</span>
+        </div>
+        <h2>TDDL</h2>
+        <p>A top-down Doom-like shooter written in plain JavaScript. Find the red, yellow and blue keys, push through locked doors, and reach the exit before the level's boss does you in. Flashlight visibility, secret walls, seven weapons, and sound synthesised on the Web Audio API.</p>
+        <div class="actions">
+          <a class="btn btn-accent" href="/tddl/">Play TDDL</a>
+          <span class="url">/tddl</span>
+        </div>
+      </article>
+
+      <article class="project glass rise">
+        <div class="project-top">
+          <div class="mark mark-rgb" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18M3 12h18"/></svg>
+          </div>
+          <span class="tag">Color · Live demo</span>
+        </div>
+        <h2>RGB</h2>
+        <p>A playground for colour and light. Mix channels, watch the blend change in real time, and see how red, green and blue add up to everything on screen. Runs on its own subdomain so it can stay simple and fast.</p>
+        <div class="actions">
+          <a class="btn btn-accent" href="https://rgb.jeffhockema.com" target="_blank" rel="noopener">Open RGB</a>
+          <span class="url">rgb.jeffhockema.com</span>
+        </div>
+      </article>
+
+    </section>
+
+    <a class="labs glass rise" href="https://hockemalabs.com" target="_blank" rel="noopener">
+      <div class="mark mark-labs" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6.5L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9.5V3"/><path d="M7.5 15h9"/></svg>
+      </div>
+      <div class="text">
+        <h2>Hockema Labs</h2>
+        <p>Where the bigger ideas live. Hockema Labs is the home for my larger projects, tooling and infrastructure work beyond these small demos.</p>
+      </div>
+      <span class="btn">
+        hockemalabs.com
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </span>
+    </a>
+
+    <footer>
+      <a href="/">← Back home</a>
+    </footer>
+  </main>
+
+</body>
+</html>
