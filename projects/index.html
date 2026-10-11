@@ -108,6 +108,17 @@
       filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
     }
 
+    .shot {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      margin-bottom: 1.2rem;
+      background: #090b10;
+    }
+
     .tag {
       font-size: 0.68rem;
       font-weight: 600;
@@ -310,7 +321,7 @@
     <header class="rise">
       <span class="eyebrow">Projects &amp; demos</span>
       <h1>Things I've built</h1>
-      <p>A retro game server, a looping instrument and a Doom-like shooter. Two of them run right here in the browser.</p>
+      <p>A retro game server, a looping instrument and a Doom-like shooter. The last two run right here in the browser.</p>
     </header>
 
     <section class="list" aria-label="Projects">
@@ -322,8 +333,7 @@
         </div>
         <h2>Retro Game Browser</h2>
         <p class="lede">Your LaunchBox library, in any web browser, playable from anywhere, with friends.</p>
-        <p>Retro Game Browser turns the LaunchBox collection on a Windows PC into a website. Open it on a laptop, tablet or phone and the whole library is there: box art, gameplay videos, screenshots, manuals, maps and hint books, filterable by platform, genre, decade and players. Press Play and the game runs in the browser with nothing to install, on EmulatorJS for the consoles, a WebAssembly build of MAME for arcade and Apple IIGS, js-dos for the eXoDOS and Windows 3.x/9x collections, and ScummVM for adventure games. It only ever reads the LaunchBox folder, so LaunchBox carries on exactly as before.</p>
-        <p>Press "Play with a friend", send the link, and they're in with no account, no install and no port forwarding. Rollback netcode keeps the 8- and 16-bit consoles and over 1,300 arcade games frame-perfect in step; everything else streams video from the host's browser with controllers sent back; and 255 DOS games get the IPX network they were written for. Any game can be downloaded as an offline copy that plays with no server at all. Sign in with Google or local accounts, decide who can play, watch what's being played from the admin page, and reach it from anywhere through a Cloudflare Tunnel.</p>
+        <p>Turns the LaunchBox collection on a Windows PC into a website: box art, videos and manuals for the whole library, and a Play button that runs the game in the browser through EmulatorJS, a WebAssembly build of MAME, js-dos and ScummVM. Send a friend a link and they're in, with rollback netcode for the consoles and over 1,300 arcade games, video streaming for the rest, and IPX LAN play for 255 DOS games. Offline copies, sign-in, an admin page, and a Cloudflare Tunnel to reach it from anywhere.</p>
         <ul class="facts" aria-label="Details">
           <li>Node.js server</li>
           <li>EmulatorJS · MAME 0.244 · js-dos · ScummVM</li>
@@ -349,10 +359,10 @@
           </div>
           <span class="tag">Audio · Live demo</span>
         </div>
+        <img class="shot" src="/projects/jlooper-screenshot.webp" width="1400" height="875" alt="jLooper with a loop playing on track 1 and track 2 recording" loading="lazy" />
         <h2>jLooper</h2>
-        <p class="lede">A live-looping instrument in the browser. Play something and it loops. Play again and it layers.</p>
-        <p>Eight tracks sound together. The first loop you record sets the tempo and becomes the master loop; every other loop is a whole multiple of it, so everything arrives in phase. Record a take, overdub layers on top, drop the newest layer when it isn't working, and stack alternate takes as scenes you can launch one row at a time. Each track plays a built-in synth voice, a drum rack with TR-707, TR-808 and TR-909 kits, or a live microphone input, and you can swap the sound after the loop is recorded.</p>
-        <p>The audio engine is native code compiled to WebAssembly and runs inside an AudioWorklet, held to the same rules as a desktop audio callback: nothing in the audio thread allocates, locks or waits on the UI. It is the same engine as the desktop app, and sessions save to the same .looper file. The on-screen Novation Launchkey is drawn to scale with every pad and button clickable, or play from your computer keyboard with the white keys on the home row.</p>
+        <p class="lede">Play something and it loops. Play again and it layers.</p>
+        <p>Eight tracks of built-in synth voices, TR-707, TR-808 and TR-909 drum kits, or a live mic. The first loop you record sets the tempo and becomes the master loop, every other loop is a whole multiple of it, and overdubs stack on top with scenes for alternate takes. The engine is native code compiled to WebAssembly running inside an AudioWorklet, shared with the desktop app along with its .looper session format. The on-screen Launchkey is drawn to scale and every pad and button is clickable.</p>
         <ul class="facts" aria-label="Details">
           <li>Web Audio · AudioWorklet</li>
           <li>WebAssembly engine</li>
@@ -373,10 +383,10 @@
           </div>
           <span class="tag">Game · Live demo</span>
         </div>
+        <img class="shot" src="/projects/tddl-screenshot.webp" width="1400" height="875" alt="TDDL: the player's flashlight lights a corridor with a zombieman ahead" loading="lazy" />
         <h2>TDDL</h2>
-        <p class="lede">A top-down Doom-like shooter, written in plain JavaScript on a canvas with no build step.</p>
-        <p>Every level is procedurally generated: rooms and corridors laid out so the red, yellow and blue keys come in order, with secret walls to push through, switches that slide a wall aside, green barrels that chain-explode, and lava, toxic waste and water that each change how you move. Reach the exit; a boss seals it until it is dead. Seven weapons, from fists to the BFG, with the pistol and rifle sharing bullets and the plasma gun and BFG sharing cells.</p>
-        <p>The monsters are Doom's own bestiary with their original hit points, speeds, sizes, pain chances and attack timings, and their AI is a port of the monster half of id Software's p_enemy.c: they sleep until they see you or hear a shot, chase in eight directions with the famous zig-zag, and turn on each other when caught in crossfire. Your flashlight lights a cone ahead; ray-cast shadow polygons decide what you can see and what you remember. Sounds are a 16-bit remaster of Doom's effects, placed in the world with Doom's own panning and falloff.</p>
+        <p class="lede">A top-down Doom-like shooter in plain JavaScript, with no build step.</p>
+        <p>Procedural levels with red, yellow and blue key doors in order, secret walls, switches, chain-exploding barrels, and lava, waste and water. The monsters are Doom's own, with their original stats and AI ported from id's p_enemy.c: they wake to sight or sound, chase in eight-direction zig-zags, and turn on each other in crossfire. A flashlight cone and ray-cast shadows decide what you see, seven weapons share Doom's ammo pools, and a boss seals the exit until it's dead.</p>
         <ul class="facts" aria-label="Details">
           <li>Vanilla JS · ES modules</li>
           <li>HTML5 Canvas</li>
