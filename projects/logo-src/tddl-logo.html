@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>html,body{margin:0;background:transparent} #logo{width:900px;height:320px;display:block}</style>
+</head><body>
+<svg id="logo" viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff3b8"/>
+      <stop offset="0.16" stop-color="#ffc247"/>
+      <stop offset="0.42" stop-color="#ff6a14"/>
+      <stop offset="0.68" stop-color="#d1200a"/>
+      <stop offset="1" stop-color="#6e0803"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.55" r="0.6">
+      <stop offset="0" stop-color="#ff7a1a" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#b3160a" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="bevel" x="-10%" y="-10%" width="120%" height="120%">
+      <feOffset in="SourceAlpha" dx="-5" dy="-5" result="oTL"/>
+      <feComposite in="SourceAlpha" in2="oTL" operator="out" result="edgeBR"/>
+      <feFlood flood-color="#3a0602" flood-opacity="0.9" result="dark"/>
+      <feComposite in="dark" in2="edgeBR" operator="in" result="darkEdge"/>
+      <feOffset in="SourceAlpha" dx="5" dy="5" result="oBR"/>
+      <feComposite in="SourceAlpha" in2="oBR" operator="out" result="edgeTL"/>
+      <feFlood flood-color="#fff6c8" flood-opacity="0.75" result="light"/>
+      <feComposite in="light" in2="edgeTL" operator="in" result="lightEdge"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="lightEdge"/><feMergeNode in="darkEdge"/></feMerge>
+    </filter>
+    <!-- letters drawn at 100 units tall, chamfered outer corners -->
+    <g id="letters" fill-rule="evenodd">
+      <!-- T -->
+      <path d="M6 0 H76 L82 6 V24 H53 V94 L47 100 H35 L29 94 V24 H0 V6 Z"/>
+      <!-- D -->
+      <path transform="translate(98 0)" d="M0 6 L6 0 H46 A50 50 0 0 1 46 100 H6 L0 94 Z M23 22 V78 H44 A28 28 0 0 0 44 22 Z"/>
+      <!-- D -->
+      <path transform="translate(210 0)" d="M0 6 L6 0 H46 A50 50 0 0 1 46 100 H6 L0 94 Z M23 22 V78 H44 A28 28 0 0 0 44 22 Z"/>
+      <!-- L -->
+      <path transform="translate(322 0)" d="M0 6 L6 0 H17 L23 6 V77 H76 L82 83 V94 L76 100 H6 L0 94 Z"/>
+    </g>
+  </defs>
+
+  <ellipse cx="450" cy="150" rx="430" ry="150" fill="url(#glow)"/>
+
+  <!-- extrusion -->
+  <g transform="translate(70 36) scale(1.9)">
+    <use href="#letters" fill="#1b0301" transform="translate(7 8)"/>
+    <use href="#letters" fill="#3d0a04" transform="translate(4 5)"/>
+    <!-- outline -->
+    <use href="#letters" fill="none" stroke="#2a0400" stroke-width="7" stroke-linejoin="miter"/>
+    <!-- face -->
+    <use href="#letters" fill="url(#face)" filter="url(#bevel)"/>
+  </g>
+
+  <text x="450" y="284" text-anchor="middle" font-family="'Press Start 2P', monospace" font-size="20" letter-spacing="7" fill="#ffd27a" stroke="#2a0400" stroke-width="4" paint-order="stroke">TOP-DOWN DOOM-LIKE</text>
+</svg>
+</body></html>
