@@ -3,7 +3,7 @@
 
 :root {
   --text: rgba(255, 255, 255, 0.96);
-  --muted: rgba(255, 255, 255, 0.70);
+  --muted: rgba(255, 255, 255, 0.74);
   --faint: rgba(255, 255, 255, 0.50);
   --accent: #ffd27a;              /* the sun in bg.jpg */
   --accent-soft: rgba(255, 210, 122, 0.22);
@@ -125,6 +125,7 @@ a { color: inherit; text-decoration: none; }
   padding: 5px;
   border-radius: 999px;
   --radius: 999px;
+  background: rgba(12, 16, 10, 0.55);
 }
 
 .nav a {
