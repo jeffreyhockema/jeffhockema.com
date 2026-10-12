@@ -231,7 +231,8 @@ export const PACKS = {
   gfx: 'packs/gfx.pak',       // the remastered atlas: remaster.png, remaster.json
   sfx: 'packs/sfx.pak',       // the remastered Sound Blaster effects (WAV)
   music: 'packs/music.pak',   // the MT-32 theme and exit jingle (MP3)
-  levels: 'packs/levels.pak', // the static demo's level pack (levels.json); see tools/build-demo.mjs
+  levels: 'packs/levels.pak', // the original 111 levels, when you have built them (levels.json)
+  remix: 'packs/remix.pak',   // SupRemix's own twenty levels, played without them (levels.json)
 };
 
 const loads = new Map();

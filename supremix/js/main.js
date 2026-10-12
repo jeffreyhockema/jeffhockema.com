@@ -92,10 +92,10 @@ let lastFrame = performance.now();
 let toastTimer = 0;
 let scoresCache = {};
 
-// On a static host -- the GitHub Pages demo that tools/build-demo.mjs makes --
-// there is no server: the levels come baked into a scrambled pack, and the BEST RUNS
-// board is this browser's own.
-const STATIC = document.querySelector('meta[name="supremix-host"]')?.content === 'static';
+// The game is a static site: it needs nothing from the webserver but files.
+// The levels come from a pack in public/packs/ -- the original set if it has
+// been built, SupRemix's own otherwise -- and the BEST RUNS board is this
+// browser's own.
 const RUNS_KEY = 'supremix.runs';
 const RUNS_PER_LEVEL = 10;
 
@@ -279,20 +279,8 @@ async function onWin() {
 // --- scores -----------------------------------------------------------------
 
 async function submitScore(level, stats) {
-  if (STATIC) {
-    scoresCache[level] = addLocalRun(level, { name: playerName(), steps: stats.steps, ms: stats.ms, at: Date.now() });
-    return scoresCache[level];
-  }
-  try {
-    const res = await fetch('/api/scores', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ level, name: playerName(), steps: stats.steps, ms: stats.ms }),
-    });
-    const data = await res.json();
-    if (data.board) { scoresCache[level] = data.board; return data.board; }
-  } catch { /* offline: the local best still stands */ }
-  return scoresCache[level] || [];
+  scoresCache[level] = addLocalRun(level, { name: playerName(), steps: stats.steps, ms: stats.ms, at: Date.now() });
+  return scoresCache[level];
 }
 
 function renderScoreboard(board, mine) {
@@ -322,12 +310,7 @@ function renderScoreboard(board, mine) {
 }
 
 async function loadScores() {
-  if (STATIC) { scoresCache = localRuns(); return; }
-  try {
-    const res = await fetch('/api/scores');
-    const data = await res.json();
-    scoresCache = data.scores || {};
-  } catch { scoresCache = {}; }
+  scoresCache = localRuns();
 }
 
 // --- level select + legend --------------------------------------------------
@@ -535,7 +518,7 @@ function resetProgress() {
     localStorage.removeItem(RUNS_KEY);
   } catch { /* private mode */ }
   progress = loadProgress();
-  if (STATIC) scoresCache = {};
+  scoresCache = {};
   renderLevelGrid();
   toast('PROGRESS RESET');
 }
@@ -764,16 +747,10 @@ function fatal(message) {
 async function boot() {
   bindUi();
   try {
-    let data;
-    if (STATIC) {
-      const bytes = await packedBytes(PACKS.levels, 'levels.json');
-      if (!bytes) throw new Error(`${PACKS.levels} is missing or damaged`);
-      data = JSON.parse(new TextDecoder().decode(bytes));
-    } else {
-      const res = await fetch('/api/levels');
-      if (!res.ok) throw new Error(`levels responded ${res.status}`);
-      data = await res.json();
-    }
+    const bytes = await packedBytes(PACKS.levels, 'levels.json')
+      ?? await packedBytes(PACKS.remix, 'levels.json');
+    if (!bytes) throw new Error(`neither ${PACKS.levels} nor ${PACKS.remix} could be read`);
+    const data = JSON.parse(new TextDecoder().decode(bytes));
     levels = parsePack(data.levels);
     if (!levels.length) throw new Error('the pack contains no levels');
   } catch (err) {
