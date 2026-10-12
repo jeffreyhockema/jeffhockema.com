@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * =============================================================================
  * SECTOR LIGHTING -- DOOM'S AMBIENT LIGHT MODEL
@@ -132,6 +135,18 @@ let specials = [];
 let specialGain = [];
 
 /**
+ * Light amplification (IDBEHOLDL, or the visor). Doom draws the whole view
+ * with a fixed, near-full-bright colormap while it runs: every sector loses
+ * its own level and the specials stop flickering. Here that is every tile's
+ * ambient at full, which is still gated on line of sight like any ambient --
+ * the visor lights what you can see, it does not see through walls.
+ */
+let fullBright = false;
+
+/** The light a visor-lit tile is drawn at: the torch's own brightness. */
+const FULL_BRIGHT_LEVEL = 1;
+
+/**
  * Forgets the current level's lighting and installs a plan.
  *
  * @param {Object|null} plan - From planSectors(), or null for an unlit level
@@ -160,6 +175,31 @@ export function hasSectors() {
     return baseLevel !== null;
 }
 
+/**
+ * Turns light amplification on or off. Set every frame by the lighting pass
+ * from the player's power-ups, so it can never outlive the power.
+ *
+ * @param {boolean} on - Whether everything in sight is at full bright
+ */
+export function setFullBright(on) {
+    fullBright = Boolean(on);
+}
+
+/** @returns {boolean} Whether light amplification is on */
+export function isFullBright() {
+    return fullBright;
+}
+
+/**
+ * Whether there is any ambient light to lay down: the level's sectors, or the
+ * visor on a level that has none.
+ *
+ * @returns {boolean}
+ */
+export function hasAmbient() {
+    return baseLevel !== null || fullBright;
+}
+
 /** @returns {Object[]} The level's light specials */
 export function getSpecials() {
     return specials;
@@ -185,7 +225,9 @@ export function baseLightAt(c, r) {
  * @returns {number} 0..1
  */
 export function ambientAt(c, r) {
-    if (!baseLevel || c < 0 || c >= MAP_COLS || r < 0 || r >= MAP_ROWS) return 0;
+    if (c < 0 || c >= MAP_COLS || r < 0 || r >= MAP_ROWS) return 0;
+    if (fullBright) return FULL_BRIGHT_LEVEL;
+    if (!baseLevel) return 0;
     const i = r * MAP_COLS + c;
     const special = specialOf[i];
     return special < 0 ? baseLevel[i] : baseLevel[i] * specialGain[special];
@@ -205,7 +247,7 @@ export function ambientAt(c, r) {
  * @returns {number} 0..1
  */
 export function ambientForTile(map, c, r) {
-    if (!baseLevel) return 0;
+    if (!baseLevel && !fullBright) return 0;
     const row = map && map[r];
     if (row === undefined) return 0;
 

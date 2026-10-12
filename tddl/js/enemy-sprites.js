@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * =============================================================================
  * ENEMY SPRITE SYSTEM
@@ -14,11 +17,17 @@
  *     column = index % columns
  *     row    = Math.floor(index / columns)
  *
- * Atlases are fetched lazily. A level uses a handful of characters out of the
- * 42, so loading the whole ~8 MB collection up front would be almost entirely
- * waste; instead a character's atlas is requested the first time an enemy is
- * assigned it, and the enemy falls back to shape rendering for the frame or two
- * before the image lands.
+ * The manifest is plain JSON; the atlases ship inside two packs (see
+ * js/asset-pack.js and tools/pack_assets.py). `sprites/enemies.pak` holds the
+ * characters the Doom bestiary in js/monsters.js wears -- about twenty of
+ * them, ~3 MB -- and `sprites/enemies-extra.pak` the rest of the ~11 MB
+ * collection. Only the first is downloaded in normal play; the extra pack is
+ * fetched only if something asks for a character the first lacks, which
+ * happens when the packs were built against an older roster. The loading
+ * screen asks preloadEnemyAtlases() for the roster's characters before the
+ * start menu appears, so no level can begin with a monster still on its shape
+ * fallback. getEnemyAtlas() still starts a load on demand for anything that
+ * was not preloaded.
  *
  * Every animation the source packs ship is available here:
  *   idle, idle_blink, walk, run  (looping, per direction)
@@ -29,6 +38,8 @@
 // =============================================================================
 // ANIMATION NAMES
 // =============================================================================
+
+import { openPack, loadPackedImage, hasEntry, _resetPacksForTest } from './asset-pack.js';
 
 /**
  * The animation slots present in the atlases.
@@ -47,8 +58,14 @@ export const ENEMY_ANIM = {
     DYING: 'dying'
 };
 
-/** Where the manifest and atlases live, relative to the page. */
+/** Where the manifest lives, relative to the page. */
 const SPRITE_ROOT = 'sprites/enemies/';
+
+/** The pack holding the characters the bestiary wears. */
+const PACK_URL = 'sprites/enemies.pak';
+
+/** The pack holding the rest of the collection, fetched only when needed. */
+const EXTRA_PACK_URL = 'sprites/enemies-extra.pak';
 
 // =============================================================================
 // MODULE STATE
@@ -59,6 +76,9 @@ let manifest = null;
 
 /** slug -> HTMLImageElement. An entry exists as soon as loading *starts*. */
 const atlasImages = new Map();
+
+/** slug -> Promise<boolean>, settling once that atlas is drawable or has failed. */
+const atlasReady = new Map();
 
 /** Slugs in manifest order, cached so random picks don't rebuild the array. */
 let slugList = [];
@@ -129,11 +149,40 @@ export function getEnemyOneShotAnimations() {
 // =============================================================================
 
 /**
+ * Starts the bestiary's pack downloading, or returns the download under way.
+ * The loading screen calls this first, to count the pack's bytes on its bar.
+ *
+ * @returns {{ready: Promise<Object|null>, onProgress: Function}} The pack load
+ */
+export function openEnemySpritePack() {
+    return openPack(PACK_URL);
+}
+
+/**
+ * Finds the pack an atlas is in: the bestiary's, or failing that the extra
+ * one -- which is only downloaded the first time this falls through to it.
+ *
+ * @param {string} file - Atlas entry name, from the manifest
+ * @returns {Promise<Object|null>} The pack to read it from, or null if the
+ *          main pack itself never arrived (it has logged why)
+ */
+async function packHolding(file) {
+    const main = await openEnemySpritePack().ready;
+    // Without the main pack there is no network worth spending another 7 MB
+    // on; every monster falls back to its shape.
+    if (!main || hasEntry(main, file)) return main;
+
+    const extra = await openPack(EXTRA_PACK_URL).ready;
+    // Neither has it: hand back the main pack and let the read say "missing".
+    return hasEntry(extra, file) ? extra : main;
+}
+
+/**
  * Starts loading a character's atlas, or returns the in-flight/finished image.
  *
  * Safe to call every frame: the first call creates the Image, later ones hand
  * back the same element. Callers check `.complete && .naturalHeight` before
- * drawing, which is false while the request is still in flight.
+ * drawing, which is false until the pack is in and the atlas decoded.
  *
  * @param {string} slug - Character key
  * @returns {HTMLImageElement|null} The atlas image, or null for unknown slugs
@@ -145,18 +194,37 @@ export function getEnemyAtlas(slug) {
     const meta = getEnemySpriteMeta(slug);
     if (!meta) return null;
 
-    const image = new Image();
-    // The lighting pass reads pixels back off the canvas, which taints on a
-    // cross-origin draw. The atlases are same-origin, but declaring this keeps
-    // the sprites safe to composite if they are ever served from a CDN.
-    image.crossOrigin = 'anonymous';
-    image.src = `${SPRITE_ROOT}${meta.file}`;
-    image.addEventListener('error', () => {
-        console.warn(`EnemySprites: failed to load atlas for "${slug}"`);
-    });
+    const { image, ready } = loadPackedImage(packHolding(meta.file), meta.file, 'EnemySprites');
 
     atlasImages.set(slug, image);
+    atlasReady.set(slug, ready);
     return image;
+}
+
+/**
+ * Starts the atlases a level can use loading, and reports when each is drawable.
+ *
+ * The roster -- which character each Doom monster wears -- lives in
+ * js/monsters.js, so the caller passes it in rather than this module importing
+ * game rules. If any of those characters is missing from the manifest,
+ * Enemy.assignSprite() falls back to a *random* character, which could be any
+ * of them, so in that case every atlas is preloaded instead.
+ *
+ * @param {Iterable<string>} [slugs] - Characters the roster uses; omit for all
+ * @returns {Array<{name: string, ready: Promise<boolean>}>} One entry per
+ *          atlas; `ready` resolves true once it is decoded, false if it failed
+ *          (that monster then renders as a shape)
+ */
+export function preloadEnemyAtlases(slugs) {
+    let wanted = slugs ? [...new Set(slugs)] : slugList.slice();
+    if (wanted.some((slug) => !getEnemySpriteMeta(slug))) {
+        wanted = slugList.slice();
+    }
+
+    return wanted.map((slug) => {
+        getEnemyAtlas(slug);
+        return { name: slug, ready: atlasReady.get(slug) };
+    });
 }
 
 // =============================================================================
@@ -244,10 +312,14 @@ export function getEnemyFrameRect(meta, range, frame) {
 }
 
 /**
- * Resets module state. Test-only hook; the game loads the manifest once.
+ * Resets module state, and forgets the pack downloads so the next atlas
+ * fetches them afresh. Test-only hook; the game loads everything once.
  */
 export function _resetEnemySpritesForTest() {
     manifest = null;
     slugList = [];
     atlasImages.clear();
+    atlasReady.clear();
+    _resetPacksForTest(PACK_URL);
+    _resetPacksForTest(EXTRA_PACK_URL);
 }

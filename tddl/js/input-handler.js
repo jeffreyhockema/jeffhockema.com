@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * @fileoverview Input Handling System Module
  * 
@@ -7,9 +10,11 @@
  * Key Features:
  * - Keyboard state tracking with proper key press/release handling
  * - Mouse position and click detection
- * - Weapon switching controls (1-7 keys)
+ * - Weapon switching controls (1-7 keys, mouse wheel)
+ * - Ctrl+wheel (and trackpad pinch) zoom
  * - Movement controls (WASD/Arrow keys, Shift to run)
- * - Cheat code handling for development/testing
+ * - Doom's typed cheat codes, fed to js/cheats.js
+ * - Esc, handed to the pause menu (js/pause-menu.js)
  * - Input validation and sanitization
  * 
  * @author Game Development Team
@@ -17,6 +22,10 @@
  */
 
 import { ensureAudioAndSynths } from './audio-system.js';
+import { CheatMatcher, applyCheat } from './cheats.js';
+import {
+    WHEEL, WheelAccumulator, wheelPixels, cycleWeaponIndex, isActivePlay
+} from './mouse-wheel.js';
 
 /**
  * Number keys to weapons, and the debounce flag each one latches.
@@ -35,6 +44,15 @@ const WEAPON_HOTKEYS = {
     '6': { name: 'Plasma Gun', flag: 'weapon_6_processed' },
     '7': { name: 'BFG', flag: 'weapon_7_processed' }
 };
+
+/**
+ * @param {EventTarget|null} target - Where a key event landed
+ * @returns {boolean} Whether it is somewhere the player is typing text
+ */
+function isTextField(target) {
+    const tag = target?.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || !!target?.isContentEditable;
+}
 
 /**
  * Global input state object containing all current input states
@@ -61,22 +79,11 @@ export const keys = {
     '4': false,
     '5': false,
     '6': false,
-    
-    // Cheat keys
-    'i': false,
-    'k': false,
-    'g': false,
-    'l': false,
 
     // View toggles
     'm': false,
 
     // Input processing flags to prevent repeat actions
-    'i_cheat_processed': false,
-    'k_cheat_processed': false,
-    'g_cheat_processed': false,
-    'l_cheat_processed': false,
-    'c_cheat_processed': false,
     'm_toggle_processed': false,
     'f3_toggle_processed': false,
     'weapon_1_processed': false,
@@ -97,6 +104,17 @@ export const mouse = {
 };
 
 /**
+ * What a game controller holds that has no keyboard or mouse equivalent to
+ * write into (js/gamepad.js). Movement, aim and the trigger go through the
+ * touch move stick and `mouse`, as the touch controls do; running is the one
+ * thing left, and it cannot be `keys.Shift`, which the keyboard's own keyup
+ * would clear under a thumb still holding the controller's run button.
+ */
+export const pad = {
+    run: false,
+};
+
+/**
  * Input handler class that manages all user input events and state
  */
 export class InputHandler {
@@ -107,6 +125,21 @@ export class InputHandler {
     constructor(canvas) {
         this.canvas = canvas;
         this.gameState = null;
+        // Doom's cheat codes are typed into the game itself. Single-letter
+        // debug keys used to live here, and would have gone off halfway
+        // through typing any code; the codes replace them.
+        this.cheats = new CheatMatcher();
+        // The wheel's travel is summed separately for weapons and for zoom:
+        // they want different step sizes, and a few pixels left over from
+        // scrolling weapons must not count towards a zoom step or vice versa.
+        this.weaponWheel = new WheelAccumulator(WHEEL.WEAPON_THRESHOLD_PX, WHEEL.WEAPON_COOLDOWN_MS);
+        this.zoomWheel = new WheelAccumulator(WHEEL.ZOOM_THRESHOLD_PX);
+
+        // What Esc does, set by the pause menu (js/pause-menu.js), which gets
+        // the key event and returns true if it used it. A callback rather than
+        // an import, because the pause menu imports this module.
+        this.onEscape = null;
+
         this._ac = new AbortController();
         this.setupEventListeners();
     }
@@ -139,6 +172,15 @@ export class InputHandler {
         window.addEventListener('mouseup', (e) => this.handleMouseUp(e), opts);
         this.canvas.addEventListener('contextmenu', (e) => this.handleContextMenu(e), opts);
 
+        // The wheel listens on the game container -- the canvas and the HUD
+        // laid over its foot -- and never on the window, so the menus, which
+        // are overlays outside it, keep scrolling (the Instructions are long)
+        // and Ctrl+wheel over them stays the browser's page zoom. It must not
+        // be passive: Ctrl+wheel has to preventDefault or the browser zooms the
+        // whole page along with the game.
+        const wheelSurface = this.canvas.parentElement || this.canvas;
+        wheelSurface.addEventListener('wheel', (e) => this.handleWheel(e), { ...opts, passive: false });
+
         // Losing focus (alt-tab, switching tabs) never delivers keyup, which would otherwise
         // leave movement keys stuck down and the player sliding into a wall on return.
         window.addEventListener('blur', () => this.resetInputState(), opts);
@@ -153,6 +195,18 @@ export class InputHandler {
      */
     handleKeyDown(event) {
         const keyName = event.key.toLowerCase();
+
+        // Esc is the pause menu's, wherever focus is -- including in its own
+        // code box, where Esc closes the box -- so it is handed over before the
+        // text-field check below, and goes no further.
+        if (event.key === 'Escape') {
+            this.handleEscape(event);
+            return;
+        }
+
+        // Typing into a text box (the phone's cheat code entry) is not playing:
+        // "w" there must not walk, nor "-" zoom the view out.
+        if (isTextField(event.target)) return;
 
         // F3 opens a find bar in some browsers, which would steal the key and the
         // focus with it.
@@ -170,8 +224,39 @@ export class InputHandler {
 
         // Handle game-specific inputs only when game is running
         if (this.gameState && this.gameState.gameRunning && this.gameState.player) {
-            this.handleGameplayInput(keyName);
+            const claimed = this.handleCheatInput(event);
+            this.handleGameplayInput(keyName, claimed);
         }
+    }
+
+    /**
+     * Hands Esc to the pause menu: pause in play, resume when paused. The
+     * browser's own use of Esc (leaving fullscreen) is left alone, as is
+     * everything Esc means on the other screens; see PauseMenu.handleEscape.
+     *
+     * @param {KeyboardEvent} event - Keyboard event object
+     */
+    handleEscape(event) {
+        if (typeof this.onEscape !== 'function') return;
+        if (this.onEscape(event)) event.preventDefault?.();
+    }
+
+    /**
+     * Feeds a key to the cheat matcher and carries out any code it completes.
+     *
+     * Held keys repeat, and a repeat is not typing: holding "d" to strafe
+     * after a stray "i" must not walk the matcher down "iddd...". Chords with
+     * Ctrl, Alt or Meta are the browser's, not the player's.
+     *
+     * @param {KeyboardEvent} event - Keyboard event object
+     * @returns {boolean} True if the key continued a code and should do nothing else
+     */
+    handleCheatInput(event) {
+        if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return false;
+
+        const { consumed, cheat } = this.cheats.feed(event.key);
+        if (cheat) applyCheat(cheat, this.gameState);
+        return consumed;
     }
 
     /**
@@ -193,6 +278,60 @@ export class InputHandler {
     }
 
     /**
+     * Mouse wheel: Ctrl+wheel zooms, the plain wheel cycles weapons.
+     *
+     * Wheel up is the previous weapon and down the next, as in GZDoom; up
+     * with Ctrl zooms in, as in a browser. Chrome reports a trackpad pinch as
+     * Ctrl+wheel, so pinching zooms too -- the zoom step is small enough for
+     * its few-pixel deltas to move the view smoothly.
+     *
+     * Zoom works whenever the view is on screen, paused included, exactly as
+     * the - and = keys do. Weapons change only in active play.
+     *
+     * @param {WheelEvent} event - Wheel event from the game container
+     */
+    handleWheel(event) {
+        // Anything overlay-like that ends up inside the container is a menu,
+        // and a menu's wheel is its own: leave the event entirely alone.
+        if (event.target?.closest?.('.overlay')) return;
+
+        // The game surface itself never scrolls, so the wheel is always the
+        // game's here. Without this, Ctrl+wheel would zoom the page as well.
+        event.preventDefault();
+
+        const delta = wheelPixels(event);
+        const now = event.timeStamp;
+
+        if (event.ctrlKey) {
+            // Zoom input does not count towards a weapon change, and leftover
+            // weapon travel must not fire the moment Ctrl is let go.
+            this.weaponWheel.reset();
+            const controller = window.gameController;
+            if (!controller) return;
+
+            const step = this.zoomWheel.feed(delta, now);
+            if (step < 0) controller.zoomIn();
+            else if (step > 0) controller.zoomOut();
+            return;
+        }
+
+        this.zoomWheel.reset();
+        if (!isActivePlay(this.gameState)) {
+            // Travel built up on a menu-less pause or the death beat must not
+            // carry into play and switch the moment it resumes.
+            this.weaponWheel.reset();
+            return;
+        }
+
+        const step = this.weaponWheel.feed(delta, now);
+        if (step === 0) return;
+
+        const player = this.gameState.player;
+        const target = cycleWeaponIndex(player.weapons, player.currentWeaponIndex, step);
+        if (target !== player.currentWeaponIndex) player.switchWeapon(target);
+    }
+
+    /**
      * Handle keyup events to reset input states
      * @param {KeyboardEvent} event - Keyboard event object
      */
@@ -211,14 +350,21 @@ export class InputHandler {
     }
 
     /**
-     * Handle gameplay-specific input actions (cheats, weapon switching)
+     * Handle gameplay-specific input actions (view toggles, weapon switching)
+     *
+     * A key that a cheat code has claimed does neither: the digits of IDCLEV
+     * must not change weapon on the way, nor the "m" of IDMYPOS hide the
+     * minimap. Movement is not held back -- it is held state, not an action,
+     * and the letters of a code steering the marine about for a moment is what
+     * typing one in Doom always did.
+     *
      * @param {string} keyName - Normalized key name (lowercase)
+     * @param {boolean} [claimed] - The key belongs to a cheat code in progress
      */
-    handleGameplayInput(keyName) {
-        const player = this.gameState.player;
+    handleGameplayInput(keyName, claimed = false) {
+        if (claimed) return;
 
-        // Handle cheat codes
-        this.handleCheatCodes(keyName, player);
+        const player = this.gameState.player;
 
         // Handle display toggles
         this.handleViewToggles(keyName);
@@ -230,9 +376,8 @@ export class InputHandler {
     /**
      * Process keys that change what is displayed rather than what happens.
      *
-     * Kept apart from handleCheatCodes: these are ordinary controls a player is
-     * meant to use, not development shortcuts, and the instructions list them as
-     * such.
+     * These are ordinary controls a player is meant to use, and the
+     * instructions list them as such.
      *
      * @param {string} keyName - Key that was pressed
      */
@@ -250,55 +395,6 @@ export class InputHandler {
             keys.f3_toggle_processed = true;
             this.gameState.showPerf = !this.gameState.showPerf;
             console.log(`Performance panel ${this.gameState.showPerf ? 'shown' : 'hidden'}`);
-        }
-    }
-
-    /**
-     * Process cheat code inputs for development and testing
-     * @param {string} keyName - Key that was pressed
-     * @param {Object} player - Player object reference
-     */
-    handleCheatCodes(keyName, player) {
-        switch (keyName) {
-            case 'i':
-                if (!keys.i_cheat_processed) {
-                    keys.i_cheat_processed = true;
-                    player.canPhase = !player.canPhase;
-                    console.log(`Invincibility/Phasing ${player.canPhase ? 'enabled' : 'disabled'}`);
-                }
-                break;
-                
-            case 'k':
-                if (!keys.k_cheat_processed) {
-                    keys.k_cheat_processed = true;
-                    player.collectAllKeys();
-                    console.log('All keys collected');
-                }
-                break;
-                
-            case 'g':
-                if (!keys.g_cheat_processed) {
-                    keys.g_cheat_processed = true;
-                    player.collectAllGuns();
-                    console.log('All weapons collected');
-                }
-                break;
-                
-            case 'l':
-                if (!keys.l_cheat_processed && this.gameState.levelComplete) {
-                    keys.l_cheat_processed = true;
-                    this.gameState.levelComplete();
-                    console.log('Level completed via cheat');
-                }
-                break;
-
-            case 'c':
-                if (!keys.c_cheat_processed) {
-                    keys.c_cheat_processed = true;
-                    this.gameState.showCoordinates = !this.gameState.showCoordinates;
-                    console.log(`Coordinates and frame cost ${this.gameState.showCoordinates ? 'enabled' : 'disabled'}`);
-                }
-                break;
         }
     }
 
@@ -328,11 +424,6 @@ export class InputHandler {
      */
     resetProcessingFlags(keyName) {
         const flagMap = {
-            'i': 'i_cheat_processed',
-            'k': 'k_cheat_processed',
-            'g': 'g_cheat_processed',
-            'l': 'l_cheat_processed',
-            'c': 'c_cheat_processed',
             'm': 'm_toggle_processed',
             'f3': 'f3_toggle_processed',
             // Derived from the same table the switcher uses, so a new weapon
@@ -484,4 +575,5 @@ export function resetInputState() {
         keys[key] = false;
     });
     mouse.down = false;
+    pad.run = false;
 }

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+// Portions Copyright (C) 1993-1996 id Software, Inc., from the DOOM source (GPL-2.0).
+
 /**
  * =============================================================================
  * MONSTER ROSTER AND DOOM AI FORMULAS
@@ -90,9 +94,9 @@ export function projectileSpeedPx(unitsPerTic) {
 // =============================================================================
 
 /**
- * Multiplier on every hit a monster lands. 1: Doom's dice, as rolled. The
- * game has no armour, so a Baron's 10-80 claw is felt in full; that is how
- * Doom's Baron felt to a marine with no armour, too.
+ * Multiplier on every hit a monster lands. 1: Doom's dice, as rolled. Armour
+ * takes its share of the hit afterwards, in Player.takeDamage(), so a Baron's
+ * 10-80 claw is felt in full by a marine without any, as it was in Doom.
  */
 export const MONSTER_DAMAGE_SCALE = 1;
 
@@ -145,6 +149,13 @@ export const LOST_SOUL_LIMIT = 20;
  * degrees either side.
  */
 export const HITSCAN_SPREAD_DEGREES = 22.5;
+
+/**
+ * How far a monster's aim wanders off a partially invisible target. A_FaceTarget
+ * adds (P_Random() - P_Random()) << 21 to the facing when the target is
+ * MF_SHADOW: twice the hitscan spread, so about 45 degrees either side.
+ */
+export const SHADOW_AIM_DEGREES = 45;
 
 /** Mancubus fireball fan: FATSPREAD is ANG90 / 8. */
 export const FATSPREAD_DEGREES = 11.25;
@@ -668,4 +679,20 @@ export function newChaseDir({ dx, dy, oldDir, tryWalk, random = Math.random }) {
 export function hitscanSpread(random = Math.random) {
     const spread = (random() - random()) * HITSCAN_SPREAD_DEGREES;
     return spread * Math.PI / 180;
+}
+
+/**
+ * The error a monster aims with at a target. Nothing for a target in plain
+ * sight; for one with partial invisibility, Doom's MF_SHADOW wobble -- the same
+ * triangular distribution as the hitscan spread, twice as wide. It is added on
+ * top of any spread the attack has of its own, as in Doom, where A_FaceTarget
+ * turns the monster first and the attack spreads from wherever it then faces.
+ *
+ * @param {Object} target - What is being aimed at
+ * @param {() => number} [random] - Injectable RNG
+ * @returns {number} Angle offset in radians
+ */
+export function shadowAimOffset(target, random = Math.random) {
+    if (!target?.hasPower?.('invisibility')) return 0;
+    return (random() - random()) * SHADOW_AIM_DEGREES * Math.PI / 180;
 }

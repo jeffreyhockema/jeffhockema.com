@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * =============================================================================
  * PLAYER SPRITE SYSTEM
@@ -24,7 +27,13 @@
  * Animations are per weapon: `idle`, `walk` and `attack` each exist for pistol,
  * rifle, flamethrower, bat and knife, so the character visibly holds and uses
  * whatever is equipped. `death` is the one animation with no weapon.
+ *
+ * The manifest is a plain JSON file, but the atlas itself ships inside
+ * `sprites/player.pak` (see js/asset-pack.js and tools/pack_assets.py); the
+ * manifest's `file` names its entry there.
  */
+
+import { openPack, loadPackedImage, _resetPacksForTest } from './asset-pack.js';
 
 /** Animation kinds present in the atlases. */
 export const PLAYER_ANIM = {
@@ -34,8 +43,11 @@ export const PLAYER_ANIM = {
     DEATH: 'death'
 };
 
-/** Where the manifest and atlases live, relative to the page. */
+/** Where the manifest lives, relative to the page. */
 const SPRITE_ROOT = 'sprites/player/';
+
+/** The pack the atlases are in. */
+const PACK_URL = 'sprites/player.pak';
 
 /** The weapon animation set used when a weapon has no art of its own. */
 const FALLBACK_WEAPON = 'flamethrower';
@@ -49,6 +61,9 @@ let manifest = null;
 
 /** slug -> HTMLImageElement. An entry exists as soon as loading *starts*. */
 const atlasImages = new Map();
+
+/** slug -> Promise<boolean>, settling once that atlas is drawable or has failed. */
+const atlasReady = new Map();
 
 /** Character keys in manifest order. */
 let slugList = [];
@@ -124,7 +139,21 @@ export function getPlayerSourceAngle() {
 }
 
 /**
+ * Starts the player pack downloading, or returns the download under way.
+ * The loading screen calls this first, to count the pack's bytes on its bar.
+ *
+ * @returns {{ready: Promise<Object|null>, onProgress: Function}} The pack load
+ */
+export function openPlayerSpritePack() {
+    return openPack(PACK_URL);
+}
+
+/**
  * Starts loading a character's atlas, or returns the in-flight/finished image.
+ *
+ * The image comes back at once but stays blank (complete, zero-sized) until the
+ * pack is in, so the renderer's `complete && naturalHeight` check keeps it on
+ * the fallback shape until then -- the same as a slow download always did.
  *
  * @param {string} slug - Character key
  * @returns {HTMLImageElement|null} The atlas image, or null for unknown slugs
@@ -136,15 +165,32 @@ export function getPlayerAtlas(slug) {
     const meta = getPlayerSpriteMeta(slug);
     if (!meta) return null;
 
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.src = `${SPRITE_ROOT}${meta.file}`;
-    image.addEventListener('error', () => {
-        console.warn(`PlayerSprites: failed to load atlas for "${slug}"`);
-    });
+    const { image, ready } = loadPackedImage(openPlayerSpritePack().ready, meta.file, 'PlayerSprites');
 
     atlasImages.set(slug, image);
+    atlasReady.set(slug, ready);
     return image;
+}
+
+/**
+ * Starts every character's atlas loading and reports when each is drawable.
+ *
+ * getPlayerAtlas() on its own only starts a download the first time the player
+ * is drawn -- after the level is already on screen, which is what left the
+ * marine as a blue dot for a moment on slow connections. The loading screen
+ * calls this as soon as the manifest is in, and holds the start menu until
+ * every one of these has settled. The images are the same cached elements
+ * getPlayerAtlas() hands the renderer, and the pack is downloaded once.
+ *
+ * @returns {Array<{name: string, ready: Promise<boolean>}>} One entry per
+ *          character; `ready` resolves true once that atlas is decoded, false
+ *          if it failed (the player then falls back to a shape)
+ */
+export function preloadPlayerAtlases() {
+    return slugList.map((slug) => {
+        getPlayerAtlas(slug);
+        return { name: slug, ready: atlasReady.get(slug) };
+    });
 }
 
 /**
@@ -215,10 +261,13 @@ export function getPlayerFrameRect(meta, range, frame) {
 }
 
 /**
- * Resets module state. Test-only hook; the game loads the manifest once.
+ * Resets module state, and forgets the pack download so the next atlas
+ * fetches it afresh. Test-only hook; the game loads everything once.
  */
 export function _resetPlayerSpritesForTest() {
     manifest = null;
     slugList = [];
     atlasImages.clear();
+    atlasReady.clear();
+    _resetPacksForTest(PACK_URL);
 }

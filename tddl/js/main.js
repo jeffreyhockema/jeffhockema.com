@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * MAIN GAME CONTROLLER MODULE
  * 
@@ -19,7 +22,7 @@
 
 import {
     VIEWPORT_WIDTH, VIEWPORT_HEIGHT, TILE_SIZE, MAP_COLS, MAP_ROWS,
-    WALL_STYLES, MINIMAP, TERRAIN, DOOR_STYLES, KEY_STYLES, EXIT_STYLE,
+    WALL_STYLES, MINIMAP, HUD_MESSAGE, TERRAIN, DOOR_STYLES, KEY_STYLES, EXIT_STYLE,
     TILE_SECRET_DOOR, TILE_WALL, TILE_PROP, TILE_SLIDE, TILE_SWITCH, TILE_EMPTY, ITEM_DRAW_SIZE, TILE_WINDOW, WINDOW_OUTSIDE,
 } from './constants.js';
 import {
@@ -34,22 +37,36 @@ import {
 import { GameState } from './game-state.js';
 // Note: startMenuMusic/stopMenuMusic are intentionally not imported. The menu music
 // feature exists in audio-system.js but has never been wired up to anything; these
-// were dead imports. playLevelCompleteSound/playGameOverSound are triggered from
-// game-state.js, not here.
+// were dead imports. Nor are playUIClickSound/playUIHoverSound any more: the menus
+// are silent, and GameState silences the game whenever one is up.
 import {
-    initializeAudio, ensureAudioAndSynths, playUIClickSound, playUIHoverSound
+    initializeAudio, ensureAudioAndSynths, preloadSoundTasks, openSoundPack, setMenuSilence,
 } from './audio-system.js';
-import { loadEnemySpriteManifest } from './enemy-sprites.js';
+import { loadEnemySpriteManifest, preloadEnemyAtlases, openEnemySpritePack } from './enemy-sprites.js';
 import { drawDecals, drawParticles } from './particles.js';
-import { loadPlayerSpriteManifest } from './player-sprites.js';
-import { loadItemIcons, drawItemIcon, iconDrawSize,
+import { loadPlayerSpriteManifest, preloadPlayerAtlases, openPlayerSpritePack } from './player-sprites.js';
+import { loadItemIcons, preloadItemIcons, drawItemIcon, iconDrawSize, openItemIconPack,
 } from './item-icons.js';
+import { LoadTracker, whenImageReady } from './asset-preloader.js';
+import { MONSTERS } from './monsters.js';
 import { initializeInputHandler, mouse } from './input-handler.js';
+import { initTouchControls } from './touch-controls.js';
+import { initPauseMenu } from './pause-menu.js';
+import { initGamepad } from './gamepad.js';
+import { initStatusBar, tickStatusBar } from './hud.js';
 import { doorAtTile } from './doors.js';
 import { DECOR, isSolidDecor } from './decor.js';
 import { slideAtTile, switchAtTile, isSlideOpen } from './switches.js';
-import { hasSectors, ambientForTile } from './sectors.js';
+import { hasAmbient, ambientForTile, isFullBright } from './sectors.js';
 import { isWindowExterior } from './windows.js';
+
+/**
+ * Added to a tile type in the minimap's stamp record when the tile was drawn
+ * grey by the computer area map rather than in colour from being seen. Tile
+ * types are small, so the two ranges never meet, and neither reaches the 255
+ * that means "never stamped".
+ */
+const MINIMAP_ALLMAP_STAMP = 128;
 
 // =============================================================================
 // GLOBAL GAME CONTROLLER
@@ -84,7 +101,15 @@ class GameController {
         // Rendering loop handle (cancelled and restarted on each new game)
         this.renderLoopId = null;
         this.lastRenderErrorMessage = null;
-        
+
+        // False until preloadAssets() has finished. startNewGame() refuses to
+        // run before then, whatever asked it to -- the Start button, Enter, or
+        // anything added later -- so a level can never be drawn before its art.
+        this.assetsReady = false;
+
+        // Resolves once the loading screen has handed over to the start menu.
+        this.assetsLoading = null;
+
         // Initialize game
         this.init();
     }
@@ -101,12 +126,27 @@ class GameController {
             this.initializeUI();
             this.initializeGameState();
             this.setupEventListeners();
-            this.initializeSprites();
-            this.showStartScreen();
-            
+
+            // The start menu waits for the artwork: the loading screen in
+            // index.html is already up, and preloadAssets() swaps it for the
+            // menu once everything a level draws is decoded. Not awaited, so
+            // init() itself stays synchronous. preloadAssets() is built not to
+            // reject, but if it ever did the menu must still appear. Kept, so
+            // anything else that must wait for the artwork can await it.
+            this.assetsLoading = this.preloadAssets()
+                .catch((error) => {
+                    console.error("GameController: asset preloading failed:", error);
+                    this.assetsReady = true;
+                    this.hideLoadingScreen();
+                })
+                .then(() => this.showStartScreen());
+
             console.log("GameController: Initialization complete");
         } catch (error) {
             console.error("GameController: Initialization failed:", error);
+            // The loading screen sits above every other overlay, so it has to
+            // go or the error under it would never be seen.
+            this.hideLoadingScreen();
             this.showCriticalError(error);
         }
     }
@@ -229,13 +269,11 @@ class GameController {
     setupUIEvents() {
         // Restart button
         if (this.restartButton) {
+            // No click or hover sounds on any menu button: the menus are
+            // silent. The click still unlocks audio for the game it starts.
             this.restartButton.addEventListener('click', async () => {
                 await ensureAudioAndSynths(); // Ensure audio is ready
-                playUIClickSound();
                 this.startNewGame();
-            });
-            this.restartButton.addEventListener('mouseenter', () => {
-                playUIHoverSound();
             });
         }
 
@@ -243,7 +281,6 @@ class GameController {
         this.difficultyButtons.forEach(button => {
             button.addEventListener('click', async () => {
                 await ensureAudioAndSynths(); // Ensure audio is ready
-                playUIClickSound();
                 this.difficultyButtons.forEach(btn => btn.classList.remove('selected'));
                 button.classList.add('selected');
                 this.gameState.selectedDifficulty = button.dataset.difficulty;
@@ -251,18 +288,13 @@ class GameController {
                 this.blurMenuButton();
                 console.log("Difficulty set to:", this.gameState.selectedDifficulty);
             });
-            button.addEventListener('mouseenter', () => {
-                playUIHoverSound();
-            });
         });
 
         // Instructions
         if (this.mainMenuButton) {
             this.mainMenuButton.addEventListener('click', () => {
-                playUIClickSound();
                 this.gameState?.showStartScreen();
             });
-            this.mainMenuButton.addEventListener('mouseenter', () => playUIHoverSound());
         }
 
         if (this.instructionsButton) {
@@ -280,13 +312,11 @@ class GameController {
         // Continue, from the end-of-level tally
         if (this.continueButton) {
             this.continueButton.addEventListener('click', () => this.continueGame());
-            this.continueButton.addEventListener('mouseenter', () => {
-                playUIHoverSound();
-            });
         }
 
         // Menu keys: Enter and Space stand in for whichever button the overlay
-        // is showing, and Escape closes the instructions.
+        // is showing, and Escape closes the instructions. Escape during play
+        // is the pause menu's (js/pause-menu.js, through InputHandler).
         document.addEventListener('keydown', (event) => this.handleMenuKey(event));
 
         this.updateDifficultyHint();
@@ -298,7 +328,6 @@ class GameController {
     async continueGame() {
         if (!this.gameState?.awaitingContinue) return;
         await ensureAudioAndSynths();
-        playUIClickSound();
         this.gameState.continueToNextLevel();
     }
 
@@ -317,7 +346,10 @@ class GameController {
      *
      * Enter and Space continue past the tally; Enter also presses Start or
      * Restart on the start and Game Over screens. Escape closes the
-     * instructions. None of it fires during play, and none of it fires when
+     * instructions, and does nothing else on these screens -- in particular
+     * it never starts or resumes a game; during play it pauses, which is the
+     * pause menu's business, not this. None of it fires during play, and none
+     * of it fires when
      * a button has focus -- the browser already presses a focused button on
      * Enter and Space, and pressing it twice would start two levels.
      *
@@ -384,22 +416,164 @@ class GameController {
         this.difficultyHint.textContent = hints[difficulty] || hints.medium;
     }
 
+    // =============================================================================
+    // ASSET LOADING
+    // =============================================================================
+
     /**
-     * Initializes sprite images
+     * Loads everything a level draws, driving the loading screen as it goes.
      *
-     * Nothing is embedded in the page any more. All three sets of artwork are
-     * fetched: the player characters in sprites/player/, the enemy characters in
-     * sprites/enemies/, and the pickup icons in sprites/items/.
+     * Nothing is embedded in the page; all of the artwork is fetched -- the
+     * player characters, the enemy characters and the pickup icons, each a
+     * manifest under sprites/ plus a pack beside it (sprites/player.pak,
+     * sprites/enemies.pak, sprites/items.pak; see js/asset-pack.js) -- plus
+     * the logo, the pixel font the canvas is lettered in, and the sound set
+     * in sounds/sounds.pak.
      *
-     * None of it is awaited. Each loader handles its own failure by logging and
-     * leaving that layer on its fallback -- shapes for characters, lettered
-     * badges for pickups -- so a missing or slow asset costs polish rather than
-     * keeping the player at a blank menu.
+     * The packs are most of the bytes, so the bar counts them by bytes as
+     * they stream in, and everything after -- each atlas, icon and sound
+     * decoded out of them, the logo, the fonts -- as a step each. See
+     * LoadTracker in js/asset-preloader.js.
+     *
+     * This used to be fire-and-forget, and worse, the character atlases were
+     * only *requested* the first time they were drawn. On a phone that meant
+     * the first level was on screen before the marine's atlas had arrived and
+     * he was drawn as the fallback dot. Now every image is requested here, up
+     * front, and decoded before the start menu appears.
+     *
+     * Failure still costs polish, never the session: each loader resolves
+     * false rather than throwing, a failed asset is counted as done, and the
+     * tracker gives up after a stall or an overall deadline. Whatever has not
+     * arrived by then keeps its fallback drawing -- exactly how the game
+     * behaved before there was a loading screen.
+     *
+     * @returns {Promise<Object>} The tracker's summary, once loading is over
      */
-    initializeSprites() {
-        loadPlayerSpriteManifest();
-        loadEnemySpriteManifest();
-        loadItemIcons();
+    async preloadAssets() {
+        const tracker = new LoadTracker({
+            onProgress: (progress) => this.updateLoadingScreen(progress),
+        });
+
+        try {
+            // The packs first, so their downloads start at once and run
+            // alongside the manifests rather than after them. The loaders
+            // below read from these same downloads; nothing is fetched twice.
+            // A pack that fails is logged once and its contents fall back.
+            tracker.trackDownload('player sprite pack', openPlayerSpritePack());
+            tracker.trackDownload('enemy sprite pack', openEnemySpritePack());
+            tracker.trackDownload('item icon pack', openItemIconPack());
+            // Null without Web Audio: then there is nothing to play it on.
+            const soundPack = openSoundPack();
+            if (soundPack) tracker.trackDownload('sound pack', soundPack);
+
+            /**
+             * Tracks a manifest, and -- before the manifest's own task settles --
+             * every image it names, so the total grows ahead of the count and
+             * the tracker cannot think it is finished between the two.
+             */
+            const trackManifest = (label, manifestLoad, children) => {
+                tracker.track(label, manifestLoad.then((ok) => {
+                    if (ok) {
+                        for (const { name, ready } of children()) {
+                            tracker.track(`${label}: ${name}`, ready);
+                        }
+                    }
+                    return ok;
+                }));
+            };
+
+            trackManifest('player sprites', loadPlayerSpriteManifest(), preloadPlayerAtlases);
+            // Only the characters the bestiary wears; see preloadEnemyAtlases().
+            trackManifest('enemy sprites', loadEnemySpriteManifest(),
+                () => preloadEnemyAtlases(Object.values(MONSTERS).map((def) => def.sprite)));
+            trackManifest('item icons', loadItemIcons(), preloadItemIcons);
+
+            // The start menu's logo. The browser fetches it from the markup, so
+            // this only waits for it, rather than letting the menu open with a
+            // hole where the title should be.
+            tracker.track('logo', whenImageReady(document.getElementById('titleLogo')));
+
+            // The canvas letters pickup badges, the boss's health bar and the
+            // debug panels in the pixel font, and a canvas does not redraw when a web font
+            // lands late: text drawn before then stays in the fallback face.
+            // load() resolves with no faces, rather than rejecting, when the
+            // font is unavailable -- offline, say -- which counts as a failure.
+            if (document.fonts && typeof document.fonts.load === 'function') {
+                tracker.track('font', document.fonts.load('16px "Press Start 2P"')
+                    .then((faces) => faces.length > 0));
+                // The status bar's typeface (index.html). Not drawn on the
+                // canvas, but without the wait the bar's numbers would open in
+                // a fallback font and visibly jump when Oxanium lands.
+                tracker.track('status bar font', document.fonts.load('800 16px "Oxanium"')
+                    .then((faces) => faces.length > 0));
+            }
+
+            // Sounds fetch and decode before any gesture -- see preloadSoundTasks().
+            for (const { name, ready } of preloadSoundTasks()) {
+                tracker.track(`sound: ${name}`, ready);
+            }
+        } catch (error) {
+            // Whatever was tracked before this is still waited for; the rest
+            // falls back. Never worth leaving the player at a loading screen.
+            console.error("GameController: asset preloading failed to start:", error);
+        }
+
+        const result = await tracker.finished();
+
+        if (result.failed > 0) {
+            console.warn(`GameController: ${result.failed} of ${result.total} assets failed to load ` +
+                         `and will use their fallback drawing`);
+        }
+        console.log(`GameController: assets ready, ${result.loaded} of ${result.total} loaded` +
+                    `${result.timedOut ? ' (gave up waiting on the rest)' : ''}`);
+
+        this.assetsReady = true;
+        this.hideLoadingScreen();
+        return result;
+    }
+
+    /**
+     * Moves the loading bar.
+     *
+     * The bar follows the tracker's weighted fraction, which is mostly pack
+     * bytes. The count beside it shows megabytes while there are downloads to
+     * show, since "3 / 140" would sit still for most of the wait.
+     *
+     * @param {{done: number, total: number, fraction?: number,
+     *          bytesLoaded?: number, bytesTotal?: number}} progress - From the LoadTracker
+     */
+    updateLoadingScreen({ done, total, fraction, bytesLoaded = 0, bytesTotal = 0 }) {
+        const share = fraction ?? (total > 0 ? done / total : 0);
+        const percent = Math.floor(share * 100);
+
+        const bar = document.getElementById('loadingBar');
+        if (bar) bar.setAttribute?.('aria-valuenow', String(percent));
+
+        const fill = document.getElementById('loadingBarFill');
+        if (fill) fill.style.width = `${percent}%`;
+
+        const status = document.getElementById('loadingText');
+        if (status) status.textContent = `Loading ${percent}%`;
+
+        const count = document.getElementById('loadingCount');
+        if (count) {
+            const mb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
+            count.textContent = bytesTotal > 0
+                ? `${mb(bytesLoaded)} / ${mb(bytesTotal)} MB`
+                : `${done} / ${total}`;
+        }
+    }
+
+    /**
+     * Takes the loading screen down, for good.
+     */
+    hideLoadingScreen() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+
+        // A marker for anything outside the game that needs to know -- the
+        // headless browser checks, for one.
+        if (document.body?.dataset) document.body.dataset.assets = 'ready';
     }
 
     // =============================================================================
@@ -410,8 +584,16 @@ class GameController {
      * Starts a new game
      */
     startNewGame() {
+        // The one door into a level. Every way of starting -- the button, Enter,
+        // or a path added later -- comes through here, so this is where the
+        // loading screen is enforced rather than in each caller.
+        if (!this.assetsReady) {
+            console.warn("GameController: ignoring start, assets are still loading");
+            return;
+        }
+
         console.log("GameController: Starting new game");
-        
+
         try {
             this.hideMessageOverlay();
             
@@ -492,6 +674,7 @@ class GameController {
      * @param {Error} error - The error to display
      */
     showCriticalError(error) {
+        setMenuSilence(true);
         if (this.messageTitle) this.messageTitle.textContent = "Critical Error!";
         if (this.messageText) {
             this.messageText.innerHTML = `A critical error occurred: ${error.message}<br>Check console for details.`;
@@ -554,12 +737,31 @@ class GameController {
         this.counts = { sources: 0, passes: 0, spans: 0, rays: 0 };
 
         try {
+            const gs = this.gameState;
+            const paused = gs.paused && !gs.gameOver;
+
+            // Paused, the level stays on screen behind the menu, frozen, as
+            // Doom's does. It is drawn once and then held: nothing in it moves,
+            // and redrawing the lighting every frame for a still picture would
+            // only spend a phone's battery. A resize (going fullscreen from the
+            // menu, turning the phone) or a zoom clears or changes the picture,
+            // so either draws it again.
+            const frameKey = paused
+                ? `${this.canvas.width}x${this.canvas.height}@${this.zoomLevel}`
+                : null;
+            if (paused && frameKey === this.pausedFrameKey) return;
+
             this.clearCanvas();
 
-            if (this.gameState.gameRunning && !this.gameState.gameOver) {
+            if ((gs.gameRunning || paused) && !gs.gameOver) {
                 this.renderGame();
             }
+            this.pausedFrameKey = frameKey;
             this.recordFrameCost(renderStart);
+
+            // The status bar's face keeps its own time -- glancing, blinking,
+            // letting a wince go -- so it is ticked every frame, menus included.
+            if (this.gameState.player) tickStatusBar(this.gameState.player);
         } catch (error) {
             // Log once per burst rather than flooding the console at 60fps
             if (!this.lastRenderErrorMessage || this.lastRenderErrorMessage !== error.message) {
@@ -779,6 +981,8 @@ class GameController {
         player.draw(this.ctx);
         this.drawEmissive(this.ctx);
         this.ctx.restore();
+
+        this.drawPowerPalette(player, viewWidth, viewHeight);
 
         at = this.now();
         this.renderUIOverlay();
@@ -2447,7 +2651,15 @@ class GameController {
         // Ambient sector light. Only on the light mask, which is the pass that
         // carries a gate: the sight mask is built by this same routine with no
         // gate, and ambient must not feed the thing that gates it.
-        if (gate) {
+        //
+        // Light amplification overrides every sector with full bright, and
+        // "everything in line of sight at full" is exactly the gate's own shape,
+        // so under the visor the gate is laid on whole instead of tile by tile.
+        if (gate && isFullBright()) {
+            mask.globalCompositeOperation = 'lighter';
+            mask.drawImage(gate, 0, 0);
+            touched = { x: 0, y: 0, w: viewWidth, h: viewHeight };
+        } else if (gate) {
             touched = this.unionBounds(touched,
                 this.paintAmbient(mask, bounds, player, viewWidth, viewHeight, gate));
         }
@@ -2476,7 +2688,7 @@ class GameController {
      * @returns {Object|null} The rectangle touched
      */
     paintAmbient(mask, bounds, player, viewWidth, viewHeight, gate) {
-        if (!hasSectors()) return null;
+        if (!hasAmbient()) return null;
         const map = this.gameState?.gameMap;
         if (!map) return null;
 
@@ -2921,6 +3133,9 @@ class GameController {
         for (const item of state.powerups || []) {
             if (visible(item)) item.draw(ctx);
         }
+        for (const item of state.armorPickups || []) {
+            if (visible(item)) item.draw(ctx);
+        }
 
         if (state.currentBoss && visible(state.currentBoss)) {
             state.currentBoss.draw(ctx);
@@ -3162,29 +3377,83 @@ class GameController {
         const ctx = this.minimapCtx;
         if (!map || !explored || !stamped || !ctx) return;
 
+        // The two ways the map can know more than the player has seen. IDDT
+        // shows the whole level as if walked; the computer area map shows the
+        // rest of it in grey. Either can be switched off again, which takes
+        // tiles AWAY, so a change of mode starts the surface over rather than
+        // stamping on top of it.
+        const revealAll = (this.gameState.mapCheat || 0) > 0;
+        const allmap = Boolean(this.gameState.player?.hasPower?.('allmap'));
+        const mode = (revealAll ? 1 : 0) | (allmap ? 2 : 0);
+        if (mode !== this.minimapMode) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, MAP_COLS, MAP_ROWS);
+            stamped.fill(255);
+            this.minimapMode = mode;
+        }
+
         for (let r = 0; r < MAP_ROWS; r++) {
             const row = map[r];
             const seenRow = explored[r];
             if (!row || !seenRow) continue;
 
             for (let c = 0; c < MAP_COLS; c++) {
-                if (seenRow[c] <= 0) continue;
+                const seen = revealAll || seenRow[c] > 0;
+                if (!seen && !allmap) continue;
 
                 // A sliding wall that has opened is floor now, as far as the map
                 // is concerned
                 const tileType = row[c] === TILE_SLIDE && isSlideOpen(c, r) ? TILE_EMPTY : row[c];
+                // Grey computer-map stamps are recorded apart from real ones, so
+                // a tile restamps in colour the moment the player sees it.
+                const key = seen ? tileType : MINIMAP_ALLMAP_STAMP + tileType;
                 const index = r * MAP_COLS + c;
-                if (stamped[index] === tileType) continue;
+                if (stamped[index] === key) continue;
 
-                const color = this.minimapTileColor(tileType);
+                // Doom's computer map draws structure only -- lines, not floors
+                // or what is lying on them.
+                const color = seen
+                    ? this.minimapTileColor(tileType)
+                    : (isWallLike(tileType) ? MINIMAP.ALLMAP : null);
                 ctx.clearRect(c, r, 1, 1);
                 if (color) {
                     ctx.fillStyle = color;
                     ctx.fillRect(c, r, 1, 1);
                 }
-                stamped[index] = tileType;
+                stamped[index] = key;
             }
         }
+    }
+
+    /**
+     * IDDT's second press: every thing on the level as a dot on the minimap --
+     * monsters, barrels and loose pickups -- wherever it is and whether or not
+     * it has been seen. Drawn live, since most of it moves.
+     *
+     * @param {CanvasRenderingContext2D} ctx - The screen, in screen space
+     * @param {number} originX - Screen x of the map's top-left tile
+     * @param {number} originY - Screen y of the map's top-left tile
+     * @param {number} scale - Screen pixels per tile
+     */
+    drawMinimapThings(ctx, originX, originY, scale) {
+        const state = this.gameState;
+        const dot = (thing, color) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(originX + (thing.x / TILE_SIZE) * scale - MINIMAP.THING_RADIUS,
+                         originY + (thing.y / TILE_SIZE) * scale - MINIMAP.THING_RADIUS,
+                         MINIMAP.THING_RADIUS * 2, MINIMAP.THING_RADIUS * 2);
+        };
+
+        for (const pack of [...(state.healthPacks || []), ...(state.ammoPacks || []),
+                            ...(state.weaponPacks || []), ...(state.powerups || []),
+                            ...(state.armorPickups || [])]) {
+            dot(pack, MINIMAP.THING_ITEM);
+        }
+        for (const barrel of state.barrels || []) {
+            if (!barrel.isDead) dot(barrel, MINIMAP.THING_BARREL);
+        }
+        for (const enemy of state.enemies || []) dot(enemy, MINIMAP.THING_MONSTER);
+        if (state.currentBoss) dot(state.currentBoss, MINIMAP.THING_MONSTER);
     }
 
     /**
@@ -3230,6 +3499,10 @@ class GameController {
         ctx.drawImage(this.minimapCanvas, left + pad, top + pad, width, height);
         ctx.globalAlpha = 1;
         ctx.imageSmoothingEnabled = true;
+
+        if ((this.gameState.mapCheat || 0) >= 2) {
+            this.drawMinimapThings(ctx, left + pad, top + pad, scale);
+        }
 
         // The player, drawn live rather than stamped -- they move
         const player = this.gameState.player;
@@ -3283,8 +3556,11 @@ class GameController {
      * were alive, how many passes they collapsed into (sources sharing a pass is
      * what keeps glowing terrain affordable), how many wall spans were shaded, and
      * how many rays were marched.
+     *
+     * @param {number} [top=62] - Top edge, in canvas pixels: under the IDMYPOS
+     *        readout's two lines, and under the corner buttons when they show
      */
-    drawPerfPanel() {
+    drawPerfPanel(top = 62) {
         const stats = this.perfStats;
         if (!stats) return;
 
@@ -3298,7 +3574,6 @@ class GameController {
         const slices = Object.keys(stats.phase).filter(k => stats.phase[k] > 0);
         const height = pad * 2 + lineHeight * (slices.length + 6);
         const left = this.canvas.width - width - 15;
-        const top = 62;
 
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3362,6 +3637,186 @@ class GameController {
     }
 
     /**
+     * Draws the HUD message line -- Doom's top-left message, where the cheat
+     * codes answer -- beside the level readout, until it times out.
+     *
+     * The readout already owns the corner, and the minimap sits right under it,
+     * so the message takes the rest of that row rather than a row of its own,
+     * shrinking to fit if it must. When even the smallest size will not fit --
+     * IDBEHOLD's menu on a phone held upright, or any message once the touch
+     * buttons have taken the right end of the row -- it wraps onto lines under
+     * the minimap instead, the one stretch of the top-left nothing else draws in.
+     *
+     * Expects the overlay's text state: screen space, left-aligned, top baseline.
+     *
+     * @param {number} x - Where the message starts
+     * @param {number} y - Top of the row
+     * @param {number} rowHeight - Height of the row, to bottom-align smaller text
+     */
+    drawHudMessage(x, y, rowHeight) {
+        const message = this.gameState.hudMessage;
+        if (!message) return;
+
+        if (this.now() - message.postedAt > HUD_MESSAGE.DURATION_MS) {
+            this.gameState.hudMessage = null;
+            return;
+        }
+
+        const ctx = this.ctx;
+        const font = (px) => `${px}px "Press Start 2P", monospace`;
+        const room = this.hudRowRight(y + rowHeight) - x;
+
+        ctx.save();
+        ctx.fillStyle = HUD_MESSAGE.COLOR;
+
+        let size = HUD_MESSAGE.FONT_PX;
+        ctx.font = font(size);
+        let width = ctx.measureText(message.text).width;
+        if (width > room && room > 0) {
+            size = Math.max(HUD_MESSAGE.MIN_FONT_PX, Math.floor(size * room / width));
+            ctx.font = font(size);
+            width = ctx.measureText(message.text).width;
+        }
+
+        if (width <= room) {
+            ctx.fillText(message.text, x, y + rowHeight - size);
+            ctx.restore();
+            return;
+        }
+
+        // No room on the row: wrap it, word by word, under the minimap -- or
+        // under the readout when the map is hidden.
+        size = HUD_MESSAGE.WRAP_FONT_PX;
+        ctx.font = font(size);
+        const left = MINIMAP.MARGIN_X;
+        const maxWidth = this.canvas.width - left * 2;
+        const lines = [];
+        for (const word of message.text.split(' ')) {
+            const last = lines[lines.length - 1];
+            if (last && ctx.measureText(`${last} ${word}`).width <= maxWidth) {
+                lines[lines.length - 1] = `${last} ${word}`;
+            } else {
+                lines.push(word);
+            }
+        }
+
+        const top = this.gameState.showMinimap
+            ? MINIMAP.MARGIN_Y + MAP_ROWS * MINIMAP.SCALE + MINIMAP.PADDING * 2 + HUD_MESSAGE.WRAP_GAP_PX
+            : y + rowHeight + HUD_MESSAGE.WRAP_GAP_PX;
+        lines.forEach((line, i) => {
+            ctx.fillText(line, left, top + i * (size + HUD_MESSAGE.WRAP_LEADING_PX));
+        });
+        ctx.restore();
+    }
+
+    /**
+     * Where the top HUD row ends on the right: the canvas edge, or just short
+     * of the buttons over the top-right corner of the view -- the touch row in
+     * touch mode, pause and fullscreen on a desktop. Anything drawn past this
+     * point is under a button.
+     *
+     * @param {number} rowBottom - Bottom of the row, in canvas pixels
+     * @returns {number} The rightmost x a row's text may reach, in canvas pixels
+     */
+    hudRowRight(rowBottom) {
+        let right = this.canvas.width - 15;
+
+        const box = this.cornerButtonsBox();
+        if (box && box.top < rowBottom) {
+            right = Math.min(right, box.left - 10);
+        }
+        return right;
+    }
+
+    /**
+     * The box of whichever buttons sit over the top-right corner of the view
+     * right now, in canvas pixels: #touchButtons in touch mode, #gameButtons
+     * (pause, fullscreen) on a desktop while a level is played, else none.
+     *
+     * Decided by the classes that show them rather than by measuring whatever
+     * is there, so a hidden row is never mistaken for a showing one.
+     *
+     * @returns {{left: number, top: number, bottom: number}|null}
+     */
+    cornerButtonsBox() {
+        if (typeof document === 'undefined' || !this.canvas.getBoundingClientRect) return null;
+
+        const classes = document.body?.classList;
+        const id = classes?.contains('touch-ui') ? 'touchButtons'
+            : classes?.contains('game-playing') ? 'gameButtons'
+            : null;
+        const buttons = id ? document.getElementById(id) : null;
+        if (!buttons || !buttons.getBoundingClientRect) return null;
+
+        const box = buttons.getBoundingClientRect();
+        const view = this.canvas.getBoundingClientRect();
+        if (box.width <= 0 || view.width <= 0) return null;
+
+        // The canvas may be drawn at a different size from its backing store
+        const scale = this.canvas.width / view.width;
+        return {
+            left: (box.left - view.left) * scale,
+            top: (box.top - view.top) * scale,
+            bottom: (box.top + box.height - view.top) * scale,
+        };
+    }
+
+    /**
+     * Where the top-right readouts start: the IDMYPOS position and frame rate,
+     * and the F3 panel under them. At the top, as they always were, unless the
+     * corner buttons are there, when they drop to just below them -- shifting
+     * them left instead would run the position readout off a phone's screen.
+     *
+     * @returns {number} Top of the first readout, in canvas pixels
+     */
+    cornerReadoutTop() {
+        const box = this.cornerButtonsBox();
+        return box ? Math.max(15, Math.ceil(box.bottom) + 10) : 15;
+    }
+
+    /**
+     * Doom's palette effects for the power-ups, laid over the finished world
+     * and under the HUD, as Doom's status bar was never tinted:
+     *
+     *   invulnerability  the inverse colormap: the whole view in negative grey
+     *   radiation suit   a green cast
+     *
+     * Both blink as the power runs out (Player.isPowerShowing). The negative
+     * is two full-screen fills: inverting with white under 'difference', then
+     * draining the colour by laying a grey under 'saturation'.
+     *
+     * @param {Object} player - The player
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
+     */
+    drawPowerPalette(player, width, height) {
+        const inverse = player.isPowerShowing?.('invulnerability');
+        const suit = player.isPowerShowing?.('ironfeet');
+        if (!inverse && !suit) return;
+
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        if (inverse) {
+            ctx.globalCompositeOperation = 'difference';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            ctx.globalCompositeOperation = 'saturation';
+            ctx.fillStyle = '#808080';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        if (suit) {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.125)';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        ctx.restore();
+    }
+
+    /**
      * Renders UI overlay elements on top of the game world
      */
     renderUIOverlay() {
@@ -3386,9 +3841,15 @@ class GameController {
         // Draw level display in top-left corner
         const levelText = `Level: ${this.gameState.currentLevel}`;
         this.ctx.fillText(levelText, 15, 15);
+        this.drawHudMessage(15 + this.ctx.measureText(levelText).width + HUD_MESSAGE.GAP_PX, 15, 16);
 
         if (this.gameState.showMinimap) this.drawMinimap();
-        if (this.gameState.showPerf) this.drawPerfPanel();
+
+        // The top-right readouts keep their layout -- position at the top, the
+        // frame rate 25 below, the F3 panel 47 below -- moved down as one when
+        // the corner buttons are there.
+        const readoutTop = this.cornerReadoutTop();
+        if (this.gameState.showPerf) this.drawPerfPanel(readoutTop + 47);
 
         // Draw coordinate display in top-right corner (if enabled)
         if (this.gameState.showCoordinates && this.gameState.player) {
@@ -3404,7 +3865,16 @@ class GameController {
             // Set text alignment for right side
             this.ctx.textAlign = 'right';
             this.ctx.fillStyle = '#ffdc00'; // Yellow color for coordinates
-            this.ctx.fillText(coordText, this.canvas.width - 15, 15);
+
+            // At 16px the line is about 400px wide, more than a phone held
+            // upright has, and its start ran off the left edge. Shrunk to fit
+            // there; the frame rate under it keeps the size it set.
+            const room = this.canvas.width - 30;
+            const width = this.ctx.measureText(coordText).width;
+            if (width > room && room > 0) {
+                this.ctx.font = `${Math.max(8, Math.floor(16 * room / width))}px "Press Start 2P", monospace`;
+            }
+            this.ctx.fillText(coordText, this.canvas.width - 15, readoutTop);
 
             // Frame cost alongside it. Lighting is by far the most expensive thing
             // this game does and its cost varies hugely with where the player is
@@ -3414,7 +3884,7 @@ class GameController {
                 const fps = Math.round(1000 / this.frameMs);
                 this.ctx.fillStyle = fps >= 50 ? '#7fdc5f' : (fps >= 30 ? '#ffdc00' : '#ff4136');
                 this.ctx.fillText(`${fps} fps  ${this.frameMs.toFixed(1)} ms`,
-                                  this.canvas.width - 15, 40);
+                                  this.canvas.width - 15, readoutTop + 25);
             }
 
             // Reset text alignment
@@ -4915,6 +5385,18 @@ class GameController {
             this.updateCanvasSize();
         });
 
+        // The canvas stops where the status bar starts, and the bar changes
+        // height without the window changing size: touch mode switching on,
+        // its font arriving, a phone's safe-area insets settling. Re-fit the
+        // canvas, and the touch sticks parked above the bar, when it does.
+        const bar = document.getElementById('uiContainer');
+        if (bar && typeof ResizeObserver === 'function') {
+            new ResizeObserver(() => {
+                this.updateCanvasSize();
+                this.touchControls?.layout?.();
+            }).observe(bar);
+        }
+
         // Initial size update
         this.updateCanvasSize();
     }
@@ -4926,12 +5408,20 @@ class GameController {
         const container = document.getElementById('gameContainer');
         if (!container) return;
 
-        // Get actual container size
+        // The view is the container less the status bar: the bar is a solid
+        // panel, as Doom's was, and the canvas sits wholly above it. Were it
+        // to run on underneath, the marine -- drawn at the canvas's centre --
+        // would sit below the middle of what can be seen, and the boss's
+        // health bar along the canvas's bottom edge would be hidden.
         const containerRect = container.getBoundingClientRect();
+        const bar = document.getElementById('uiContainer');
+        const barHeight = bar ? bar.getBoundingClientRect().height : 0;
         const containerWidth = containerRect.width;
-        const containerHeight = containerRect.height;
+        // Rounded up: a fractional bar height would otherwise leave a hairline
+        // of background between the two; the extra part-pixel sits under the bar.
+        const containerHeight = Math.max(1, Math.ceil(containerRect.height - barHeight));
 
-        // Set canvas to fill entire container
+        // Set canvas to fill the container above the bar
         this.canvas.style.width = `${containerWidth}px`;
         this.canvas.style.height = `${containerHeight}px`;
 
@@ -4946,6 +5436,10 @@ class GameController {
         // Left as-is deliberately: the 1:1 mapping is what keeps those correct.
         this.canvas.width = containerWidth;
         this.canvas.height = containerHeight;
+
+        // Setting the size wipes the canvas, even to the size it already was,
+        // so a paused game's held frame has to be drawn again (see render()).
+        this.pausedFrameKey = null;
 
         // Store actual display size for scaling calculations.
         // (window.VIEWPORT_WIDTH/HEIGHT used to be written here but nothing ever read
@@ -4994,6 +5488,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Make game controller globally accessible for aiming calculations
     window.gameController = gameController;
+
+    // The status bar's face goes in now, to sit behind the start menu
+    initStatusBar();
+
+    // Phones and tablets: twin sticks and on-screen buttons. Shows nothing on a
+    // desktop; see touch-controls.js for how a touch device is recognised.
+    // Kept on the controller so a change in the status bar's height can
+    // re-park the sticks above it (setupDynamicCanvasSizing).
+    gameController.touchControls = initTouchControls(gameController);
+
+    // The pause menu, for every device: Esc, the top-right pause buttons, and
+    // fullscreen. After the touch controls, whose sticks it lets go of.
+    initPauseMenu(gameController);
+
+    // Game controllers (Bluetooth or USB), through the Gamepad API. Last, as
+    // it drives the touch move stick and the pause menu.
+    initGamepad(gameController);
 });
 
 // Export for potential external access
