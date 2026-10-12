@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!--
+  SPDX-License-Identifier: GPL-2.0-or-later
+  Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -752,6 +756,17 @@
             color: var(--ui-text);
         }
 
+        /* The small print: the licence, the source and the credits */
+        .instructions-section.credits p {
+            font-size: 8px;
+            color: var(--ui-muted);
+        }
+
+        .instructions-section.credits a {
+            color: var(--ui-amber);
+            text-decoration: underline;
+        }
+
         /* Key bindings sit in two columns when there is room for them */
         .key-grid {
             display: grid;
@@ -884,9 +899,11 @@
             width: min(420px, 92vw);
         }
 
-        /* One width for the column, so it reads as a menu, not a pile */
+        /* One width for the column, so it reads as a menu, not a pile. Wide
+           enough for "Always Run: Off" on one line. */
         #pauseOverlay .button-row .game-button {
-            width: min(260px, 100%);
+            width: min(320px, 100%);
+            white-space: nowrap;
         }
 
         .pause-hint {
@@ -1213,6 +1230,21 @@
             body.touch-ui .arms-slot[data-slot="1"] { min-width: 0; gap: 2px; }
         }
 
+        /* A game controller (js/gamepad.js) in use: the touch sticks step
+           aside -- a phone in a controller clip has no thumbs on the glass --
+           until the screen is touched again. */
+        body.pad-active #touchControls .touch-stick {
+            display: none;
+        }
+
+        /* The menu button a controller has moved to. A focus set from script
+           does not always draw the browser's ring, so it gets one of its own. */
+        .pad-focus,
+        .pad-focus:focus {
+            outline: 3px solid var(--ui-amber);
+            outline-offset: 3px;
+        }
+
         /* Only touch devices get the touch section of the instructions */
         .instructions-section.touch-only {
             display: none;
@@ -1535,6 +1567,16 @@
                 </div>
 
                 <div class="instructions-section">
+                    <h3>Controller</h3>
+                    <p>&bull; <b>Left stick</b> moves, <b>LT</b> runs. <b>Right stick</b> aims,
+                       <b>RT</b> fires.</p>
+                    <p>&bull; <b>LB / RB</b> or <b>D-pad left / right</b> switch weapons;
+                       <b>D-pad up / down</b> zoom; <b>Y</b> map; <b>Start</b> pause.</p>
+                    <p>&bull; In menus: <b>D-pad</b> or <b>left stick</b> to choose, <b>A</b> to
+                       press, <b>B</b> to go back. Press any button to wake a controller.</p>
+                </div>
+
+                <div class="instructions-section">
                     <h3>Staying Alive</h3>
                     <p>&bull; Your flashlight lights a cone ahead. Past it you make out grey shapes
                        in a wide arc in front, and nothing behind you.</p>
@@ -1552,6 +1594,22 @@
                     <p>&bull; Some walls are not walls: push into them. A <b>switch</b> is pressed
                        by walking into it or shooting it, and slides a wall aside nearby.</p>
                     <p>&bull; Old habits die hard. The codes you typed in 1993 still work.</p>
+                </div>
+
+                <!-- The licence, the source and the credits: NOTICE.md has the full list -->
+                <div class="instructions-section credits">
+                    <h3>Credits</h3>
+                    <p>TDDL &copy; 2026 Jeff Hockema. Free software under the
+                       <a href="LICENSE" target="_blank" rel="noopener">GNU GPL v2 or later</a>;
+                       source at <a href="https://github.com/jeffreyhockema/TDDL" target="_blank" rel="noopener">github.com/jeffreyhockema/TDDL</a>.
+                       Monster AI ported from id Software's <i>DOOM</i> source (GPL).
+                       Sprites by <a href="https://craftpix.net" target="_blank" rel="noopener">CraftPix</a>;
+                       sounds from <a href="https://www.moddb.com/games/doom/addons/doom-sound-bulb-re-uploaded" target="_blank" rel="noopener">Doom Sound Bulb</a> by SoundBulb,
+                       after Per Kristian's sound pack.
+                       Neither is covered by the GPL.
+                       <a href="https://github.com/jeffreyhockema/TDDL/blob/master/NOTICE.md" target="_blank" rel="noopener">All notices</a>.</p>
+                    <p>DOOM is a trademark of id Software LLC. TDDL is an unofficial fan
+                       project, not affiliated with or endorsed by id Software.</p>
                 </div>
             </div>
             <button id="closeInstructionsButton" class="game-button">Close</button>

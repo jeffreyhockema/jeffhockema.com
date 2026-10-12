@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+// Portions Copyright (C) 1993-1996 id Software, Inc., from the DOOM source (GPL-2.0).
+
 /**
  * =============================================================================
  * MONSTER ROSTER AND DOOM AI FORMULAS

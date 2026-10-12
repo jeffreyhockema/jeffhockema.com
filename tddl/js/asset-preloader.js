@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * =============================================================================
  * ASSET PRELOADER
@@ -13,6 +16,13 @@
  * dot for a moment. Now main.js asks every loader for its images up front, hands
  * each wait to a LoadTracker, and keeps the start menu behind a loading screen
  * until the tracker reports that everything has settled.
+ *
+ * Since the art and sound moved into packs (js/asset-pack.js), most of the
+ * waiting is a handful of large downloads rather than a hundred small ones, so
+ * the bar counts those by their bytes as they stream in, and everything else
+ * -- each image decode, each sound decode, the fonts -- as a step of nominal
+ * size. Counting files alone would leave the bar parked for most of the wait
+ * and then leap.
  *
  * "Settled" is deliberately not "succeeded". A missing or broken asset is logged
  * and counted as done -- the renderer already has a fallback for every image
@@ -31,6 +41,16 @@ export const DEFAULT_STALL_MS = 15000;
  * which is exactly how it behaved before there was a loading screen at all.
  */
 export const DEFAULT_MAX_MS = 60000;
+
+/**
+ * How much of the bar one ordinary step is worth, in bytes of download.
+ *
+ * Decoding an atlas or a sound takes milliseconds; on the connections where a
+ * loading screen matters, the packs take seconds. So a step is worth a little
+ * -- enough that the hundred-odd decodes after the last byte arrives still
+ * visibly move the bar -- and the downloads are most of it.
+ */
+export const DEFAULT_STEP_BYTES = 16 * 1024;
 
 /**
  * Waits for an image to be loaded *and decoded*.
@@ -80,19 +100,28 @@ export function whenImageReady(image) {
  * grow while loading runs. Because a child is always tracked before its parent
  * settles, `done` can never catch up with `total` while work is still being
  * discovered, and finished() cannot fire early.
+ *
+ * Downloads added with trackDownload() count as tasks like any other, but on
+ * the bar they weigh their size in bytes and move as those bytes arrive; other
+ * tasks weigh `stepBytes` each. Arriving bytes also count as progress for the
+ * stall timer, so one big pack on a slow line is not mistaken for a stall just
+ * because nothing has *finished* for a while.
  */
 export class LoadTracker {
     /**
      * @param {Object} [options]
-     * @param {(progress: {done: number, total: number, failed: number, label: string|null}) => void} [options.onProgress]
-     *        Called whenever the counts change
-     * @param {number} [options.stallMs=DEFAULT_STALL_MS] - Give up after this long with no task settling
+     * @param {(progress: {done: number, total: number, failed: number, label: string|null,
+     *          fraction: number, bytesLoaded: number, bytesTotal: number}) => void} [options.onProgress]
+     *        Called whenever the counts change or bytes arrive
+     * @param {number} [options.stallMs=DEFAULT_STALL_MS] - Give up after this long with no progress
      * @param {number} [options.maxMs=DEFAULT_MAX_MS] - Give up after this long regardless
+     * @param {number} [options.stepBytes=DEFAULT_STEP_BYTES] - What one ordinary task weighs on the bar
      */
     constructor(options = {}) {
         this.onProgress = options.onProgress || null;
         this.stallMs = options.stallMs ?? DEFAULT_STALL_MS;
         this.maxMs = options.maxMs ?? DEFAULT_MAX_MS;
+        this.stepBytes = options.stepBytes ?? DEFAULT_STEP_BYTES;
 
         this.total = 0;
         this.done = 0;
@@ -103,6 +132,17 @@ export class LoadTracker {
 
         /** Labels of tasks that failed, for the summary. */
         this.failures = [];
+
+        /**
+         * Every task's share of the bar: `weight` is its size and `progress`
+         * how much of that is done, both in bytes. A step is all or nothing; a
+         * download fills in as it streams, and weighs nothing until its size
+         * is known.
+         */
+        this.shares = [];
+
+        /** The furthest the bar has been, so a newly sized download cannot pull it back. */
+        this.shownFraction = 0;
 
         this.settled = false;
         this.resolveFinished = null;
@@ -120,14 +160,17 @@ export class LoadTracker {
      *
      * @param {string} label - What is loading, for logs
      * @param {Promise<boolean>} promise - Settles when the load is over
+     * @param {{weight: number, progress: number, bytes?: boolean}} [share] - Its
+     *        share of the bar; trackDownload() passes one, anything else is a step
      * @returns {Promise<boolean>} Resolves with whether the load succeeded
      */
-    track(label, promise) {
+    track(label, promise, share = { weight: this.stepBytes, progress: 0 }) {
         // Two tasks may share a label (a sound and an icon both called "pistol"),
         // so the pending set is keyed by a numbered copy.
         const key = `${label}#${this.total}`;
         this.total++;
         this.pending.add(key);
+        this.shares.push(share);
         this.report(null);
 
         return Promise.resolve(promise).then(
@@ -138,6 +181,10 @@ export class LoadTracker {
             }
         ).then((ok) => {
             this.pending.delete(key);
+            // Settled is settled, whichever way it went: a failed download's
+            // missing bytes are not still on their way, so they count as done.
+            share.progress = share.weight;
+            share.settled = true;
             this.done++;
             if (!ok) {
                 this.failed++;
@@ -151,10 +198,73 @@ export class LoadTracker {
     }
 
     /**
+     * Adds a download, counted on the bar by its bytes.
+     *
+     * Takes anything shaped like a pack load from js/asset-pack.js: a `ready`
+     * promise that resolves to something truthy on success (null or false on
+     * failure), and `onProgress(listener)`, which calls listener(loaded, total)
+     * as bytes arrive.
+     *
+     * @param {string} label - What is downloading, for logs
+     * @param {{ready: Promise<*>, onProgress: (listener: (loaded: number, total: number) => void) => void}} download
+     * @returns {Promise<boolean>} Resolves with whether the download succeeded
+     */
+    trackDownload(label, download) {
+        const share = { weight: 0, progress: 0, bytes: true };
+        const result = this.track(label, Promise.resolve(download.ready).then((value) => !!value), share);
+
+        download.onProgress((loaded, total) => {
+            // Once the task has settled its share is final; late reports change nothing.
+            if (this.settled || share.settled) return;
+            share.weight = Math.max(share.weight, total, loaded);
+            share.progress = Math.min(loaded, share.weight);
+            this.report(null);
+            this.restartStallTimer();
+        });
+        return result;
+    }
+
+    /**
+     * How far along the bar is: every task's progress over every task's
+     * weight.
+     *
+     * Until every download in flight knows its size the bar holds where it
+     * is: a font that loads in the first few milliseconds would otherwise
+     * count as a large share of a total that is still missing megabytes. Sizes
+     * arrive with the first response headers, so the hold is brief. The raw
+     * ratio can still dip later -- a download fetched on demand adds weight
+     * none of which has arrived -- and the bar holds still then too, rather
+     * than stepping back.
+     *
      * @returns {number} Fraction complete, 0..1 (1 when nothing was tracked)
      */
     get fraction() {
-        return this.total === 0 ? 1 : this.done / this.total;
+        if (this.done === this.total) return 1;
+        let weight = 0;
+        let progress = 0;
+        for (const share of this.shares) {
+            if (share.bytes && !share.settled && share.weight === 0) return this.shownFraction;
+            weight += share.weight;
+            progress += share.progress;
+        }
+        const raw = weight > 0 ? progress / weight : 0;
+        this.shownFraction = Math.max(this.shownFraction, raw);
+        return this.shownFraction;
+    }
+
+    /**
+     * @returns {{loaded: number, total: number}} Bytes downloaded and expected,
+     *          over every download tracked so far
+     */
+    get bytes() {
+        let loaded = 0;
+        let total = 0;
+        for (const share of this.shares) {
+            if (!share.bytes) continue;
+            loaded += share.progress;
+            total += share.weight;
+        }
+        return { loaded, total };
     }
 
     /**
@@ -185,7 +295,11 @@ export class LoadTracker {
     report(label) {
         if (!this.onProgress || this.settled) return;
         try {
-            this.onProgress({ done: this.done, total: this.total, failed: this.failed, label });
+            const bytes = this.bytes;
+            this.onProgress({
+                done: this.done, total: this.total, failed: this.failed, label,
+                fraction: this.fraction, bytesLoaded: bytes.loaded, bytesTotal: bytes.total,
+            });
         } catch (error) {
             // A broken progress bar must not stop the loading it is showing.
             console.warn('Preloader: progress callback failed:', error);

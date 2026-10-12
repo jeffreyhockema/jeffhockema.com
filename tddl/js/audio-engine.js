@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * AUDIO ENGINE MODULE
  *
@@ -1055,6 +1058,16 @@ const samples = {};
 const pendingSamples = {};
 
 /**
+ * Where a sample's encoded bytes come from: a URL to fetch, or a function that
+ * produces them. The game uses the second -- its sounds come out of a pack
+ * (see js/asset-pack.js) -- and a function may resolve to null when the bytes
+ * are unavailable for a reason it has already reported, in which case the
+ * sample quietly stays silent.
+ *
+ * @typedef {string | (() => Promise<ArrayBuffer|null>)} SampleSource
+ */
+
+/**
  * Fetches and decodes one sample.
  *
  * Decoding needs a context but not a running one, so this can be called at page
@@ -1062,13 +1075,13 @@ const pendingSamples = {};
  * first shot is fired the buffers are already in memory.
  *
  * @param {string} name - Key the sample is played back by
- * @param {string} url - Where to fetch it from
+ * @param {SampleSource} source - Where its bytes come from
  * @returns {Promise<boolean>} True if the sample is now playable
  */
-export function loadSample(name, url) {
+export function loadSample(name, source) {
     if (samples[name]) return Promise.resolve(true);
     if (!pendingSamples[name]) {
-        pendingSamples[name] = fetchSample(name, url).finally(() => {
+        pendingSamples[name] = fetchSample(name, source).finally(() => {
             delete pendingSamples[name];
         });
     }
@@ -1079,16 +1092,23 @@ export function loadSample(name, url) {
  * The fetch and decode behind loadSample(), without the de-duplication.
  *
  * @param {string} name - Key the sample is played back by
- * @param {string} url - Where to fetch it from
+ * @param {SampleSource} source - Where its bytes come from
  * @returns {Promise<boolean>} True if the sample is now playable
  */
-async function fetchSample(name, url) {
-    if (typeof fetch !== 'function' || !ensureContext()) return false;
+async function fetchSample(name, source) {
+    const fromUrl = typeof source === 'string';
+    if ((fromUrl && typeof fetch !== 'function') || !ensureContext()) return false;
 
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const encoded = await response.arrayBuffer();
+        let encoded;
+        if (fromUrl) {
+            const response = await fetch(source);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            encoded = await response.arrayBuffer();
+        } else {
+            encoded = await source();
+            if (!encoded) return false;
+        }
         // The callback form is the one every browser supports; the promise form
         // is missing from older Safari.
         const buffer = await new Promise((resolve, reject) => {
@@ -1099,7 +1119,8 @@ async function fetchSample(name, url) {
         samples[name] = buffer;
         return true;
     } catch (error) {
-        console.warn(`Audio engine: sample "${name}" failed to load from ${url}:`, error);
+        const where = fromUrl ? ` from ${source}` : '';
+        console.warn(`Audio engine: sample "${name}" failed to load${where}:`, error);
         return false;
     }
 }
@@ -1107,11 +1128,11 @@ async function fetchSample(name, url) {
 /**
  * Loads many samples in parallel.
  *
- * @param {Array<[string, string]>} entries - [name, url] pairs
+ * @param {Array<[string, SampleSource]>} entries - [name, source] pairs
  * @returns {Promise<number>} How many are playable afterwards
  */
 export async function loadSamples(entries) {
-    const results = await Promise.all(entries.map(([name, url]) => loadSample(name, url)));
+    const results = await Promise.all(entries.map(([name, source]) => loadSample(name, source)));
     return results.filter(Boolean).length;
 }
 

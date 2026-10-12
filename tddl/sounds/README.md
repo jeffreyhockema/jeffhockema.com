@@ -1,14 +1,22 @@
 # Sound effects
 
-These are extracted from the **Doom Sound Bulb** pack -- a 16-bit remaster of
-Doom's 1993 sound effects under Doom's own lump names -- and its Extras PK3,
+These come from **Doom Sound Bulb** by SoundBulb -- a high-quality remaster of
+Doom's 1993 sound effects and the successor to Per Kristian's Doom sound pack,
+from the ModDB re-upload (<https://www.moddb.com/games/doom/addons/doom-sound-bulb-re-uploaded>) -- extracted from its WAD, under Doom's own
+lump names, and its Extras PK3,
 which adds per-monster pain and idle voices and a few sounds Doom never had.
-File names are Doom's lump names in lowercase, so
+Entry names are Doom's lump names in lowercase, so
 <https://doomwiki.org/wiki/Sound> describes what each one is for; the Extras
 follow the pack's own `SNDINFO.txt`.
 
-The pack is a fan-made remaster of id Software's sounds. It is used here for
-the game; check the pack's own terms before redistributing it or these files.
+What is committed here is `sounds.pak`: every sound the game plays, bundled
+and scrambled by `tools/pack_assets.py` (see "Assets" in the top-level
+README). The individual `.wav` files the build tool writes into this folder
+are git-ignored and are the packer's input; they are not in the repository.
+The scrambling only discourages casual extraction.
+
+These sounds, packed or not, are not covered by the project's GPL licence; see
+[`NOTICE.md`](../NOTICE.md).
 
 Source: `Doom_Sound_Bulb.wad` and `Doom_Sound_Bulb_Extras.pk3`, kept outside
 the repository (`~Resources/Sounds/`). Rebuild with:
@@ -17,6 +25,10 @@ the repository (`~Resources/Sounds/`). Rebuild with:
 python tools/build_sounds.py --source "<folder holding the .wad and .pk3>" --clean
 ```
 
-Only the lumps the game plays are here. The list that decides that is
+That writes the `.wav` files and then rebuilds `sounds.pak` from them; to
+repack without re-extracting, run `python tools/pack_assets.py sounds`.
+
+Only the lumps the game plays are packed. The list that decides that is
 `SAMPLE_NAMES` in `js/audio-system.js`, which the build tool reads; `npm test`
-fails on any name there without a file, and any file here nothing plays.
+fails on any name there missing from the pack, and anything in the pack
+nothing plays.

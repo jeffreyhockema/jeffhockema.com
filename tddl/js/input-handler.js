@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * @fileoverview Input Handling System Module
  * 
@@ -98,6 +101,17 @@ export const mouse = {
     x: 0,
     y: 0,
     down: false
+};
+
+/**
+ * What a game controller holds that has no keyboard or mouse equivalent to
+ * write into (js/gamepad.js). Movement, aim and the trigger go through the
+ * touch move stick and `mouse`, as the touch controls do; running is the one
+ * thing left, and it cannot be `keys.Shift`, which the keyboard's own keyup
+ * would clear under a thumb still holding the controller's run button.
+ */
+export const pad = {
+    run: false,
 };
 
 /**
@@ -561,4 +575,5 @@ export function resetInputState() {
         keys[key] = false;
     });
     mouse.down = false;
+    pad.run = false;
 }

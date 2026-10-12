@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * AUDIO SYSTEM MODULE
  *
@@ -11,7 +14,8 @@
  * shotgun a beat after the shot, each monster with its own sight, pain, idle,
  * attack and death voice, and everything placed in the world with Doom's own
  * panning and distance falloff. tools/build_sounds.py extracts them from the
- * WAD and PK3 into sounds/; see the README there.
+ * WAD and PK3 into sounds/, and tools/pack_assets.py bundles them into
+ * sounds/sounds.pak, which is what the game downloads; see the README there.
  *
  * Two kinds of sound remain synthesised in js/audio-engine.js, because Doom has
  * no sample for them: things Doom never made a sound for (the empty
@@ -35,25 +39,27 @@ import {
     duck, rand, pick, setMasterVolume, getMasterVolume, setMuted, isMuted,
     setSilenced, isSilenced, disposeEngine, engineStats,
 } from './audio-engine.js';
+import { openPack, readPackedBytes } from './asset-pack.js';
 
 // =============================================================================
 // THE SOUND SET
 // =============================================================================
 
 /**
- * Where the samples live. Resolved against this module's own URL rather than
- * the page's, so the sound lab under tools/ finds them as well as index.html.
- * Node has import.meta.url too, but the tests serve files off disk by path and
- * need the plain relative form.
+ * Where the samples live: one pack holding every lump as `<name>.wav`.
+ * Resolved against this module's own URL rather than the page's, so the sound
+ * lab under tools/ finds it as well as index.html. Node has import.meta.url
+ * too, but the tests serve files off disk by path and need the plain relative
+ * form.
  */
-const SOUND_ROOT = (typeof document !== 'undefined' && import.meta.url)
-    ? new URL('../sounds/', import.meta.url).href
-    : 'sounds/';
+const SOUND_PACK_URL = (typeof document !== 'undefined' && import.meta.url)
+    ? new URL('../sounds/sounds.pak', import.meta.url).href
+    : 'sounds/sounds.pak';
 
 /**
  * Every lump the game uses, by Doom's names. The list is the manifest: a sound
- * not named here is never fetched, and a name here without a file in sounds/
- * fails the audio test suite.
+ * not named here is never decoded, and a name here without an entry in
+ * sounds/sounds.pak fails the audio test suite.
  */
 export const SAMPLE_NAMES = [
     // Player weapons
@@ -258,6 +264,34 @@ let ambientVoice = null;
 let samplesLoading = null;
 
 /**
+ * Starts the sound pack downloading, or returns the download under way. The
+ * loading screen calls this to count the pack's bytes on its bar.
+ *
+ * @returns {{ready: Promise<Object|null>, onProgress: Function}|null} The pack
+ *          load, or null when there is no Web Audio to play its contents on
+ */
+export function openSoundPack() {
+    if (contextState() === 'unavailable') return null;
+    return openPack(SOUND_PACK_URL);
+}
+
+/**
+ * Where one lump's bytes come from, in the form loadSample() takes. Each call
+ * hands decodeAudioData() a buffer of its own, which it is free to detach.
+ * A pack that never arrived resolves null: the pack loader has already said
+ * why, once, rather than a hundred times.
+ *
+ * @param {string} name - Lump name
+ * @returns {() => Promise<ArrayBuffer|null>}
+ */
+function sampleSource(name) {
+    return async () => {
+        const bytes = await readPackedBytes(openPack(SOUND_PACK_URL).ready, `${name}.wav`);
+        return bytes ? bytes.buffer : null;
+    };
+}
+
+/**
  * Returns true when a cooldown has elapsed, and stamps it if so.
  *
  * @param {string} key - Key in `lastPlayed`
@@ -380,12 +414,12 @@ export async function initializeAudio() {
  * @returns {Promise<number>} How many samples are playable
  */
 export function preloadSounds() {
-    // No Web Audio, no point fetching two megabytes it could never play. This is
+    // No Web Audio, no point fetching megabytes it could never play. This is
     // also the headless-test path, which would otherwise log a warning per file.
     if (contextState() === 'unavailable') return Promise.resolve(0);
 
     if (!samplesLoading) {
-        samplesLoading = loadSamples(SAMPLE_NAMES.map(name => [name, `${SOUND_ROOT}${name}.wav`]))
+        samplesLoading = loadSamples(SAMPLE_NAMES.map(name => [name, sampleSource(name)]))
             .then((count) => {
                 if (count < SAMPLE_NAMES.length) {
                     console.warn(`Audio: ${SAMPLE_NAMES.length - count} of ${SAMPLE_NAMES.length} sounds failed to load`);
@@ -401,9 +435,11 @@ export function preloadSounds() {
 /**
  * Starts the sound set loading and reports when each sample is ready.
  *
- * The loading screen counts these towards its progress bar. They are the same
- * loads preloadSounds() starts -- loadSample() shares a load already in flight
- * -- so asking for them individually costs nothing extra.
+ * The loading screen counts these towards its progress bar, one decode step
+ * each, beside the pack's bytes (openSoundPack()). They are the same loads
+ * preloadSounds() starts -- loadSample() shares a load already in flight, and
+ * the pack is downloaded once -- so asking for them individually costs
+ * nothing extra.
  *
  * Fetching and decoding work before any user gesture: the context is created
  * suspended, and decodeAudioData() does not need it running. Only playback
@@ -418,7 +454,7 @@ export function preloadSoundTasks() {
     preloadSounds();
     return SAMPLE_NAMES.map((name) => ({
         name,
-        ready: loadSample(name, `${SOUND_ROOT}${name}.wav`),
+        ready: loadSample(name, sampleSource(name)),
     }));
 }
 
@@ -1043,7 +1079,7 @@ export function stopMenuMusic() {
 
 /**
  * Releases all audio resources. The decoded samples are kept: they belong to no
- * context, and a restart should not fetch two megabytes again.
+ * context, and a restart should not fetch megabytes again.
  */
 export function cleanupAudio() {
     clearTimeout(menuMusicTimer);

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+// Portions Copyright (C) 1993-1996 id Software, Inc., from the DOOM source (GPL-2.0).
+
 /**
  * ENTITIES MODULE
  *
@@ -72,7 +76,7 @@ import {
     playEmptyGunSound, playWeaponSwitchSound, playLowHealthWarning,
     playErrorSound, playArmorPickupSound
 } from './audio-system.js';
-import { keys, mouse } from './input-handler.js';
+import { keys, mouse, pad } from './input-handler.js';
 import { touchMove, moveDrive } from './touch-controls.js';
 import { wantsToRun } from './settings.js';
 import { isSlideOpen } from './switches.js';
@@ -1141,12 +1145,14 @@ export class Player {
         // The touch move stick (js/touch-controls.js) is analog and only counts
         // when no movement key is held, so with the stick idle this is exactly
         // the keyboard movement it always was. It never runs by itself: a full
-        // push is walking pace, or running pace with Always Run on.
+        // push is walking pace, or running pace with Always Run on. A game
+        // controller's left stick drives the same stick (js/gamepad.js), and
+        // its run button is `pad.run`, Shift's twin.
         const keyboardMoving = keys.w || keys.ArrowUp || keys.s || keys.ArrowDown ||
                                keys.a || keys.ArrowLeft || keys.d || keys.ArrowRight;
         const stick = (!keyboardMoving && touchMove.magnitude > 0) ? moveDrive(touchMove.magnitude) : null;
 
-        this.isRunning = wantsToRun(!!keys.Shift);
+        this.isRunning = wantsToRun(!!keys.Shift || pad.run);
         const baseSpeed = this.isRunning ? this.runSpeed : this.walkSpeed;
         const speed = baseSpeed * terrainSpeedMultiplier(this.terrainTile);
 

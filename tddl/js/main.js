@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * MAIN GAME CONTROLLER MODULE
  * 
@@ -37,18 +40,19 @@ import { GameState } from './game-state.js';
 // were dead imports. Nor are playUIClickSound/playUIHoverSound any more: the menus
 // are silent, and GameState silences the game whenever one is up.
 import {
-    initializeAudio, ensureAudioAndSynths, preloadSoundTasks, setMenuSilence,
+    initializeAudio, ensureAudioAndSynths, preloadSoundTasks, openSoundPack, setMenuSilence,
 } from './audio-system.js';
-import { loadEnemySpriteManifest, preloadEnemyAtlases } from './enemy-sprites.js';
+import { loadEnemySpriteManifest, preloadEnemyAtlases, openEnemySpritePack } from './enemy-sprites.js';
 import { drawDecals, drawParticles } from './particles.js';
-import { loadPlayerSpriteManifest, preloadPlayerAtlases } from './player-sprites.js';
-import { loadItemIcons, preloadItemIcons, drawItemIcon, iconDrawSize,
+import { loadPlayerSpriteManifest, preloadPlayerAtlases, openPlayerSpritePack } from './player-sprites.js';
+import { loadItemIcons, preloadItemIcons, drawItemIcon, iconDrawSize, openItemIconPack,
 } from './item-icons.js';
 import { LoadTracker, whenImageReady } from './asset-preloader.js';
 import { MONSTERS } from './monsters.js';
 import { initializeInputHandler, mouse } from './input-handler.js';
 import { initTouchControls } from './touch-controls.js';
 import { initPauseMenu } from './pause-menu.js';
+import { initGamepad } from './gamepad.js';
 import { initStatusBar, tickStatusBar } from './hud.js';
 import { doorAtTile } from './doors.js';
 import { DECOR, isSolidDecor } from './decor.js';
@@ -420,9 +424,16 @@ class GameController {
      * Loads everything a level draws, driving the loading screen as it goes.
      *
      * Nothing is embedded in the page; all of the artwork is fetched -- the
-     * player characters in sprites/player/, the enemy characters in
-     * sprites/enemies/, the pickup icons in sprites/items/ -- plus the logo,
-     * the pixel font the canvas is lettered in, and the sound set.
+     * player characters, the enemy characters and the pickup icons, each a
+     * manifest under sprites/ plus a pack beside it (sprites/player.pak,
+     * sprites/enemies.pak, sprites/items.pak; see js/asset-pack.js) -- plus
+     * the logo, the pixel font the canvas is lettered in, and the sound set
+     * in sounds/sounds.pak.
+     *
+     * The packs are most of the bytes, so the bar counts them by bytes as
+     * they stream in, and everything after -- each atlas, icon and sound
+     * decoded out of them, the logo, the fonts -- as a step each. See
+     * LoadTracker in js/asset-preloader.js.
      *
      * This used to be fire-and-forget, and worse, the character atlases were
      * only *requested* the first time they were drawn. On a phone that meant
@@ -444,6 +455,17 @@ class GameController {
         });
 
         try {
+            // The packs first, so their downloads start at once and run
+            // alongside the manifests rather than after them. The loaders
+            // below read from these same downloads; nothing is fetched twice.
+            // A pack that fails is logged once and its contents fall back.
+            tracker.trackDownload('player sprite pack', openPlayerSpritePack());
+            tracker.trackDownload('enemy sprite pack', openEnemySpritePack());
+            tracker.trackDownload('item icon pack', openItemIconPack());
+            // Null without Web Audio: then there is nothing to play it on.
+            const soundPack = openSoundPack();
+            if (soundPack) tracker.trackDownload('sound pack', soundPack);
+
             /**
              * Tracks a manifest, and -- before the manifest's own task settles --
              * every image it names, so the total grows ahead of the count and
@@ -513,10 +535,16 @@ class GameController {
     /**
      * Moves the loading bar.
      *
-     * @param {{done: number, total: number}} progress - From the LoadTracker
+     * The bar follows the tracker's weighted fraction, which is mostly pack
+     * bytes. The count beside it shows megabytes while there are downloads to
+     * show, since "3 / 140" would sit still for most of the wait.
+     *
+     * @param {{done: number, total: number, fraction?: number,
+     *          bytesLoaded?: number, bytesTotal?: number}} progress - From the LoadTracker
      */
-    updateLoadingScreen({ done, total }) {
-        const percent = total > 0 ? Math.floor((done / total) * 100) : 0;
+    updateLoadingScreen({ done, total, fraction, bytesLoaded = 0, bytesTotal = 0 }) {
+        const share = fraction ?? (total > 0 ? done / total : 0);
+        const percent = Math.floor(share * 100);
 
         const bar = document.getElementById('loadingBar');
         if (bar) bar.setAttribute?.('aria-valuenow', String(percent));
@@ -528,7 +556,12 @@ class GameController {
         if (status) status.textContent = `Loading ${percent}%`;
 
         const count = document.getElementById('loadingCount');
-        if (count) count.textContent = `${done} / ${total}`;
+        if (count) {
+            const mb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
+            count.textContent = bytesTotal > 0
+                ? `${mb(bytesLoaded)} / ${mb(bytesTotal)} MB`
+                : `${done} / ${total}`;
+        }
     }
 
     /**
@@ -5468,6 +5501,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // The pause menu, for every device: Esc, the top-right pause buttons, and
     // fullscreen. After the touch controls, whose sticks it lets go of.
     initPauseMenu(gameController);
+
+    // Game controllers (Bluetooth or USB), through the Gamepad API. Last, as
+    // it drives the touch move stick and the pause menu.
+    initGamepad(gameController);
 });
 
 // Export for potential external access

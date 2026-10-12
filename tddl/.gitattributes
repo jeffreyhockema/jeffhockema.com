@@ -1,0 +1,2 @@
+# Scrambled asset packs: binary, never touch their line endings
+*.pak binary

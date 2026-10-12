@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jeff Hockema. See LICENSE and NOTICE.md.
+
 /**
  * =============================================================================
  * ITEM ICON SYSTEM
@@ -12,21 +15,40 @@
  * art later is a matter of baking a new icon and naming it here.
  *
  * Icons are small (a few KB each), so unlike the character atlases they are all
- * fetched as soon as the manifest lands rather than on first use, and the
+ * loaded as soon as the manifest lands rather than on first use, and the
  * loading screen waits on preloadItemIcons() so they are decoded before the
  * first level is drawn.
+ *
+ * The manifest is plain JSON; the icons themselves ship inside
+ * `sprites/items.pak` (see js/asset-pack.js and tools/pack_assets.py).
  */
 
-import { whenImageReady } from './asset-preloader.js';
+import { openPack, loadPackedImage, _resetPacksForTest } from './asset-pack.js';
 
-/** Where the manifest and icons live, relative to the page. */
+/** Where the manifest lives, relative to the page. */
 const ICON_ROOT = 'sprites/items/';
+
+/** The pack the icons are in. */
+const PACK_URL = 'sprites/items.pak';
 
 /** Parsed manifest.json, or null until loadItemIcons() resolves. */
 let manifest = null;
 
 /** name -> HTMLImageElement, populated when the manifest loads. */
 const images = new Map();
+
+/** name -> Promise<boolean>, settling once that icon is drawable or has failed. */
+const imageReady = new Map();
+
+/**
+ * Starts the icon pack downloading, or returns the download under way.
+ * The loading screen calls this first, to count the pack's bytes on its bar.
+ *
+ * @returns {{ready: Promise<Object|null>, onProgress: Function}} The pack load
+ */
+export function openItemIconPack() {
+    return openPack(PACK_URL);
+}
 
 /**
  * Loads the icon manifest and starts fetching every icon.
@@ -50,14 +72,11 @@ export async function loadItemIcons(url = `${ICON_ROOT}manifest.json`) {
 
         manifest = data;
 
+        const pack = openItemIconPack().ready;
         for (const [name, icon] of Object.entries(data.icons)) {
-            const image = new Image();
-            image.crossOrigin = 'anonymous';
-            image.src = `${ICON_ROOT}${icon.file}`;
-            image.addEventListener('error', () => {
-                console.warn(`ItemIcons: failed to load "${name}"`);
-            });
+            const { image, ready } = loadPackedImage(pack, icon.file, 'ItemIcons');
             images.set(name, image);
+            imageReady.set(name, ready);
         }
 
         console.log(`ItemIcons: ${images.size} pickup icons available`);
@@ -67,6 +86,7 @@ export async function loadItemIcons(url = `${ICON_ROOT}manifest.json`) {
                      `Pickups will render as badges.`);
         manifest = null;
         images.clear();
+        imageReady.clear();
         return false;
     }
 }
@@ -82,10 +102,7 @@ export async function loadItemIcons(url = `${ICON_ROOT}manifest.json`) {
  *          pickup then falls back to its lettered badge)
  */
 export function preloadItemIcons() {
-    return [...images].map(([name, image]) => ({
-        name,
-        ready: whenImageReady(image),
-    }));
+    return [...imageReady].map(([name, ready]) => ({ name, ready }));
 }
 
 /**
@@ -157,9 +174,12 @@ export function iconDrawSize(name, spec) {
 }
 
 /**
- * Resets module state. Test-only hook.
+ * Resets module state, and forgets the pack download so the next load
+ * fetches it afresh. Test-only hook.
  */
 export function _resetItemIconsForTest() {
     manifest = null;
     images.clear();
+    imageReady.clear();
+    _resetPacksForTest(PACK_URL);
 }
