@@ -345,10 +345,30 @@ export const ENEMY_SPRITE_FOOT_OFFSET = 0.6;      // Feet sit this fraction of a
 /**
  * Animation playback timing
  *
- * Enemy updates run once per rendered frame, so an animation's frame rate is
+ * Enemy updates run once per simulation step, so an animation's frame rate is
  * converted into per-update steps against this figure.
  */
 export const ANIMATION_TICKS_PER_SECOND = 60;
+
+/**
+ * The simulation's fixed rate: every speed, timer and damage rate in the game
+ * is tuned in steps of 1/60 s.
+ *
+ * It used to step once per requestAnimationFrame, which made the game's speed
+ * the screen's refresh rate: a 120 Hz phone ran everything twice as fast, and
+ * a machine that could only draw 30 frames a second played in slow motion.
+ * GameState.gameLoop() now runs as many steps as the time that has passed
+ * calls for, whatever the display does.
+ */
+export const SIMULATION_STEPS_PER_SECOND = 60;
+
+/**
+ * Most steps one frame may catch up on. Past this the game slows down rather
+ * than taking ever bigger leaps -- a frame that took long because the steps
+ * were slow would otherwise ask for more steps the next time, and never
+ * recover. Four keeps real time down to 15 frames a second.
+ */
+export const MAX_CATCH_UP_STEPS = 4;
 
 /**
  * How long a standing enemy waits before playing an idle variation, in updates.
@@ -691,6 +711,38 @@ export const ITEM_DRAW_SIZE = {
     ammoClip: { weight: 13,   max: 20 },
     ammoBox:  { weight: 16,   max: 24 },
     weapon:   { weight: 17,   max: 28 },
+    // Armour has no artwork and is drawn in code (ArmorPickup in
+    // js/weapons.js), so these are simply the vest's and the helmet's size.
+    // A vest is a medikit's size, being worth about as much; a bonus is the
+    // smallest thing on the floor, being worth one point.
+    armor:      { weight: 18, max: 20 },
+    armorBonus: { weight: 10, max: 12 },
+};
+
+/**
+ * Doom's armour (P_GiveArmor, P_TouchSpecialThing and P_DamageMobj).
+ *
+ * The player carries a number of points, 0-200, and a class. The class says
+ * what share of every hit the points take instead of health: class 1, the
+ * green armour, takes a third; class 2, the blue MegaArmor, half. The points
+ * are spent at that rate and the class goes with the last of them.
+ *
+ *   green   sets the points to 100 and the class to 1; refused at 100 or more
+ *   blue    sets the points to 200 and the class to 2; refused at 200
+ *   bonus   +1 point up to 200, always taken; class 1 if there was none
+ *
+ * A pickup *sets* the points rather than adding to them, so a green armour
+ * found while wearing 60 points of blue is taken, and swaps the blue for green
+ * -- Doom does exactly this, and it is the rare case where walking over armour
+ * can leave the player worse off per hit.
+ */
+export const ARMOR = {
+    MAX: 200,                   // Bonuses and the MegaArmor stop here
+    GREEN: { points: 100, armorClass: 1 },
+    BLUE: { points: 200, armorClass: 2 },
+    BONUS_POINTS: 1,
+    // The megasphere (Doom II): health to 200 and a MegaArmor, at once
+    MEGASPHERE_HEALTH: 200,
 };
 
 // =============================================================================
@@ -1005,6 +1057,77 @@ export const MINIMAP = {
 
     PLAYER: '#FF4136',
     PLAYER_RADIUS: 2,                // In screen pixels
+
+    // The computer area map (IDBEHOLDA) draws what the player has NOT yet seen
+    // in a flat grey, structure only -- Doom's GRAYS+3 -- so the layout can be
+    // planned from it without it passing for ground actually walked.
+    ALLMAP: '#5A606B',
+
+    // IDDT's second press: every thing on the level, drawn live over the map.
+    THING_MONSTER: '#FF4136',
+    THING_BARREL: '#3FD07A',
+    THING_ITEM: '#C8B268',
+    THING_RADIUS: 1.5,               // In screen pixels
+};
+
+// =============================================================================
+// POWER-UPS
+// =============================================================================
+
+/**
+ * Doom's six power-ups, by the names p_inter.c gives them. Each is a counter on
+ * the player: the timed ones count down in frames, and strength and the
+ * computer map are simply on (1) until the level ends.
+ *
+ *   invulnerability  no damage at all, and the inverse grey palette
+ *   strength         berserk: melee hits ten times as hard
+ *   invisibility     partial invisibility: monsters' aim wanders
+ *   ironfeet         the radiation suit: damaging floors do nothing
+ *   allmap           the computer area map: the whole level on the map
+ *   infrared         light amplification: every room in sight at full bright
+ *
+ * Nothing in the levels hands these out yet; IDBEHOLD is the way to them.
+ */
+export const POWER_NAMES = ['invulnerability', 'strength', 'invisibility', 'ironfeet', 'allmap', 'infrared'];
+
+/**
+ * How long the timed power-ups last, in Doom tics (35 a second): INVULNTICS,
+ * INVISTICS, IRONTICS and INFRATICS from doomdef.h.
+ */
+export const POWER_DURATION_TICS = {
+    invulnerability: 30 * 35,
+    invisibility: 60 * 35,
+    ironfeet: 60 * 35,
+    infrared: 120 * 35,
+};
+
+/**
+ * A timed power's effect on the screen starts to blink when this many tics are
+ * left -- the warning Doom gives (`powers[pw] > 4*32 || powers[pw] & 8`).
+ */
+export const POWER_FADE_TICS = 4 * 32;
+
+/** A_Punch: `if (player->powers[pw_strength]) damage *= 10`. */
+export const BERSERK_DAMAGE_MULTIPLIER = 10;
+
+// =============================================================================
+// HUD MESSAGE LINE
+// =============================================================================
+
+/**
+ * The one line of text Doom prints in the top-left corner: cheat replies, and
+ * anything else the game has to tell the player in passing. HU_MSGTIMEOUT is
+ * four seconds.
+ */
+export const HUD_MESSAGE = {
+    DURATION_MS: 4000,
+    FONT_PX: 12,                     // Shrinks to fit a narrow screen, down to MIN
+    MIN_FONT_PX: 7,
+    GAP_PX: 24,                      // Between the level readout and the message
+    WRAP_FONT_PX: 9,                 // A message with no room on the row wraps under the minimap
+    WRAP_GAP_PX: 10,                 // Between the minimap and the wrapped message
+    WRAP_LEADING_PX: 6,              // Between wrapped lines
+    COLOR: '#FF8A7A',                // Doom's message font: red, lighter than the readout
 };
 
 // =============================================================================

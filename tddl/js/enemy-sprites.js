@@ -14,11 +14,12 @@
  *     column = index % columns
  *     row    = Math.floor(index / columns)
  *
- * Atlases are fetched lazily. A level uses a handful of characters out of the
- * 42, so loading the whole ~8 MB collection up front would be almost entirely
- * waste; instead a character's atlas is requested the first time an enemy is
- * assigned it, and the enemy falls back to shape rendering for the frame or two
- * before the image lands.
+ * Only the roster's atlases are fetched. The Doom bestiary in js/monsters.js
+ * uses about twenty of the characters, so loading the whole ~11 MB collection
+ * would be mostly waste; the loading screen asks preloadEnemyAtlases() for the
+ * roster's characters before the start menu appears, so no level can begin
+ * with a monster still on its shape fallback. getEnemyAtlas() still starts a
+ * load on demand for anything that was not preloaded.
  *
  * Every animation the source packs ship is available here:
  *   idle, idle_blink, walk, run  (looping, per direction)
@@ -29,6 +30,8 @@
 // =============================================================================
 // ANIMATION NAMES
 // =============================================================================
+
+import { whenImageReady } from './asset-preloader.js';
 
 /**
  * The animation slots present in the atlases.
@@ -157,6 +160,32 @@ export function getEnemyAtlas(slug) {
 
     atlasImages.set(slug, image);
     return image;
+}
+
+/**
+ * Starts the atlases a level can use loading, and reports when each is drawable.
+ *
+ * The roster -- which character each Doom monster wears -- lives in
+ * js/monsters.js, so the caller passes it in rather than this module importing
+ * game rules. If any of those characters is missing from the manifest,
+ * Enemy.assignSprite() falls back to a *random* character, which could be any
+ * of them, so in that case every atlas is preloaded instead.
+ *
+ * @param {Iterable<string>} [slugs] - Characters the roster uses; omit for all
+ * @returns {Array<{name: string, ready: Promise<boolean>}>} One entry per
+ *          atlas; `ready` resolves true once it is decoded, false if it failed
+ *          (that monster then renders as a shape)
+ */
+export function preloadEnemyAtlases(slugs) {
+    let wanted = slugs ? [...new Set(slugs)] : slugList.slice();
+    if (wanted.some((slug) => !getEnemySpriteMeta(slug))) {
+        wanted = slugList.slice();
+    }
+
+    return wanted.map((slug) => ({
+        name: slug,
+        ready: whenImageReady(getEnemyAtlas(slug)),
+    }));
 }
 
 // =============================================================================

@@ -31,9 +31,9 @@ import {
     ensureContext, startAudio, isReady, contextState, now, nowMs,
     voice, noiseLayer, toneLayer, metalRing, sustainedVoice,
     loopingNoise, createFilter, attachLfo,
-    loadSamples, hasSample, sampleDuration, playSample, loadedSamples,
+    loadSample, loadSamples, hasSample, sampleDuration, playSample, loadedSamples,
     duck, rand, pick, setMasterVolume, getMasterVolume, setMuted, isMuted,
-    disposeEngine, engineStats,
+    setSilenced, isSilenced, disposeEngine, engineStats,
 } from './audio-engine.js';
 
 // =============================================================================
@@ -399,6 +399,30 @@ export function preloadSounds() {
 }
 
 /**
+ * Starts the sound set loading and reports when each sample is ready.
+ *
+ * The loading screen counts these towards its progress bar. They are the same
+ * loads preloadSounds() starts -- loadSample() shares a load already in flight
+ * -- so asking for them individually costs nothing extra.
+ *
+ * Fetching and decoding work before any user gesture: the context is created
+ * suspended, and decodeAudioData() does not need it running. Only playback
+ * waits for ensureAudioAndSynths(), which is unchanged.
+ *
+ * @returns {Array<{name: string, ready: Promise<boolean>}>} One entry per
+ *          sample, or none when there is no Web Audio to play them on
+ */
+export function preloadSoundTasks() {
+    if (contextState() === 'unavailable') return [];
+
+    preloadSounds();
+    return SAMPLE_NAMES.map((name) => ({
+        name,
+        ready: loadSample(name, `${SOUND_ROOT}${name}.wav`),
+    }));
+}
+
+/**
  * Starts or resumes audio. Must be called from a user gesture -- browsers
  * refuse to start an AudioContext otherwise. Safe and cheap to call on every
  * input.
@@ -743,8 +767,12 @@ export function playAmmoPickupSound() { itemPickup(); }
 /** Key pickup. */
 export function playKeyPickupSound() { itemPickup(); }
 
+/** Armour pickup: a vest or a bonus, the same blip as in Doom. */
+export function playArmorPickupSound() { itemPickup(); }
+
 /**
- * A powerup: the soulsphere, the backpack. Doom's own "got power" sound.
+ * A powerup: the soulsphere, the megasphere, the backpack. Doom's own "got
+ * power" sound.
  */
 export function playPowerupSound() {
     sfx('dsgetpow', { drift: 0, bus: 'pickup', priority: true });
@@ -822,6 +850,9 @@ export function playErrorSound() {
 
 /**
  * Menu selection: the switch sound, exactly as Doom's menu uses it.
+ *
+ * Nothing calls this or playUIHoverSound() any more: the menus are silent
+ * (see setMenuSilence). Kept, with the sound lab, for whoever wants them back.
  */
 export function playUIClickSound() {
     if (!ready('uiClick', 60)) return;
@@ -860,16 +891,32 @@ export function playLowHealthWarning() {
 /**
  * Level complete. Doom marks the exit with the switch being thrown and nothing
  * more; the intermission screen does the celebrating.
+ *
+ * Not played: the exit here is a tile, not a switch, and the tally opens on
+ * the same frame the player steps onto it, so this was a sound the tally
+ * made -- and the menus are silent.
  */
 export function playLevelCompleteSound() {
     sfx('dsswtchn', { drift: 0, bus: 'music', priority: true });
 }
 
 /**
- * Game over: the marine's death cry, at full volume.
+ * The marine's death cry, at full volume, as he falls.
+ *
+ * Doom screams at the moment of death. This used to play with the Game Over
+ * screen instead, a beat later, which made it the one sound a menu ever made
+ * on its own -- and the menus are silent now.
+ */
+export function playPlayerDeathSound() {
+    sfx('dspldeth', { drift: 0, bus: 'music', priority: true });
+}
+
+/**
+ * The old name for playPlayerDeathSound(), from when it played with the Game
+ * Over screen.
  */
 export function playGameOverSound() {
-    sfx('dspldeth', { drift: 0, bus: 'music', priority: true });
+    playPlayerDeathSound();
 }
 
 // =============================================================================
@@ -1021,6 +1068,28 @@ export function getAudioState() {
  */
 export function isAudioReady() {
     return isReady();
+}
+
+/**
+ * Silences the game while a menu is up, or lets it be heard again.
+ *
+ * The menus are silent: the start screen, the instructions, the pause menu,
+ * the level tally and Game Over. GameState calls this as each one opens, and
+ * again when play starts or resumes. See setSilenced() in audio-engine.js for
+ * what it does to sounds already playing.
+ *
+ * @param {boolean} on - True while a menu is up
+ * @returns {boolean} The new state
+ */
+export function setMenuSilence(on) {
+    return setSilenced(on);
+}
+
+/**
+ * @returns {boolean} True while a menu has the game silenced
+ */
+export function isMenuSilenced() {
+    return isSilenced();
 }
 
 // Volume and diagnostics, re-exported so the rest of the game only ever imports

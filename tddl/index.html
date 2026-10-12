@@ -2,12 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top-Down Doom-like Game - Modular Edition</title>
+    <!-- viewport-fit=cover lets the game run under a phone's notch and home bar
+         (the HUD and buttons pad themselves with the safe-area insets); the
+         scale limits stop a frantic thumb pinch-zooming the page mid-fight. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>TDDL - Top-Down Doom-like</title>
 
     <!-- External Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Press Start 2P for the menus and the canvas; Oxanium for the status bar -->
+    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
     <!-- Audio needs no dependency: js/audio-engine.js synthesises every sound
          directly on the Web Audio API. Tone.js used to be loaded here, and when
          the CDN was unreachable the game lost all sound. -->
@@ -61,130 +65,484 @@
             height: 100%;
         }
 
-        /* Bottom UI overlay for player stats */
+        /* ================================================================
+           STATUS BAR (js/hud.js writes into it)
+
+           Doom's bar, left to right: AMMO, HEALTH, ARMS, the face, ARMOR,
+           the keys and the ammo table, in a riveted metal panel. Drawn
+           with CSS rather than scaled from a bitmap, so it is crisp at any
+           size: every length is a multiple of --u, a hundredth of the
+           bar's height, and the height follows the window. The canvas
+           stops where the bar starts (GameController.updateCanvasSize).
+           ================================================================ */
         #uiContainer {
+            /* An eighth of the screen, where Doom's 32 of 200 rows was a
+               sixth: from above, the view matters more. The width term keeps
+               a tall narrow window from growing a bar too wide to fit. */
+            --bar-h: clamp(60px, min(12vh, 6.8vw), 116px);
+            --u: calc(var(--bar-h) / 100);
+            --sb-metal-hi: #5d564d;
+            --sb-metal: #48423b;
+            --sb-metal-lo: #36312c;
+            --sb-label: #d2c6b4;
+            --sb-red-hi: #ff7354;
+            --sb-red: #f0321e;
+            --sb-red-lo: #a8130b;
+            --sb-yellow: #f7c548;
+            --sb-dim: #7d7366;
+
             position: absolute;
-            bottom: 0;
             left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 15px;
-            font-size: 14px;
-            color: #cccccc;
-            background-color: rgba(0, 0, 0, 0.75);
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            box-sizing: border-box;
+            right: 0;
+            bottom: 0;
             z-index: 5;
+            box-sizing: border-box;
+            height: calc(var(--bar-h) + env(safe-area-inset-bottom));
+            padding: calc(9 * var(--u)) max(calc(16 * var(--u)), env(safe-area-inset-right))
+                     calc(8 * var(--u) + env(safe-area-inset-bottom))
+                     max(calc(16 * var(--u)), env(safe-area-inset-left));
+            display: grid;
+            /* The face in the exact middle, each side packed against it */
+            grid-template-columns: 1fr auto 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            column-gap: calc(9 * var(--u));
+            font-family: 'Oxanium', 'Press Start 2P', sans-serif;
+            color: var(--sb-label);
+            line-height: 1;
+            /* Brushed grey-brown plate: a fine grain over a soft top-lit
+               gradient, a bevelled top edge and a shadow up onto the view. */
+            background:
+                repeating-linear-gradient(90deg, rgba(255, 245, 230, 0.025) 0 1px, transparent 1px 3px),
+                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 4px),
+                linear-gradient(180deg, var(--sb-metal-hi) 0%, var(--sb-metal) 42%, var(--sb-metal-lo) 100%);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 238, 214, 0.28),
+                inset 0 2px 0 rgba(0, 0, 0, 0.3),
+                0 -2px 0 #0c0a09,
+                0 -6px 16px rgba(0, 0, 0, 0.5);
         }
 
-        /* Readouts: a muted label and a bright value */
-        .hud-stat {
+        .sb-side {
+            display: flex;
+            align-items: stretch;
+            gap: calc(9 * var(--u));
+            min-width: 0;
+        }
+
+        .sb-left { justify-self: end; }
+        .sb-right { justify-self: start; }
+
+        /* A section: a riveted plate holding a recessed well, with an
+           engraved label under it as Doom's had. */
+        .sb-cell {
+            --rivet: radial-gradient(circle at 42% 38%, #e2d6c4 0, #9d907e 22%, #4a423a 58%, transparent 66%);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: calc(4 * var(--u));
+            padding: calc(5 * var(--u)) calc(9 * var(--u)) calc(4 * var(--u));
+            border-radius: calc(4 * var(--u));
+            background:
+                var(--rivet) left calc(2 * var(--u)) top calc(2 * var(--u)) / calc(6 * var(--u)) calc(6 * var(--u)) no-repeat,
+                var(--rivet) right calc(2 * var(--u)) top calc(2 * var(--u)) / calc(6 * var(--u)) calc(6 * var(--u)) no-repeat,
+                var(--rivet) left calc(2 * var(--u)) bottom calc(2 * var(--u)) / calc(6 * var(--u)) calc(6 * var(--u)) no-repeat,
+                var(--rivet) right calc(2 * var(--u)) bottom calc(2 * var(--u)) / calc(6 * var(--u)) calc(6 * var(--u)) no-repeat,
+                linear-gradient(180deg, rgba(255, 240, 220, 0.07), rgba(0, 0, 0, 0.1));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 238, 214, 0.16),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+                0 1px 0 rgba(0, 0, 0, 0.35),
+                0 0 0 1px rgba(0, 0, 0, 0.22);
+        }
+
+        .sb-well {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 calc(7 * var(--u));
+            border-radius: calc(3 * var(--u));
+            background: linear-gradient(180deg, #0f0d0c 0%, #1d1916 100%);
+            box-shadow:
+                inset 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, 0.9),
+                inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+                0 1px 0 rgba(255, 238, 214, 0.16);
+        }
+
+        .sb-label {
+            font-size: calc(11 * var(--u));
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            /* Letter-spacing trails the last letter; this re-centres the word */
+            padding-left: 0.22em;
+            text-align: center;
+            text-transform: uppercase;
+            white-space: nowrap;
+            color: var(--sb-label);
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.75), 0 -1px 0 rgba(255, 238, 214, 0.08);
+        }
+
+        /* The big red numbers, lit from above, with a faint glow */
+        .sb-readout {
             display: flex;
             align-items: baseline;
-            gap: 6px;
+            filter: drop-shadow(0 calc(2 * var(--u)) 0 rgba(0, 0, 0, 0.7))
+                    drop-shadow(0 0 calc(7 * var(--u)) rgba(255, 50, 25, 0.28));
+        }
+
+        .sb-num {
+            display: inline-block;
+            font-size: calc(54 * var(--u));
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            font-variant-numeric: tabular-nums;
+            color: var(--sb-red);
+            background: linear-gradient(180deg, var(--sb-red-hi) 8%, var(--sb-red) 50%, var(--sb-red-lo) 92%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sb-pct {
+            font-size: calc(36 * var(--u));
+            margin-left: calc(2 * var(--u));
+        }
+
+        /* Wide enough for the widest value each will show, so a number
+           changing length does not shift the bar about */
+        #ammoDisplayContainer .sb-well  { min-width: calc(96 * var(--u)); }
+        #healthDisplayContainer .sb-well,
+        #armorDisplayContainer .sb-well { min-width: calc(128 * var(--u)); }
+
+        /* The knife takes no ammunition: a dim dash, where Doom left a gap */
+        #ammoDisplayContainer.none .sb-readout { opacity: 0.35; }
+
+        #healthDisplayContainer.low .sb-readout {
+            animation: sb-throb 0.9s ease-in-out infinite;
+        }
+
+        @keyframes sb-throb {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Armour, coloured by the class being worn (js/hud.js armorKind):
+           the green or blue of the vest that was picked up, dim with none. */
+        #armorDisplayContainer.armor-green .sb-num {
+            background-image: linear-gradient(180deg, #9cf27a 8%, #3fc435 50%, #1c7a1a 92%);
+        }
+        #armorDisplayContainer.armor-green .sb-readout {
+            filter: drop-shadow(0 calc(2 * var(--u)) 0 rgba(0, 0, 0, 0.7))
+                    drop-shadow(0 0 calc(7 * var(--u)) rgba(70, 220, 60, 0.25));
+        }
+        #armorDisplayContainer.armor-blue .sb-num {
+            background-image: linear-gradient(180deg, #a9c2ff 8%, #5d82ff 50%, #2a3fb0 92%);
+        }
+        #armorDisplayContainer.armor-blue .sb-readout {
+            filter: drop-shadow(0 calc(2 * var(--u)) 0 rgba(0, 0, 0, 0.7))
+                    drop-shadow(0 0 calc(7 * var(--u)) rgba(90, 130, 255, 0.3));
+        }
+        #armorDisplayContainer.armor-none .sb-readout { opacity: 0.4; }
+
+        /* ARMS: Doom's grid of slots 2-7, lit when owned. The knife's slot 1
+           is always owned and only shows in touch mode, where these are the
+           weapon buttons. */
+        .arms-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-auto-rows: 1fr;
+            justify-content: stretch;
+            padding: calc(3 * var(--u)) calc(6 * var(--u));
+            column-gap: calc(2 * var(--u));
+        }
+
+        .arms-slot {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: calc(24 * var(--u));
+            font-size: calc(23 * var(--u));
+            font-weight: 800;
+            color: #4f4840;
+            text-shadow: 0 1px 0 rgba(255, 238, 214, 0.06);
+            transition: color 0.15s ease;
+        }
+
+        .arms-slot[data-slot="1"],
+        .arms-ammo {
+            display: none;
+        }
+
+        .arms-slot.owned {
+            color: var(--sb-yellow);
+            text-shadow: 0 0 calc(6 * var(--u)) rgba(247, 197, 72, 0.4);
+        }
+
+        /* The weapon in hand: brighter, with a red bar under it */
+        .arms-slot.current {
+            color: #fff2c4;
+        }
+        .arms-slot.current::after {
+            content: '';
+            position: absolute;
+            left: 22%;
+            right: 22%;
+            bottom: calc(1 * var(--u));
+            height: calc(3 * var(--u));
+            border-radius: 1px;
+            background: var(--sb-red);
+            box-shadow: 0 0 calc(5 * var(--u)) rgba(255, 50, 25, 0.8);
+        }
+
+        /* The face, in a bezelled frame running the bar's full height and
+           standing a little proud of its top edge. */
+        .sb-face-cell {
+            position: relative;
+            margin-top: calc(-17 * var(--u));
+            /* The part standing over the canvas must not swallow a click
+               meant to fire there */
+            pointer-events: none;
+        }
+
+        .sb-face {
+            position: relative;
+            width: calc(100 * var(--u));
+            height: calc(100 * var(--u));
+            border-radius: calc(6 * var(--u));
+            overflow: hidden;
+            background: #0d0b0a;
+            box-shadow:
+                0 0 0 calc(2 * var(--u)) #1a1714,
+                0 0 0 calc(4 * var(--u)) #6b6256,
+                0 0 0 calc(5 * var(--u)) #262220,
+                0 calc(-2 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, 0.6);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .face-art {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Score: Doom had none. A small plate on the face's frame. */
+        .sb-score {
+            position: absolute;
+            left: 50%;
+            bottom: calc(-6 * var(--u));
+            transform: translateX(-50%);
+            display: flex;
+            align-items: baseline;
+            gap: calc(4 * var(--u));
+            padding: calc(2.5 * var(--u)) calc(7 * var(--u));
+            border-radius: calc(3 * var(--u));
+            background: linear-gradient(180deg, #2a2522, #171412);
+            box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 238, 214, 0.14);
             white-space: nowrap;
         }
 
-        .hud-label {
-            color: var(--ui-muted);
-            font-size: 10px;
+        .sb-score-label {
+            font-size: calc(8 * var(--u));
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            color: var(--sb-dim);
+            text-transform: uppercase;
         }
 
-        #healthDisplay, #scoreDisplay, #waveDisplay {
-            color: var(--ui-red);
-        }
-
-        #healthDisplayContainer.low #healthDisplay {
-            animation: hud-pulse 0.8s ease-in-out infinite;
-        }
-
-        @keyframes hud-pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.35; }
-        }
-
-        /* Key collection display */
-        #keysDisplayContainer {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        #keysDisplay {
-            display: flex;
-            gap: 5px;
-        }
-
-        /* Individual key icons */
-        .key-icon {
-            width: 18px;
-            height: 18px;
-            border: 1px solid #888;
-            border-radius: 3px;
+        #scoreDisplay {
             display: inline-block;
-            opacity: 0.3;
+            font-size: calc(11 * var(--u));
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--sb-yellow);
         }
 
-        .key-icon.red { background-color: red; }
-        .key-icon.yellow { background-color: yellow; }
-        .key-icon.blue { background-color: blue; }
-        .key-icon.collected { opacity: 1; }
-
-        /* Weapon information container */
-        #weaponInfoContainer {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* Keys: three slots in a column, a card lighting each when found */
+        .sb-keys .sb-well {
+            flex-direction: column;
+            justify-content: center;
+            gap: calc(5 * var(--u));
+            padding: 0 calc(6 * var(--u));
         }
 
-        /* Weapon inventory display */
-        #weaponInventoryIcons {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            font-size: 14px;
+        .key-icon {
+            display: block;
+            width: calc(24 * var(--u));
+            height: calc(15 * var(--u));
+            border-radius: calc(2.5 * var(--u));
+            box-shadow: inset 0 0 0 1px rgba(255, 238, 214, 0.1);
+            background: rgba(255, 255, 255, 0.02);
         }
 
-        #weaponInventoryIcons > span:first-child {
-            color: var(--ui-muted);
-            font-size: 10px;
-            margin-right: 8px;
+        .key-icon.collected {
+            --key: #888;
+            box-shadow: 0 0 calc(6 * var(--u)) var(--key), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            /* A card: the colour, a hole punched near one end, a stripe */
+            background:
+                radial-gradient(circle at 20% 50%, #111 0 calc(2 * var(--u)), transparent calc(2.4 * var(--u))),
+                linear-gradient(90deg, transparent 52%, rgba(0, 0, 0, 0.25) 52% 60%, transparent 60%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(0, 0, 0, 0.2)),
+                var(--key);
+        }
+        .key-icon.red.collected    { --key: #f0321e; }
+        .key-icon.yellow.collected { --key: #f7c548; }
+        .key-icon.blue.collected   { --key: #4f78ff; }
+
+        /* The ammo table: every pool, held over capacity */
+        .sb-table .sb-well {
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: center;
+            gap: calc(2.5 * var(--u));
+            padding: 0 calc(8 * var(--u)) 0 calc(6 * var(--u));
         }
 
-        /* Individual weapon display icons */
-        .weapon-icon-display {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            opacity: 0.3;
-            border: 1px solid transparent;
-            padding: 2px 4px;
-            border-radius: 3px;
+        .ammo-row {
+            display: grid;
+            grid-template-columns: calc(40 * var(--u)) calc(30 * var(--u)) calc(9 * var(--u)) calc(30 * var(--u));
+            align-items: baseline;
+            font-size: calc(13 * var(--u));
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
         }
 
-        .weapon-icon-display .weapon-char {
-            font-weight: bold;
-            font-size: 12px;
+        .ammo-name {
+            position: relative;
+            padding-left: calc(6 * var(--u));
+            font-size: calc(10 * var(--u));
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--sb-dim);
         }
 
-        .weapon-icon-display .ammo-text-display {
-            font-size: 10px;
-            min-width: 20px;
+        .ammo-cur { text-align: right; color: var(--sb-yellow); display: inline-block; }
+        .ammo-sep { text-align: center; color: #4f4840; }
+        .ammo-max { text-align: right; color: var(--sb-dim); }
+
+        .ammo-row.empty .ammo-cur { color: #6a5f53; }
+
+        /* The pool the weapon in hand draws from */
+        .ammo-row.active .ammo-name { color: #f4ecdf; }
+        .ammo-row.active .ammo-name::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: calc(3 * var(--u));
+            height: calc(8 * var(--u));
+            margin-top: calc(-4 * var(--u));
+            border-radius: 1px;
+            background: var(--sb-red);
+            box-shadow: 0 0 calc(4 * var(--u)) rgba(255, 50, 25, 0.8);
         }
 
-        /* Weapon ownership and selection states */
-        .weapon-icon-display.owned {
-            opacity: 0.7;
-            border-color: #555;
+        /* ---- The face's expressions (see FACE_SVG in js/hud.js) ---- */
+
+        /* Every variant is drawn; these pick which. */
+        .sb-face .brow,
+        .sb-face .mouth,
+        .sb-face .w,
+        .sb-face .face-godeyes,
+        .sb-face .face-deadeyes,
+        .sb-face .face-crack,
+        .sb-face .face-halo {
+            display: none;
         }
 
-        .weapon-icon-display.selected-weapon-icon {
-            opacity: 1;
-            border-color: var(--ui-red);
-            background-color: rgba(255, 65, 54, 0.1);
+        .sb-face[data-mood="idle"] .brow-idle,
+        .sb-face[data-mood="god"] .brow-idle,
+        .sb-face:is([data-mood="hurt"], [data-mood="grin"], [data-mood="rampage"]) .brow-angry,
+        .sb-face[data-mood="ouch"] .brow-pain,
+        .sb-face[data-mood="dead"] .brow-dead,
+        .sb-face[data-mood="idle"] .mouth-idle,
+        .sb-face:is([data-mood="hurt"], [data-mood="rampage"]) .mouth-grit,
+        .sb-face[data-mood="ouch"] .mouth-ouch,
+        .sb-face[data-mood="grin"] .mouth-grin,
+        .sb-face[data-mood="god"] .mouth-smirk,
+        .sb-face[data-mood="dead"] .mouth-dead {
+            display: inline;
+        }
+
+        /* Badly hurt and doing nothing, he still looks it: pained brows from
+           the fourth tier, teeth set at the last. */
+        .sb-face[data-mood="idle"]:is([data-tier="3"], [data-tier="4"]) .brow-idle,
+        .sb-face[data-mood="idle"][data-tier="4"] .mouth-idle {
+            display: none;
+        }
+        .sb-face[data-mood="idle"]:is([data-tier="3"], [data-tier="4"]) .brow-pain,
+        .sb-face[data-mood="idle"][data-tier="4"] .mouth-grit {
+            display: inline;
+        }
+
+        /* Wounds pile up by tier, and all of them show on the dead */
+        .sb-face:is([data-tier="1"], [data-tier="2"], [data-tier="3"], [data-tier="4"]) .w1,
+        .sb-face:is([data-tier="2"], [data-tier="3"], [data-tier="4"]) .w2,
+        .sb-face:is([data-tier="3"], [data-tier="4"]) .w3,
+        .sb-face[data-tier="4"] .w4,
+        .sb-face[data-mood="dead"] .w,
+        .sb-face[data-mood="dead"] .face-crack {
+            display: inline;
+        }
+
+        /* Eyes: a squint for a grin or a held trigger, wide for an ouch,
+           shut for a blink, and the lids drawn over them in death */
+        .sb-face .face-eye {
+            transform-box: fill-box;
+            transform-origin: center;
+            transition: transform 0.08s ease-out;
+        }
+        .sb-face:is([data-mood="grin"], [data-mood="rampage"]) .face-eye { transform: scaleY(0.6); }
+        .sb-face[data-mood="ouch"] .face-eye { transform: scaleY(1.18); }
+        .sb-face[data-blink="1"] .face-eye { transform: scaleY(0.08); transition-duration: 0.05s; }
+        .sb-face[data-mood="dead"] .face-eye { display: none; }
+        .sb-face[data-mood="dead"] .face-deadeyes { display: inline; }
+
+        /* Looking about: the pupils move, and the features slide a little
+           after them, which turns the head */
+        .sb-face .face-pupil,
+        .sb-face .face-features {
+            transition: transform 0.14s ease-out;
+        }
+        .sb-face[data-look="left"] .face-pupil { transform: translateX(-2.6px); }
+        .sb-face[data-look="right"] .face-pupil { transform: translateX(2.6px); }
+        .sb-face[data-look="left"] .face-features { transform: translateX(-1.8px); }
+        .sb-face[data-look="right"] .face-features { transform: translateX(1.8px); }
+
+        /* God mode: Doom's glowing eyes, and a halo of light behind */
+        .sb-face[data-mood="god"] .face-iris { fill: #ffcf2e; }
+        .sb-face[data-mood="god"] .face-godeyes { display: inline; }
+        .sb-face[data-mood="god"] .face-halo {
+            display: inline;
+            opacity: 0.32;
+            animation: sb-halo 2.4s ease-in-out infinite;
+        }
+        .sb-face[data-mood="god"] {
+            box-shadow:
+                0 0 0 calc(2 * var(--u)) #1a1714,
+                0 0 0 calc(4 * var(--u)) #c9a548,
+                0 0 0 calc(5 * var(--u)) #262220,
+                0 0 calc(16 * var(--u)) rgba(255, 196, 40, 0.55);
+        }
+
+        @keyframes sb-halo {
+            0%, 100% { opacity: 0.24; }
+            50% { opacity: 0.42; }
+        }
+
+        /* Dead: the head drops, the colour drains */
+        .sb-face[data-mood="dead"] .face-art { filter: saturate(0.5) brightness(0.75); }
+        .sb-face .face-head {
+            transform-origin: 50px 92px;
+            transition: transform 0.4s ease-in;
+        }
+        .sb-face[data-mood="dead"] .face-head { transform: rotate(-7deg) translateY(3px); }
+
+        .sb-face .face-hit {
+            opacity: 0;
+            pointer-events: none;
+            mix-blend-mode: multiply;
         }
 
         /* Difficulty selection styling */
@@ -290,6 +648,12 @@
             text-shadow: 3px 3px 0 #000;
         }
 
+        #titleLogo {
+            width: min(520px, 100%);
+            height: auto;
+            margin: 0 auto 18px;
+        }
+
         .modal-content p {
             line-height: 1.6;
             margin-bottom: 15px;
@@ -388,10 +752,6 @@
             color: var(--ui-text);
         }
 
-        .instructions-section.cheats h3 {
-            color: var(--ui-muted);
-        }
-
         /* Key bindings sit in two columns when there is room for them */
         .key-grid {
             display: grid;
@@ -439,6 +799,518 @@
         .tag.red    { background: #ff4136; }
         .tag.yellow { background: #ffdc00; }
         .tag.blue   { background: #6c8cff; }
+
+        /* ================================================================
+           PAUSE MENU AND CORNER BUTTONS (js/pause-menu.js)
+           ================================================================ */
+
+        /* Pause and fullscreen over the top-right corner of the view, for a
+           mouse. Only while a level is played (body.game-playing, kept by
+           js/pause-menu.js): there is nothing to pause on a menu. Touch mode
+           has its own row, #touchButtons, and does without these. */
+        #gameButtons {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            gap: 6px;
+            z-index: 6;                 /* over the canvas and the HUD (5), under menus */
+        }
+
+        body.game-playing:not(.touch-ui) #gameButtons {
+            display: flex;
+        }
+
+        /* Drawn like the touch buttons, so the two corners look like one game */
+        .corner-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 32px;
+            padding: 0;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: var(--ui-text);
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .corner-button:hover {
+            border-color: rgba(255, 255, 255, 0.55);
+            background: rgba(0, 0, 0, 0.75);
+        }
+
+        .corner-button:active {
+            background: rgba(255, 65, 54, 0.35);
+        }
+
+        /* The fullscreen icon: corners pointing out to go fullscreen, in to
+           come back. Hard-edged, to sit beside the pixel font. */
+        .fullscreen-icon {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            shape-rendering: crispEdges;
+        }
+
+        .fullscreen-icon.leave,
+        body.is-fullscreen .fullscreen-icon.enter {
+            display: none;
+        }
+
+        body.is-fullscreen .fullscreen-icon.leave {
+            display: inline-block;
+        }
+
+        /* An iPhone cannot make a page fullscreen; js/pause-menu.js sets
+           [hidden] on the controls there rather than leave them dead. Stated
+           with !important because the buttons set their own display. */
+        [data-fullscreen-toggle][hidden] {
+            display: none !important;
+        }
+
+        /* The pause menu: lighter than the other menus, so the frozen level
+           shows through, and narrower, as it is only a column of buttons. */
+        #pauseOverlay {
+            background-color: rgba(0, 0, 0, 0.55);
+        }
+
+        #pauseOverlay .modal-content {
+            width: min(420px, 92vw);
+        }
+
+        /* One width for the column, so it reads as a menu, not a pile */
+        #pauseOverlay .button-row .game-button {
+            width: min(260px, 100%);
+        }
+
+        .pause-hint {
+            margin: 14px 0 0;
+            font-size: 9px;
+            color: var(--ui-muted);
+            letter-spacing: 0.5px;
+        }
+
+        /* Keyboard hints mean nothing on a phone */
+        body.touch-ui .pause-hint {
+            display: none;
+        }
+
+        /* ================================================================
+           TOUCH CONTROLS (js/touch-controls.js)
+
+           Everything below that touches play applies only in touch mode,
+           i.e. while <body> carries .touch-ui, which is set for a coarse
+           pointer or the first real touch -- so none of it reaches a
+           desktop. Kept as one block so the touch layout reads in one place.
+           ================================================================ */
+
+        /* Mobile browsers count the collapsing address bar in 100vh, which
+           pushes the HUD off the bottom of the screen. dvh is the visible
+           height, and on a desktop it is the same number. */
+        @supports (height: 100dvh) {
+            #gameContainer, .overlay { height: 100dvh; }
+        }
+
+        #touchControls {
+            display: none;
+        }
+
+        body.touch-ui {
+            /* No double-tap zoom, no rubber-band scrolling of the page, no
+               text selection or long-press callout on the HUD. */
+            touch-action: manipulation;
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Menus still scroll (the instructions are long on a phone) */
+        body.touch-ui .modal-content {
+            touch-action: pan-y;
+        }
+
+        /* Code entry in the pause menu. 16px because iOS zooms the page in on
+           any field with smaller text, and the selection the body turns off
+           has to come back here or the field cannot be typed into on iOS. */
+        #cheatCodeForm {
+            margin-top: 16px;
+        }
+
+        #cheatCodeInput {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 16px;
+            width: min(260px, 100%);
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            background: var(--ui-bg);
+            color: var(--ui-text);
+            border: 2px solid var(--ui-panel-edge);
+            border-radius: 6px;
+            text-align: center;
+            text-transform: uppercase;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        #cheatCodeInput:focus {
+            outline: none;
+            border-color: var(--ui-red);
+        }
+
+        #cheatCodeNote {
+            min-height: 1em;
+            margin: 10px 0 0;
+            font-size: 10px;
+            color: var(--ui-muted);
+        }
+
+        body.touch-ui #touchControls {
+            display: block;
+            position: absolute;
+            inset: 0;
+            z-index: 4;                 /* over the canvas, under the HUD (5) and menus */
+            touch-action: none;         /* every gesture here is ours */
+            visibility: hidden;
+        }
+
+        body.touch-ui.touch-playing #touchControls {
+            visibility: visible;
+        }
+
+        /* Sticks: drawn where the thumb lands, parked faintly when idle */
+        .touch-stick {
+            position: absolute;
+            width: 112px;               /* 2 x STICK_RADIUS */
+            height: 112px;
+            margin: -56px 0 0 -56px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            background: rgba(0, 0, 0, 0.18);
+            box-sizing: border-box;
+            pointer-events: none;
+            opacity: 0.3;
+            transition: opacity 0.15s ease;
+        }
+
+        .touch-stick.active {
+            opacity: 0.9;
+            transition: none;
+        }
+
+        /* Past this ring the aim stick fires: FIRE_DEFLECTION of the travel */
+        .touch-stick-fire-ring {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 67px;                /* 0.6 x 112 */
+            height: 67px;
+            margin: -33.5px 0 0 -33.5px;
+            border-radius: 50%;
+            border: 1px dashed rgba(255, 65, 54, 0.7);
+            box-sizing: border-box;
+        }
+
+        .touch-stick-knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 48px;
+            height: 48px;
+            margin: -24px 0 0 -24px;
+            border-radius: 50%;
+            background: rgba(224, 224, 224, 0.55);
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            box-sizing: border-box;
+        }
+
+        .touch-stick.firing .touch-stick-knob {
+            background: rgba(255, 65, 54, 0.8);
+            border-color: #ff6b5a;
+        }
+
+        .touch-stick-label {
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translate(-50%, 8px);
+            font-size: 8px;
+            color: var(--ui-text);
+            white-space: nowrap;
+        }
+
+        .touch-stick.active .touch-stick-label {
+            display: none;
+        }
+
+        /* Buttons along the top right: clear of the minimap and "Level"
+           readout on the left, and out from under the notch. */
+        #touchButtons {
+            position: absolute;
+            top: max(8px, env(safe-area-inset-top));
+            right: max(8px, env(safe-area-inset-right));
+            display: flex;
+            gap: 6px;
+        }
+
+        .touch-button {
+            width: 42px;
+            height: 36px;
+            padding: 0;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: var(--ui-text);
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 6px;
+            touch-action: manipulation;
+        }
+
+        .touch-button:active {
+            background: rgba(255, 65, 54, 0.35);
+        }
+
+        /* A phone held upright: five buttons at full width reach back to the
+           canvas's "Level: N" readout, and a two-digit level would run under
+           the first of them. Squarer buttons leave it room. */
+        @media (max-width: 430px) {
+            #touchButtons { gap: 4px; }
+            .touch-button { width: 36px; }
+        }
+
+        /* The fullscreen icon in the row, centred like the text beside it */
+        .touch-button .fullscreen-icon {
+            vertical-align: middle;
+        }
+
+        /* The status bar in touch mode. Thumbs pass through it to the
+           sticks everywhere but on the weapon slots, which become buttons:
+           all seven, the knife's included, each showing its pool's rounds,
+           which is the ammo table folded into them. Each section becomes
+           a grid item of the bar (display: contents on the two sides) so
+           the layouts below can place them freely. */
+        body.touch-ui #uiContainer {
+            pointer-events: none;
+            height: auto;
+            grid-template-rows: calc(83 * var(--u)) auto;
+            column-gap: calc(6 * var(--u));
+            row-gap: calc(7 * var(--u));
+            padding: calc(9 * var(--u)) max(calc(10 * var(--u)), env(safe-area-inset-right))
+                     max(calc(8 * var(--u)), env(safe-area-inset-bottom))
+                     max(calc(10 * var(--u)), env(safe-area-inset-left));
+        }
+
+        body.touch-ui .sb-side { display: contents; }
+        body.touch-ui .sb-ammo   { grid-area: ammo; }
+        body.touch-ui .sb-health { grid-area: health; }
+        body.touch-ui .sb-arms   { grid-area: arms; }
+        body.touch-ui .sb-face-cell { grid-area: face; }
+        body.touch-ui .sb-armor  { grid-area: armor; }
+        body.touch-ui .sb-keys   { grid-area: keys; }
+        body.touch-ui .sb-table  { grid-area: table; }
+
+        body.touch-ui .sb-cell { padding: calc(5 * var(--u)) calc(6 * var(--u)) calc(4 * var(--u)); }
+        body.touch-ui .sb-num { font-size: calc(46 * var(--u)); }
+        body.touch-ui .sb-pct { font-size: calc(30 * var(--u)); }
+        body.touch-ui #ammoDisplayContainer .sb-well { min-width: calc(70 * var(--u)); }
+        body.touch-ui #healthDisplayContainer .sb-well,
+        body.touch-ui #armorDisplayContainer .sb-well { min-width: calc(96 * var(--u)); }
+
+        /* The weapon buttons: a row of seven thumb-sized keys */
+        body.touch-ui .sb-arms .sb-label { display: none; }
+        body.touch-ui .arms-grid {
+            display: flex;
+            align-items: stretch;
+            gap: calc(3 * var(--u));
+            padding: calc(3 * var(--u));
+        }
+        body.touch-ui .arms-slot,
+        body.touch-ui .arms-slot[data-slot="1"] {
+            pointer-events: auto;
+            touch-action: manipulation;
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 44px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            border-radius: calc(3 * var(--u));
+            background: rgba(255, 238, 214, 0.03);
+            box-shadow: inset 0 0 0 1px rgba(255, 238, 214, 0.06);
+        }
+        body.touch-ui .arms-slot .arms-num { font-size: 20px; line-height: 1; }
+        body.touch-ui .arms-ammo {
+            display: block;
+            min-height: 1em;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--sb-dim);
+            text-shadow: none;
+            font-variant-numeric: tabular-nums;
+        }
+        body.touch-ui .arms-slot.owned .arms-ammo { color: #cbbd9f; }
+        body.touch-ui .arms-slot.current {
+            background: rgba(240, 50, 30, 0.14);
+            box-shadow: inset 0 0 0 1px rgba(240, 50, 30, 0.6);
+        }
+        body.touch-ui .arms-slot.current::after { display: none; }
+
+        /* Portrait: the readouts and the face along the top row, the
+           weapon buttons along the bottom, the ammo table folded into
+           them. */
+        body.touch-ui #uiContainer {
+            --bar-h: min(19.5vw, 88px);
+            grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
+            grid-template-areas:
+                "ammo health face armor keys"
+                "arms arms arms arms arms";
+        }
+        body.touch-ui .sb-table { display: none; }
+
+        /* Landscape phones and tablets: everything on one row, so the bar
+           takes as little of the short side as it can. */
+        @media (orientation: landscape) {
+            body.touch-ui #uiContainer {
+                --bar-h: clamp(56px, 17vh, 80px);
+                grid-template-rows: calc(83 * var(--u));
+                grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
+                grid-template-areas: "ammo health arms face armor keys table";
+            }
+
+            body.touch-ui .sb-table { display: flex; }
+            body.touch-ui .arms-slot,
+            body.touch-ui .arms-slot[data-slot="1"] {
+                min-height: 0;
+                min-width: 34px;
+            }
+            body.touch-ui .arms-slot .arms-num { font-size: 18px; }
+            /* The ammo table has room here, so the buttons carry only
+               their numbers, and the table is set a size larger to be read
+               on a phone */
+            body.touch-ui .arms-ammo { display: none; }
+            body.touch-ui .sb-table .sb-well { gap: calc(1 * var(--u)); }
+            body.touch-ui .ammo-row {
+                font-size: calc(16 * var(--u));
+                grid-template-columns: calc(42 * var(--u)) calc(34 * var(--u)) calc(9 * var(--u)) calc(34 * var(--u));
+            }
+            body.touch-ui .ammo-name { font-size: calc(12 * var(--u)); }
+        }
+
+        /* A small phone on its side has no room for the table beside seven
+           buttons: fold it back into them, as in portrait. */
+        @media (orientation: landscape) and (max-width: 699px) {
+            body.touch-ui .sb-table { display: none; }
+            body.touch-ui .arms-ammo { display: block; }
+            body.touch-ui .arms-slot,
+            body.touch-ui .arms-slot[data-slot="1"] { min-width: 0; gap: 2px; }
+        }
+
+        /* Only touch devices get the touch section of the instructions */
+        .instructions-section.touch-only {
+            display: none;
+        }
+
+        body.touch-ui .instructions-section.touch-only {
+            display: block;
+        }
+
+        /* Small screens: the menus were sized for a monitor, and the three
+           difficulty buttons ran off the side of a phone. */
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 20px 14px;
+            }
+
+            .difficulty-button {
+                padding: 10px 10px;
+                margin: 0 3px;
+                font-size: 10px;
+            }
+
+            .game-button {
+                padding: 13px 22px;
+                font-size: 12px;
+            }
+        }
+
+        /* Landscape phones: little height, so tighten the menus vertically */
+        @media (max-height: 480px) {
+            .modal-content {
+                max-height: 94vh;
+                padding: 16px 20px;
+            }
+
+            #titleLogo {
+                width: min(240px, 100%);
+                margin-bottom: 8px;
+            }
+
+            .game-button {
+                margin: 5px;
+            }
+        }
+
+        /* Loading screen: up from the first paint, above every other overlay,
+           until main.js has every image decoded. Opaque, because behind it is
+           an empty canvas and a menu that must not be reachable yet. */
+        #loadingOverlay {
+            background-color: var(--ui-bg);
+            z-index: 2000;
+        }
+
+        #loadingOverlay .modal-content {
+            width: min(560px, 92vw);
+        }
+
+        #loadingLogo {
+            display: block;
+            width: min(440px, 100%);
+            /* The logo is itself one of the larger downloads; holding its
+               space stops the bar jumping down when it arrives. */
+            aspect-ratio: 1200 / 412;
+            height: auto;
+            margin: 0 auto 26px;
+        }
+
+        #loadingBar {
+            height: 18px;
+            padding: 3px;
+            background-color: #111;
+            border: 2px solid var(--ui-panel-edge);
+            box-sizing: border-box;
+        }
+
+        #loadingBarFill {
+            width: 0;
+            height: 100%;
+            background-color: var(--ui-red);
+            /* Hard pixel stripes rather than a gradient, to match the font. */
+            background-image: repeating-linear-gradient(90deg,
+                transparent 0 6px, rgba(0, 0, 0, 0.25) 6px 8px);
+            box-shadow: inset 0 -3px 0 var(--ui-red-dark);
+            transition: width 0.15s linear;
+        }
+
+        #loadingStatus {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 12px 0 0;
+            font-size: 10px;
+            color: var(--ui-text);
+        }
+
+        #loadingCount {
+            color: var(--ui-muted);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
@@ -449,66 +1321,120 @@
         <!-- Game Canvas -->
         <canvas id="gameCanvas"></canvas>
 
-        <!-- Bottom UI Overlay -->
+        <!-- Touch controls (js/touch-controls.js); hidden unless in touch mode -->
+        <div id="touchControls" aria-hidden="true">
+            <div class="touch-stick" id="touchMoveStick">
+                <div class="touch-stick-knob"></div>
+                <span class="touch-stick-label">Move</span>
+            </div>
+            <div class="touch-stick" id="touchAimStick">
+                <div class="touch-stick-fire-ring"></div>
+                <div class="touch-stick-knob"></div>
+                <span class="touch-stick-label">Aim / Fire</span>
+            </div>
+            <div id="touchButtons">
+                <button class="touch-button" data-touch-action="zoom-out" aria-label="Zoom out">-</button>
+                <button class="touch-button" data-touch-action="zoom-in" aria-label="Zoom in">+</button>
+                <button class="touch-button" data-touch-action="map" aria-label="Toggle minimap">Map</button>
+                <button class="touch-button" data-touch-action="fullscreen" data-fullscreen-toggle
+                        aria-label="Fullscreen"><svg class="fullscreen-icon enter" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg><svg class="fullscreen-icon leave" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 1v4H1M9 1v4h4M13 9H9v4M1 9h4v4"/></svg></button>
+                <button class="touch-button" data-touch-action="pause" aria-label="Pause">II</button>
+            </div>
+        </div>
+
+        <!-- Pause and fullscreen for a mouse (js/pause-menu.js). Shown only
+             during play and never in touch mode, which has the row above. -->
+        <div id="gameButtons">
+            <button class="corner-button" data-game-action="fullscreen" data-fullscreen-toggle
+                    aria-label="Fullscreen" title="Fullscreen"><svg class="fullscreen-icon enter" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg><svg class="fullscreen-icon leave" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 1v4H1M9 1v4h4M13 9H9v4M1 9h4v4"/></svg></button>
+            <button class="corner-button" data-game-action="pause"
+                    aria-label="Pause" title="Pause (Esc)">II</button>
+        </div>
+
+        <!-- Status bar, laid out as Doom's: AMMO, HEALTH, ARMS, the face,
+             ARMOR, keys, ammo table. js/hud.js fills it in. -->
         <div id="uiContainer">
-            <!-- Player Health -->
-            <div id="healthDisplayContainer" class="hud-stat">
-                <span class="hud-label">Health</span><span id="healthDisplay">100</span>
-            </div>
+            <div class="sb-side sb-left">
+                <!-- Rounds left for the weapon in hand -->
+                <div id="ammoDisplayContainer" class="sb-cell sb-ammo">
+                    <div class="sb-well"><span class="sb-readout"><span id="ammoDisplay" class="sb-num">50</span></span></div>
+                    <span class="sb-label">Ammo</span>
+                </div>
 
-            <!-- Current level -->
-            <div id="levelDisplayContainer" class="hud-stat">
-                <span class="hud-label">Level</span><span id="waveDisplay">1</span>
-            </div>
+                <div id="healthDisplayContainer" class="sb-cell sb-health">
+                    <div class="sb-well"><span class="sb-readout"><span id="healthDisplay" class="sb-num">100</span><span class="sb-num sb-pct">%</span></span></div>
+                    <span class="sb-label">Health</span>
+                </div>
 
-            <!-- Score Display -->
-            <div id="scoreDisplayContainer" class="hud-stat">
-                <span class="hud-label">Score</span><span id="scoreDisplay">0</span>
-            </div>
-
-            <!-- Weapon Information -->
-            <div id="weaponInfoContainer">
-                <div id="weaponInventoryIcons">
-                    <span class="text-gray-400 mr-1">Weapons</span>
-                    <span class="weapon-icon-display" data-weapon-name="Knife" id="knifeIconDisplay" title="1: Knife">
-                        <span class="weapon-char">K</span> <span class="ammo-text-display">∞</span>
-                    </span>
-                    <span class="weapon-icon-display" data-weapon-name="Pistol" id="pistolIconDisplay" title="2: Pistol">
-                        <span class="weapon-char">P</span> <span class="ammo-text-display">50</span>
-                    </span>
-                    <span class="weapon-icon-display" data-weapon-name="Shotgun" id="shotgunIconDisplay" title="3: Shotgun">
-                        <span class="weapon-char">SG</span> <span class="ammo-text-display">--</span>
-                    </span>
-                    <span class="weapon-icon-display" data-weapon-name="Rifle" id="rifleIconDisplay" title="4: Rifle">
-                        <span class="weapon-char">R</span> <span class="ammo-text-display">--</span>
-                    </span>
-                    <span class="weapon-icon-display" data-weapon-name="Rocket Launcher" id="rocketLauncherIconDisplay" title="5: Rocket Launcher">
-                        <span class="weapon-char">RL</span> <span class="ammo-text-display">--</span>
-                    </span>
-                    <span class="weapon-icon-display" data-weapon-name="Plasma Gun" id="plasmaGunIconDisplay" title="6: Plasma Gun">
-                        <span class="weapon-char">PG</span> <span class="ammo-text-display">--</span>
-                    </span>
-                    <span class="weapon-icon-display" data-weapon-name="BFG" id="bfgIconDisplay" title="7: BFG">
-                        <span class="weapon-char">BFG</span> <span class="ammo-text-display">--</span>
-                    </span>
+                <!-- Weapon slots, keys 1-7. In touch mode they are the weapon
+                     buttons (js/touch-controls.js binds [data-weapon-name]). -->
+                <div id="weaponInventoryIcons" class="sb-cell sb-arms">
+                    <div class="sb-well arms-grid">
+                        <span class="weapon-icon-display arms-slot" data-slot="1" data-weapon-name="Knife" title="1: Knife"><span class="arms-num">1</span><span class="arms-ammo"></span></span>
+                        <span class="weapon-icon-display arms-slot" data-slot="2" data-weapon-name="Pistol" title="2: Pistol"><span class="arms-num">2</span><span class="arms-ammo"></span></span>
+                        <span class="weapon-icon-display arms-slot" data-slot="3" data-weapon-name="Shotgun" title="3: Shotgun"><span class="arms-num">3</span><span class="arms-ammo"></span></span>
+                        <span class="weapon-icon-display arms-slot" data-slot="4" data-weapon-name="Rifle" title="4: Rifle"><span class="arms-num">4</span><span class="arms-ammo"></span></span>
+                        <span class="weapon-icon-display arms-slot" data-slot="5" data-weapon-name="Rocket Launcher" title="5: Rocket Launcher"><span class="arms-num">5</span><span class="arms-ammo"></span></span>
+                        <span class="weapon-icon-display arms-slot" data-slot="6" data-weapon-name="Plasma Gun" title="6: Plasma Gun"><span class="arms-num">6</span><span class="arms-ammo"></span></span>
+                        <span class="weapon-icon-display arms-slot" data-slot="7" data-weapon-name="BFG" title="7: BFG"><span class="arms-num">7</span><span class="arms-ammo"></span></span>
+                    </div>
+                    <span class="sb-label">Arms</span>
                 </div>
             </div>
 
-            <!-- Key Collection Display -->
-            <div id="keysDisplayContainer">
-                <span class="hud-label">Keys</span>
-                <div id="keysDisplay">
-                    <span class="key-icon red" id="redKeyIcon" title="Red key"></span>
-                    <span class="key-icon yellow" id="yellowKeyIcon" title="Yellow key"></span>
-                    <span class="key-icon blue" id="blueKeyIcon" title="Blue key"></span>
+            <!-- The marine (FACE_SVG in js/hud.js), and the score under him -->
+            <div class="sb-face-cell">
+                <div id="faceDisplay" class="sb-face" data-tier="0" data-mood="idle" data-look="center" data-blink="0"></div>
+                <div class="sb-score"><span class="sb-score-label">Score</span><span id="scoreDisplay">0</span></div>
+            </div>
+
+            <div class="sb-side sb-right">
+                <!-- Points, coloured by class: green or blue -->
+                <div id="armorDisplayContainer" class="sb-cell sb-armor armor-none">
+                    <div class="sb-well"><span class="sb-readout"><span id="armorDisplay" class="sb-num">0</span><span class="sb-num sb-pct">%</span></span></div>
+                    <span class="sb-label">Armor</span>
+                </div>
+
+                <div class="sb-cell sb-keys">
+                    <div id="keysDisplay" class="sb-well">
+                        <span class="key-icon red" id="redKeyIcon" title="Red key"></span>
+                        <span class="key-icon yellow" id="yellowKeyIcon" title="Yellow key"></span>
+                        <span class="key-icon blue" id="blueKeyIcon" title="Blue key"></span>
+                    </div>
+                </div>
+
+                <div class="sb-cell sb-table">
+                    <div class="sb-well">
+                        <div class="ammo-row" id="ammoRow-bullets"><span class="ammo-name">Bull</span><span class="ammo-cur" id="ammoCurrent-bullets">50</span><span class="ammo-sep">/</span><span class="ammo-max" id="ammoMax-bullets">200</span></div>
+                        <div class="ammo-row" id="ammoRow-shells"><span class="ammo-name">Shel</span><span class="ammo-cur" id="ammoCurrent-shells">0</span><span class="ammo-sep">/</span><span class="ammo-max" id="ammoMax-shells">50</span></div>
+                        <div class="ammo-row" id="ammoRow-rockets"><span class="ammo-name">Rckt</span><span class="ammo-cur" id="ammoCurrent-rockets">0</span><span class="ammo-sep">/</span><span class="ammo-max" id="ammoMax-rockets">50</span></div>
+                        <div class="ammo-row" id="ammoRow-cells"><span class="ammo-name">Cell</span><span class="ammo-cur" id="ammoCurrent-cells">0</span><span class="ammo-sep">/</span><span class="ammo-max" id="ammoMax-cells">300</span></div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Loading screen. Shown from the first paint; main.js moves the bar as
+         assets finish and removes it once the start menu can safely appear. -->
+    <div id="loadingOverlay" class="overlay">
+        <div class="modal-content">
+            <img id="loadingLogo" src="sprites/logo.png" alt="TDDL: Top-Down Doom-like">
+            <div id="loadingBar" role="progressbar" aria-label="Loading"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div id="loadingBarFill"></div>
+            </div>
+            <p id="loadingStatus">
+                <span id="loadingText">Loading</span><span id="loadingCount"></span>
+            </p>
         </div>
     </div>
 
     <!-- Game Message Overlay: the start screen, the end-of-level tally and Game Over -->
     <div id="messageOverlay" class="overlay" style="display: none;">
         <div class="modal-content">
+            <!-- Start screen only -->
+            <img id="titleLogo" src="sprites/logo.png" alt="TDDL: Top-Down Doom-like" style="display: none;">
             <h2 id="messageTitle">Game Title</h2>
             <p id="messageText">Game message content</p>
 
@@ -531,6 +1457,34 @@
                 <button id="instructionsButton" class="game-button secondary">Instructions</button>
             </div>
             <p id="overlayHint"></p>
+        </div>
+    </div>
+
+    <!-- Pause menu, for every device (js/pause-menu.js): Esc or the
+         top-right pause button opens it over the frozen level -->
+    <div id="pauseOverlay" class="overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Paused</h2>
+            <div class="button-row">
+                <button id="pauseResumeButton" class="game-button">Resume</button>
+                <button id="pauseCodeButton" class="game-button secondary">Enter Code</button>
+                <button id="pauseFullscreenButton" class="game-button secondary"
+                        data-fullscreen-toggle>Fullscreen</button>
+                <button id="pauseRunButton" class="game-button secondary"
+                        aria-pressed="false">Always Run: Off</button>
+                <button id="pauseQuitButton" class="game-button secondary">Main Menu</button>
+            </div>
+            <!-- A phone has no keyboard to type Doom's codes into the game, so
+                 they are typed here instead (js/cheats.js cheatsInText); a
+                 desktop can use it too -->
+            <form id="cheatCodeForm" style="display: none;" autocomplete="off">
+                <input id="cheatCodeInput" type="text" maxlength="16" placeholder="Code"
+                       aria-label="Code" autocapitalize="none" autocorrect="off"
+                       autocomplete="off" spellcheck="false" enterkeyhint="go">
+                <button type="submit" class="game-button">OK</button>
+                <p id="cheatCodeNote" aria-live="polite"></p>
+            </form>
+            <p class="pause-hint">Press Esc to resume</p>
         </div>
     </div>
 
@@ -558,14 +1512,26 @@
                             <div class="key-binding"><span class="key">Shift</span><span>Run</span></div>
                             <div class="key-binding"><span class="key">Mouse</span><span>Aim</span></div>
                             <div class="key-binding"><span class="key">Click</span><span>Shoot, hold to keep firing</span></div>
+                            <div class="key-binding"><span class="key">Wheel</span><span>Next / previous weapon</span></div>
+                            <div class="key-binding"><span class="key">Ctrl + Wheel</span><span>Zoom</span></div>
                         </div>
                         <div>
                             <div class="key-binding"><span class="key">1 - 7</span><span>Weapon</span></div>
                             <div class="key-binding"><span class="key">- / =</span><span>Zoom</span></div>
-                            <div class="key-binding"><span class="key">M / C / F3</span><span>Minimap, stats, profiler</span></div>
-                            <div class="key-binding"><span class="key">Enter / Esc</span><span>Continue, close</span></div>
+                            <div class="key-binding"><span class="key">M / F3</span><span>Minimap, profiler</span></div>
+                            <div class="key-binding"><span class="key">Esc</span><span>Pause, close</span></div>
+                            <div class="key-binding"><span class="key">Enter</span><span>Start, continue</span></div>
                         </div>
                     </div>
+                </div>
+
+                <div class="instructions-section touch-only">
+                    <h3>Touch</h3>
+                    <p>&bull; <b>Left thumb</b> moves: push gently to creep, further to walk. To run, turn on <b>Always Run</b> in the pause menu.</p>
+                    <p>&bull; <b>Right thumb</b> aims. Push past the red ring to fire;
+                       with it idle you face the way you walk.</p>
+                    <p>&bull; Tap a weapon on the bar to switch. Top right: zoom, map,
+                       fullscreen (where the browser allows it), pause.</p>
                 </div>
 
                 <div class="instructions-section">
@@ -577,26 +1543,15 @@
                     <p>&bull; <b>Green barrels</b> chain-explode. <b>Lava</b> kills fast, <b>waste</b>
                        burns slowly, <b>water</b> slows you. None is ever the only way through.</p>
                     <p>&bull; The pistol and rifle share bullets; the plasma gun and BFG share cells.</p>
+                    <p>&bull; <b>Armor</b> takes part of every hit: green a third, blue half,
+                       until it runs out. It carries from level to level.</p>
                 </div>
 
                 <div class="instructions-section">
                     <h3>Secrets</h3>
                     <p>&bull; Some walls are not walls: push into them. A <b>switch</b> is pressed
                        by walking into it or shooting it, and slides a wall aside nearby.</p>
-                </div>
-
-                <div class="instructions-section cheats">
-                    <h3>Cheats (for testing)</h3>
-                    <div class="key-grid">
-                        <div>
-                            <div class="key-binding"><span class="key">I</span><span>Walk through walls</span></div>
-                            <div class="key-binding"><span class="key">K</span><span>All keys</span></div>
-                        </div>
-                        <div>
-                            <div class="key-binding"><span class="key">G</span><span>All weapons</span></div>
-                            <div class="key-binding"><span class="key">L</span><span>Next level</span></div>
-                        </div>
-                    </div>
+                    <p>&bull; Old habits die hard. The codes you typed in 1993 still work.</p>
                 </div>
             </div>
             <button id="closeInstructionsButton" class="game-button">Close</button>

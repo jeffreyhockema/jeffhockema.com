@@ -32,6 +32,7 @@ import {
     MIN_AIM_CONVERGE_DISTANCE, PLAYER_WALK_SPEED, PLAYER_RUN_SPEED,
     ENEMY_SPRITE_BODY_PER_RADIUS, ENEMY_SPRITE_FOOT_OFFSET, ANIMATION_TICKS_PER_SECOND,
     ENEMY_IDLE_BLINK_MIN_DELAY, ENEMY_IDLE_BLINK_MAX_DELAY, ENEMY_CORPSE_LINGER, TILE_PROP, TILE_SLIDE, TILE_SWITCH, AMMO_TYPES, rollWeaponDamage, playerSpread, PLAYER_RADIUS_UNITS, TILE_WINDOW,
+    POWER_NAMES, POWER_DURATION_TICS, POWER_FADE_TICS, BERSERK_DAMAGE_MULTIPLIER, ARMOR,
 } from './constants.js';
 import {
     isPathClear, checkWallCollision, isSolidAt,
@@ -56,7 +57,7 @@ import { spawnBlood, spawnGore, BLOOD_RED, spawnSparks,
 import {
     MONSTERS, DIR, DIR_VECTORS, DIR_ANGLES, FRAMES_PER_TIC,
     ticsToFrames, unitsToPx, pxToUnits, chaseSpeedPx, projectileSpeedPx,
-    rollDamage, checkMissileRange, newChaseDir, hitscanSpread,
+    rollDamage, checkMissileRange, newChaseDir, hitscanSpread, shadowAimOffset,
     bossTypeForTier,
     MONSTER_DAMAGE_SCALE, SIGHT_RANGE, NOISE_MEMORY_FRAMES, AMBUSH_CHANCE,
     LOOK_INTERVAL_TICS, MELEE_REACH_UNITS, MISSILE_RANGE_UNITS, BASE_THRESHOLD_TICS,
@@ -69,10 +70,13 @@ import {
     playEnemySightSound, playEnemyPainSound, playEnemyActiveSound, playEnemyMeleeSound,
     playEnemyWindupSound, playEnemyStepSound, playResurrectSound, playTeleportSound,
     playEmptyGunSound, playWeaponSwitchSound, playLowHealthWarning,
-    playErrorSound
+    playErrorSound, playArmorPickupSound
 } from './audio-system.js';
 import { keys, mouse } from './input-handler.js';
+import { touchMove, moveDrive } from './touch-controls.js';
+import { wantsToRun } from './settings.js';
 import { isSlideOpen } from './switches.js';
+import { updateStatusBar } from './hud.js';
 
 // =============================================================================
 // SPRITE ELEMENT CACHE
@@ -103,6 +107,18 @@ function randomBlinkDelay() {
 // PLAYER CLASS - MAIN CHARACTER
 // =============================================================================
 
+/** How solid a partially invisible player is drawn. */
+const PLAYER_INVISIBLE_ALPHA = 0.3;
+
+/**
+ * Every power-up off: a counter per power, zero meaning off.
+ *
+ * @returns {Object<string, number>} Keyed by POWER_NAMES
+ */
+export function freshPowers() {
+    return Object.fromEntries(POWER_NAMES.map(name => [name, 0]));
+}
+
 /**
  * Player class - Main character controlled by the user
  *
@@ -131,7 +147,7 @@ export class Player {
         this.walkSpeed = PLAYER_WALK_SPEED;
         this.runSpeed = PLAYER_RUN_SPEED;
         this.speed = PLAYER_WALK_SPEED;
-        this.isRunning = false;              // Shift held this frame
+        this.isRunning = false;              // Running this step: Shift, or Always Run
         this.angle = Math.PI / 2;            // Facing direction (0=right, π/2=down)
 
         // === HEALTH SYSTEM ===
@@ -139,9 +155,29 @@ export class Player {
         this.maxHealth = GAME_BALANCE.BASE_PLAYER_HEALTH * multipliers.playerHealth;
         this.health = this.maxHealth;
 
+        // === ARMOUR ===
+        // Doom's two numbers (see ARMOR in constants.js): points, 0-200, and the
+        // class that says what share of a hit they take. Like health they live
+        // on the Player, which is built once a game and carried from level to
+        // level, so armour carries too and a new game starts with none.
+        this.armor = 0;
+        this.armorClass = 0;
+        // The fraction of a point a hazardous floor has worn off the armour
+        // so far; see absorbTerrainDamage().
+        this.armorDebt = 0;
+
         // === INVENTORY & KEYS ===
         this.keysCollected = { red: false, yellow: false, blue: false };
-        this.canPhase = false;               // Debug cheat: walk through walls
+
+        // === CHEATS AND POWER-UPS ===
+        // God mode and no-clipping are Doom's CF_GODMODE and CF_NOCLIP: two
+        // separate switches (IDDQD, IDCLIP), so walking through walls does not
+        // make you unkillable and vice versa. Both last until the game ends.
+        this.godMode = false;
+        this.canPhase = false;               // No clipping: walk through walls
+        // Doom's power-up counters (see POWER_NAMES). Unlike the cheats these
+        // are spent at the end of each level, as Doom's were.
+        this.powers = freshPowers();
 
         // === TERRAIN ===
         // Which liquid the player is standing in, and the fraction of a hit point
@@ -155,6 +191,11 @@ export class Player {
 
         // What sprays when the player is hit
         this.bloodColor = BLOOD_RED;
+
+        // The last hit, for the status bar's face: a counter that moves once
+        // per hit, and where it came from, so the face can look that way.
+        this.hitSerial = 0;
+        this.hitFrom = null;
 
         // === WEAPON SYSTEM ===
         this.weapons = [];
@@ -886,6 +927,11 @@ export class Player {
         // Whether this swing landed on anything, so the impact plays once.
         let connected = false;
 
+        // Berserk: A_Punch multiplies the fist's roll by ten. The knife is this
+        // game's fist, so every melee swing gets it.
+        const strength = this.hasPower('strength') ? BERSERK_DAMAGE_MULTIPLIER : 1;
+        const rollMelee = () => rollWeaponDamage(weapon) * strength;
+
         // Check for enemies within melee range
         if (window.gameState?.enemies) {
             window.gameState.enemies.forEach(enemy => {
@@ -915,7 +961,7 @@ export class Player {
                             spawnBlood(enemy.x, enemy.y, angleToEnemy,
                                        { color: enemy.bloodColor, amount: weapon.isHeavyMelee ? 14 : 8 });
                         }
-                        enemy.takeDamage(rollWeaponDamage(weapon), this);
+                        enemy.takeDamage(rollMelee(), this);
                         connected = true;
                     }
                 }
@@ -930,7 +976,7 @@ export class Player {
             if (Math.hypot(dx, dy) - barrel.radius > meleeRange) continue;
             const angleDiff = Math.abs(Math.atan2(dy, dx) - this.angle);
             if (Math.min(angleDiff, 2 * Math.PI - angleDiff) > Math.PI / 2) continue;
-            barrel.takeDamage(rollWeaponDamage(weapon), this);
+            barrel.takeDamage(rollMelee(), this);
             connected = true;
         }
 
@@ -951,7 +997,7 @@ export class Player {
                     if (boss.bloodColor !== null) {
                         spawnBlood(boss.x, boss.y, angleToEnemy, { color: boss.bloodColor, amount: 10 });
                     }
-                    boss.takeDamage(rollWeaponDamage(weapon), this);
+                    boss.takeDamage(rollMelee(), this);
                     connected = true;
                 }
             }
@@ -963,43 +1009,13 @@ export class Player {
     }
 
     /**
-     * Updates weapon UI display to show current weapon and ammo status
+     * Refreshes the status bar's ARMS, AMMO and ammo table after the arsenal
+     * changed. The bar reads everything off the player (js/hud.js), so this
+     * and the other update...() methods below are one call under the names
+     * the rest of the game knows them by.
      */
     updateWeaponUI() {
-        this.weapons.forEach((weapon, index) => {
-            // Every weapon in the roster has its own HUD slot, keyed by name.
-            const iconElement = document.querySelector(`[data-weapon-name="${weapon.name}"]`);
-            if (iconElement) {
-                // Update ownership status
-                if (weapon.owned) {
-                    iconElement.classList.add('owned');
-                } else {
-                    iconElement.classList.remove('owned');
-                }
-
-                // Update selection status
-                if (index === this.currentWeaponIndex) {
-                    iconElement.classList.add('selected-weapon-icon');
-                } else {
-                    iconElement.classList.remove('selected-weapon-icon');
-                }
-
-                // Update ammo display
-                const ammoDisplay = iconElement.querySelector('.ammo-text-display');
-                if (ammoDisplay) {
-                    if (weapon.ammo === Infinity) {
-                        ammoDisplay.textContent = 'Inf';
-                    } else if (weapon.owned) {
-                        ammoDisplay.textContent = weapon.ammo.toString();
-                    } else if (weapon.ammo > 0) {
-                        // Show collected ammo for unowned weapons with a different style
-                        ammoDisplay.textContent = `(${weapon.ammo})`;
-                    } else {
-                        ammoDisplay.textContent = '--';
-                    }
-                }
-            }
-        });
+        updateStatusBar(this);
     }
 
     /**
@@ -1019,6 +1035,7 @@ export class Player {
 
         if (this.muzzleFlashTimer > 0) this.muzzleFlashTimer--;
 
+        this.tickPowers();
         this.applyTerrainEffects();
         this.handleMovement();
         this.handleAnimation();
@@ -1061,6 +1078,11 @@ export class Player {
      * Phasing through walls does not make you fireproof -- the cheat is about
      * geometry -- but the debt is still reset when leaving the tile so it cannot
      * accumulate across two separate dips into the same pool.
+     *
+     * What does: god mode and invulnerability, which in Doom stop every source
+     * of damage, the floor included, and the radiation suit, which is what it is
+     * for. Doom's suit leaks on its very worst floors, one check in fifty; that
+     * gamble is left out here.
      */
     applyTerrainEffects() {
         const tile = this.currentTerrainTile();
@@ -1075,7 +1097,16 @@ export class Player {
 
         if (!terrain || terrain.damagePerSecond <= 0) return;
 
-        this.terrainDamageDebt += terrain.damagePerSecond / ANIMATION_TICKS_PER_SECOND;
+        if (this.isInvulnerable() || this.hasPower('ironfeet')) {
+            this.terrainDamageDebt = 0;
+            return;
+        }
+
+        // Doom routes floor damage through P_DamageMobj like any other hit, so
+        // armour takes its share of a pool too -- split off here, before the
+        // fraction is banked, for the reason absorbStreamedDamage() gives.
+        this.terrainDamageDebt += this.absorbStreamedDamage(
+            terrain.damagePerSecond / ANIMATION_TICKS_PER_SECOND);
         const whole = Math.floor(this.terrainDamageDebt);
         if (whole <= 0) return;
 
@@ -1103,7 +1134,19 @@ export class Player {
         // Hold Shift to run. Doom's run doubles the walking speed, and since
         // the monsters are tuned to Doom's numbers the same ratio is used here:
         // a running marine outpaces everything but the Arch-vile.
-        this.isRunning = !!keys.Shift;
+        //
+        // Always Run (js/settings.js) turns that around, as in Doom: the marine
+        // runs, and Shift walks.
+        //
+        // The touch move stick (js/touch-controls.js) is analog and only counts
+        // when no movement key is held, so with the stick idle this is exactly
+        // the keyboard movement it always was. It never runs by itself: a full
+        // push is walking pace, or running pace with Always Run on.
+        const keyboardMoving = keys.w || keys.ArrowUp || keys.s || keys.ArrowDown ||
+                               keys.a || keys.ArrowLeft || keys.d || keys.ArrowRight;
+        const stick = (!keyboardMoving && touchMove.magnitude > 0) ? moveDrive(touchMove.magnitude) : null;
+
+        this.isRunning = wantsToRun(!!keys.Shift);
         const baseSpeed = this.isRunning ? this.runSpeed : this.walkSpeed;
         const speed = baseSpeed * terrainSpeedMultiplier(this.terrainTile);
 
@@ -1113,14 +1156,21 @@ export class Player {
         if (keys.a || keys.ArrowLeft) moveX -= speed;
         if (keys.d || keys.ArrowRight) moveX += speed;
 
-        this.isMoving = (moveX !== 0 || moveY !== 0);
-
         // Normalize diagonal movement
         if (moveX !== 0 && moveY !== 0) {
             const factor = Math.sqrt(0.5);
             moveX *= factor;
             moveY *= factor;
         }
+
+        // Stick: its own direction, already a unit vector times magnitude, so no
+        // diagonal correction -- the speed comes from the throttle instead.
+        if (stick) {
+            moveX = (touchMove.x / touchMove.magnitude) * speed * stick.throttle;
+            moveY = (touchMove.y / touchMove.magnitude) * speed * stick.throttle;
+        }
+
+        this.isMoving = (moveX !== 0 || moveY !== 0);
 
         // Collision detection
         if (moveX !== 0 || moveY !== 0) {
@@ -1577,15 +1627,163 @@ export class Player {
      * "I'm Too Young To Die" (P_DamageMobj: `if (gameskill == sk_baby)
      * damage >>= 1`). The monsters' own numbers are never touched.
      *
+     * Every hit the player can take -- a monster's bullet, claw or fireball,
+     * a rocket's or a barrel's blast -- arrives here, so this is where armour
+     * takes its share, in P_DamageMobj's order: the skill halving first, then
+     * the armour, then health.
+     *
      * @param {number} amount - Damage to deal
+     * @param {{x: number, y: number}|null} [source] - What dealt it, if known:
+     *     the status bar's face looks towards it
      */
-    takeDamage(amount) {
+    takeDamage(amount, source = null) {
+        // P_DamageMobj: god mode and invulnerability turn the hit away before it
+        // lands -- no health lost, no pain sound, and no armour spent either.
+        if (this.isInvulnerable()) return;
+
+        // Noted before the armour takes its share, which refreshes the bar
+        // first, so that refresh already knows this was a hit.
+        this.hitSerial++;
+        this.hitFrom = source && Number.isFinite(source.x) && Number.isFinite(source.y)
+            ? { x: source.x, y: source.y } : null;
+
         const taken = getDifficultyMultipliers(window.gameState?.selectedDifficulty || 'medium').damageTaken;
-        this.health = Math.max(0, this.health - amount * taken);
+        const damage = this.absorbWithArmor(amount * taken);
+        this.health = Math.max(0, this.health - damage);
         playPlayerHitSound();
         this.updateHealthDisplay();
+    }
 
-        // Damage feedback handled by audio and UI updates
+    // =========================================================================
+    // ARMOUR
+    // =========================================================================
+
+    /**
+     * What share of a hit the armour being worn takes: a third for green,
+     * half for blue, nothing without any.
+     *
+     * @returns {number} 0, 1/3 or 1/2
+     */
+    armorShare() {
+        if (this.armor <= 0) return 0;
+        if (this.armorClass === ARMOR.BLUE.armorClass) return 1 / 2;
+        if (this.armorClass === ARMOR.GREEN.armorClass) return 1 / 3;
+        return 0;
+    }
+
+    /**
+     * Lets the armour take its share of one hit, as P_DamageMobj does:
+     *
+     *     saved = class 1 ? damage / 3 : damage / 2      (rounded down)
+     *     if armour <= saved: saved = armour, class = 0
+     *     armour -= saved;  damage -= saved
+     *
+     * So the armour is spent point for point with the health it saves, and
+     * the class goes with the last point -- the next hit lands in full.
+     *
+     * @param {number} damage - The hit, after the skill's halving
+     * @returns {number} What is left of it for health
+     */
+    absorbWithArmor(damage) {
+        if (!(damage > 0) || this.armorShare() === 0) return damage;
+
+        let saved = Math.floor(damage * this.armorShare());
+        if (this.armor <= saved) {
+            saved = this.armor;
+            this.armorClass = 0;
+        }
+        this.armor -= saved;
+        this.updateArmorDisplay();
+        return damage - saved;
+    }
+
+    /**
+     * Lets the armour take its share of damage that arrives a sliver at a time.
+     *
+     * A hazardous floor here deals its rate as a fraction of a point every
+     * frame, banked until it makes a whole point (applyTerrainEffects). Doom's
+     * rounding cannot be used on that: a third of a single point rounds down
+     * to nothing, so armour would never stop any of a pool, where in Doom it
+     * takes a share of every 5, 10 or 20 the floor deals. Instead the stream is
+     * split exactly at the class's ratio, and the armour's part is banked the
+     * same way health's is and spent a whole point at a time. Over a second of
+     * wading that is Doom's rule without its rounding.
+     *
+     * @param {number} damage - This frame's damage, usually under a point
+     * @returns {number} The part of it that reaches health
+     */
+    absorbStreamedDamage(damage) {
+        const share = this.armorShare();
+        if (!(damage > 0) || share === 0) return damage;
+
+        // Never save more than the armour has left once what is already owed
+        // against it is counted.
+        const saved = Math.min(damage * share, Math.max(0, this.armor - this.armorDebt));
+        this.armorDebt += saved;
+
+        // The epsilon keeps a run of exact thirds adding up to 0.9999... from
+        // waiting a frame longer than it should to spend its point.
+        const whole = Math.floor(this.armorDebt + 1e-9);
+        if (whole > 0) {
+            this.armorDebt = Math.max(0, this.armorDebt - whole);
+            this.armor = Math.max(0, this.armor - whole);
+            if (this.armor === 0) {
+                this.armorClass = 0;
+                this.armorDebt = 0;
+            }
+            this.updateArmorDisplay();
+        }
+        return damage - saved;
+    }
+
+    /**
+     * Picks up a green armour or a MegaArmor (P_GiveArmor): the points are set
+     * to the armour's own, not added, and it is refused -- left on the floor --
+     * if the player already has at least that many.
+     *
+     * @param {{points: number, armorClass: number}} kind - ARMOR.GREEN or ARMOR.BLUE
+     * @returns {boolean} True if it was taken
+     */
+    giveArmor(kind) {
+        if (!kind || this.armor >= kind.points) return false;
+        this.setArmor(kind.points, kind.armorClass);
+        return true;
+    }
+
+    /**
+     * Picks up an armour bonus: one point, up to 200, and always taken -- even
+     * at 200, as in Doom, so a line of them is cleared by walking it. With no
+     * armour at all it starts green armour's class, so the point does
+     * something.
+     *
+     * @returns {boolean} Always true
+     */
+    addArmorBonus() {
+        this.armor = Math.min(this.armor + ARMOR.BONUS_POINTS, ARMOR.MAX);
+        if (!this.armorClass) this.armorClass = ARMOR.GREEN.armorClass;
+        this.updateArmorDisplay();
+        return true;
+    }
+
+    /**
+     * Sets the armour outright: the pickups above and IDKFA / IDFA.
+     *
+     * @param {number} points - 0-200
+     * @param {number} armorClass - 0 none, 1 green, 2 blue
+     */
+    setArmor(points, armorClass) {
+        this.armor = Math.max(0, Math.min(points, ARMOR.MAX));
+        this.armorClass = this.armor > 0 ? armorClass : 0;
+        this.armorDebt = 0;
+        this.updateArmorDisplay();
+    }
+
+    /**
+     * Refreshes the status bar's ARMOR readout: the points, coloured by the
+     * class being worn (js/hud.js).
+     */
+    updateArmorDisplay() {
+        updateStatusBar(this);
     }
 
     /**
@@ -1601,48 +1799,24 @@ export class Player {
     }
 
     /**
-     * Updates the health display in the UI
+     * Refreshes the status bar's HEALTH readout, and the face, which follows it.
      */
     updateHealthDisplay() {
-        const healthDisplay = document.getElementById('healthDisplay');
-        if (healthDisplay) {
-            healthDisplay.textContent = Math.ceil(this.health);
-        }
-
-        // The readout flashes at a quarter health or less
-        const container = document.getElementById('healthDisplayContainer');
-        if (container?.classList) {
-            container.classList.toggle('low', this.health > 0 && this.health <= this.maxHealth * 0.25);
-        }
+        updateStatusBar(this);
     }
 
     /**
-     * Updates the score display in the UI
+     * Refreshes the score on the status bar.
      */
     updateScoreDisplay() {
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        if (scoreDisplay && window.gameState) {
-            scoreDisplay.textContent = window.gameState.score;
-        }
+        updateStatusBar(this);
     }
 
     /**
-     * Updates the key collection display in the UI
+     * Refreshes the status bar's key slots.
      */
     updateKeyUI() {
-        const redKeyIcon = document.getElementById('redKeyIcon');
-        const yellowKeyIcon = document.getElementById('yellowKeyIcon');
-        const blueKeyIcon = document.getElementById('blueKeyIcon');
-        
-        if (redKeyIcon) {
-            redKeyIcon.classList.toggle('collected', this.keysCollected.red);
-        }
-        if (yellowKeyIcon) {
-            yellowKeyIcon.classList.toggle('collected', this.keysCollected.yellow);
-        }
-        if (blueKeyIcon) {
-            blueKeyIcon.classList.toggle('collected', this.keysCollected.blue);
-        }
+        updateStatusBar(this);
     }
 
     /**
@@ -1666,7 +1840,7 @@ export class Player {
     }
 
     /**
-     * Debug: Collect all keys (cheat)
+     * Every key card at once: the "K" of IDKFA.
      */
     collectAllKeys() {
         this.keysCollected = { red: true, yellow: true, blue: true };
@@ -1674,7 +1848,9 @@ export class Player {
     }
 
     /**
-     * Debug: Acquire all weapons (cheat)
+     * Every weapon, every pool topped up to its limit: IDFA, and the "FA" of
+     * IDKFA. The 200 points of blue armour Doom also hands over are given by
+     * the cheat itself (js/cheats.js), with setArmor().
      */
     collectAllGuns() {
         this.weapons.forEach(weapon => {
@@ -1684,6 +1860,99 @@ export class Player {
             }
         });
         this.updateWeaponUI();
+    }
+
+    // =========================================================================
+    // POWER-UPS
+    // =========================================================================
+
+    /**
+     * Whether nothing can hurt the player right now: god mode, or the
+     * invulnerability sphere.
+     *
+     * @returns {boolean}
+     */
+    isInvulnerable() {
+        return this.godMode || this.hasPower('invulnerability');
+    }
+
+    /**
+     * @param {string} name - One of POWER_NAMES
+     * @returns {boolean} Whether that power is running
+     */
+    hasPower(name) {
+        return (this.powers?.[name] || 0) > 0;
+    }
+
+    /**
+     * P_GivePower. The timed powers start their full count; strength and the
+     * computer map are switched on for the rest of the level. Strength also
+     * heals to full, as the berserk pack does.
+     *
+     * @param {string} name - One of POWER_NAMES
+     */
+    givePower(name) {
+        if (!POWER_NAMES.includes(name)) return;
+
+        if (POWER_DURATION_TICS[name]) {
+            this.powers[name] = ticsToFrames(POWER_DURATION_TICS[name]);
+            return;
+        }
+
+        this.powers[name] = 1;
+        if (name === 'strength') {
+            this.gainHealth(GAME_BALANCE.BASE_PLAYER_HEALTH, { silent: true });
+        }
+    }
+
+    /**
+     * IDBEHOLD's toggle: a power that is off is given, one that is on is ended.
+     *
+     * Vanilla ends a timed power by setting it to one tic, which also leaves the
+     * computer map impossible to switch off; here every power simply stops.
+     *
+     * @param {string} name - One of POWER_NAMES
+     * @returns {boolean} Whether the power is on afterwards
+     */
+    togglePower(name) {
+        if (this.hasPower(name)) {
+            this.powers[name] = 0;
+            return false;
+        }
+        this.givePower(name);
+        return this.hasPower(name);
+    }
+
+    /** Ends every power-up: G_PlayerFinishLevel, at the end of each level. */
+    clearPowers() {
+        this.powers = freshPowers();
+    }
+
+    /**
+     * Runs the timed powers down by a frame. Strength and the computer map are
+     * not timed and stay on until the level ends.
+     */
+    tickPowers() {
+        for (const name in POWER_DURATION_TICS) {
+            if (this.powers[name] > 0) this.powers[name]--;
+        }
+    }
+
+    /**
+     * Whether a power's effect on the screen -- the inverse palette, the suit's
+     * green, full-bright light -- should show this frame. Doom blinks it for the
+     * last few seconds so the player knows it is about to run out.
+     *
+     * @param {string} name - One of POWER_NAMES
+     * @returns {boolean}
+     */
+    isPowerShowing(name) {
+        const left = this.powers?.[name] || 0;
+        if (left <= 0) return false;
+        if (!POWER_DURATION_TICS[name]) return true;
+
+        const tics = Math.floor(left / FRAMES_PER_TIC);
+        return tics > POWER_FADE_TICS || (tics & 8) !== 0;
     }
 
     /**
@@ -1722,9 +1991,10 @@ export class Player {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle - getPlayerSourceAngle());
 
-        // The phase cheat walks through walls; showing the player as translucent
-        // is the only cue that it is on.
-        if (this.canPhase) ctx.globalAlpha = 0.5;
+        // Partial invisibility draws the marine as a smear, as Doom's fuzz does
+        // the Spectre. No-clipping has no look of its own, as in Doom; the
+        // message line is what says it is on.
+        if (this.hasPower('invisibility')) ctx.globalAlpha = PLAYER_INVISIBLE_ALPHA;
 
         ctx.drawImage(
             atlas,
@@ -1745,7 +2015,8 @@ export class Player {
         ctx.translate(this.x, this.y);
 
         // Player body
-        ctx.fillStyle = this.canPhase ? 'rgba(0, 123, 255, 0.5)' : '#007bff';
+        if (this.hasPower('invisibility')) ctx.globalAlpha = PLAYER_INVISIBLE_ALPHA;
+        ctx.fillStyle = '#007bff';
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
@@ -2106,6 +2377,18 @@ export class Enemy {
     faceTarget() {
         if (!this.targetAlive()) return;
         this.face(Math.atan2(this.target.y - this.y, this.target.x - this.x));
+    }
+
+    /**
+     * The direction an attack leaves in: at the target, give or take the wobble
+     * a partially invisible target earns (shadowAimOffset). Kept apart from
+     * faceTarget(), which runs every frame of an attack; wobbling there would
+     * only shake the sprite, where Doom's wobble lands on the shot.
+     *
+     * @returns {number} Radians
+     */
+    aimAtTarget() {
+        return Math.atan2(this.target.y - this.y, this.target.x - this.x) + shadowAimOffset(this.target);
     }
 
     // =========================================================================
@@ -2586,7 +2869,7 @@ export class Enemy {
                 if (!a.hit && a.timer >= ticsToFrames(spec.at)) {
                     a.hit = true;
                     if (this.targetAlive()) {
-                        this.spawnLostSoul(Math.atan2(this.target.y - this.y, this.target.x - this.x));
+                        this.spawnLostSoul(this.aimAtTarget());
                     }
                 }
                 if (a.timer >= ticsToFrames(spec.duration)) this.endAttack();
@@ -2687,11 +2970,9 @@ export class Enemy {
                        { color: thing.bloodColor, amount: 6 });
         }
 
-        if (thing === window.gameState?.player) {
-            thing.takeDamage(amount);
-        } else {
-            thing.takeDamage(amount, this);
-        }
+        // The player is told the attacker too, but only for the status bar's
+        // face to look its way; a monster also turns on whoever it names.
+        thing.takeDamage(amount, this);
     }
 
     // ------------------------------------------------------------- hitscan
@@ -2705,7 +2986,7 @@ export class Enemy {
     fireHitscan(dice) {
         if (!this.targetAlive()) return;
 
-        const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x) + hitscanSpread();
+        const angle = this.aimAtTarget() + hitscanSpread();
         const hit = this.traceHitscan(angle);
 
         if (hit.thing) this.dealDamage(hit.thing, rollDamage(dice), hit);
@@ -2739,8 +3020,7 @@ export class Enemy {
         if (!this.targetAlive()) return;
         const gs = window.gameState;
 
-        const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x) +
-                      offsetDegrees * Math.PI / 180;
+        const angle = this.aimAtTarget() + offsetDegrees * Math.PI / 180;
         // Doom quotes a projectile's radius in map units, like everything else
         // in the bestiary; it is the ball's collision radius and the size it is
         // drawn. Converting it here was missing, so every fireball was 1.6x
@@ -2785,7 +3065,7 @@ export class Enemy {
             return;
         }
 
-        const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+        const angle = this.aimAtTarget();
         const speed = projectileSpeedPx(spec.chargeSpeed);
         this.charge = {
             vx: Math.cos(angle) * speed,

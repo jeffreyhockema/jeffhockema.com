@@ -21,7 +21,22 @@ import {
     MINI_BOSS_SPAWN_INTERVAL_MIN, MINI_BOSS_SPAWN_INTERVAL_MAX, PLAYER_DEATH_BEAT,
     MAP_COLS, MAP_ROWS, TILE_SIZE,
     getDifficultyMultipliers, TILE_PROP, TILE_SLIDE, TILE_SWITCH, TILE_SECRET_DOOR, AMMO_TYPES, WEAPON_STATS, TILE_EMPTY, TILE_WINDOW,
+    ARMOR, SIMULATION_STEPS_PER_SECOND, MAX_CATCH_UP_STEPS,
 } from './constants.js';
+
+/** One simulation step, in milliseconds */
+const STEP_MS = 1000 / SIMULATION_STEPS_PER_SECOND;
+
+/**
+ * How short of a whole step a frame may fall and still run one.
+ *
+ * A 60 Hz display's frames are 16.7 ms apart only on average: they jitter by a
+ * millisecond or so. With an exact threshold that jitter would run no step on
+ * one frame and two on the next -- a visible judder at exactly the refresh rate
+ * the game is tuned for. With this slack a 60 Hz display runs one step every
+ * frame; 90, 120 and 144 Hz displays still come out at 60 steps a second.
+ */
+const STEP_SLACK_MS = STEP_MS * 0.15;
 import { generateMaze, validateMapConnectivity, createFallbackMap } from './map-generator.js';
 import { Player, Enemy, Boss, MiniBoss } from './entities.js';
 import { pickMonsterType, NOISE_RANGE_TILES } from './monsters.js';
@@ -29,13 +44,13 @@ import { blocksSightAt } from './utils.js';
 import { registerDoors, updateDoors } from './doors.js';
 import { camera, shuffleArray } from './utils.js';
 import { resetLighting, updateLighting } from './lighting.js';
-import { HealthPack, AmmoPack, bulletHitFraction, applyBulletHit, WeaponPack, Powerup} from './weapons.js';
+import { HealthPack, AmmoPack, bulletHitFraction, applyBulletHit, WeaponPack, Powerup, ArmorPickup } from './weapons.js';
 import { isSolidDecor } from './decor.js';
 import { resetParticles, updateParticles } from './particles.js';
 import {
-    playLevelCompleteSound, playGameOverSound, playDoorOpenSound, playDoorCloseSound,
+    playPlayerDeathSound, playDoorOpenSound, playDoorCloseSound,
     playSecretDoorOpenSound, playTeleportSound, playSwitchSound,
-    playPowerupSound
+    playPowerupSound, playArmorPickupSound, setMenuSilence
 } from './audio-system.js';
 import { resetInputState } from './input-handler.js';
 import { isOnTrigger, openCloset, pickTeleportSpots } from './traps.js';
@@ -135,6 +150,31 @@ function makeAmmoPack(x, y, type, big = false, scale = 1) {
     return new AmmoPack(x, y, look.weapon, amount, look.color, look.char, big);
 }
 
+/**
+ * How much armour a level lays out in the open (see placeLevelArmor). Secrets
+ * add their own: the prize secret's MegaArmor or megasphere and the minor
+ * secrets' green armour are planned in js/map-generator.js.
+ *
+ * Doom's maps hand out armour in three ways, and these follow them. Green
+ * armour turns up on most maps from the first (E1M1 has one), usually once;
+ * the MegaArmor is rare, late, and more often hidden than not; armour bonuses
+ * are scattered in short rows along a path, a point each, so that they are
+ * worth almost nothing alone and something when the player follows them.
+ *
+ * Against the health on the floor -- a quarter of the rooms hold a 25-point
+ * medikit -- one green armour is worth about two medikits over the fights it
+ * soaks, so a level that rolls one is a little kinder and no more.
+ */
+const ARMOR_PLACEMENT = {
+    GREEN_CHANCE: 0.6,           // Chance of a green armour, past level 1 (which always has one)
+    BLUE_FROM_LEVEL: 6,          // No MegaArmor in the open before this
+    BLUE_CHANCE: 0.15,           // Chance of one from then on
+    BONUS_LINES_MIN: 1,          // Rows of armour bonuses a level
+    BONUS_LINES_MAX: 3,
+    BONUS_LINE_MIN: 3,           // Bonuses in a row, where the room has space
+    BONUS_LINE_MAX: 5,
+};
+
 export class GameState {
     /**
      * Creates a new game state instance
@@ -144,6 +184,11 @@ export class GameState {
         this.gameRunning = false;
         this.gameOver = false;
         this.isLevelCompleting = false;
+
+        // Set while the pause menu holds a level mid-play (see pause()). The
+        // simulation is stopped as it is on any menu, but unlike the others the
+        // level is still there to go back to, and the renderer keeps showing it.
+        this.paused = false;
 
         // Set while the end-of-level tally is on screen: the next level does
         // not start until the player asks for it (see continueToNextLevel).
@@ -177,6 +222,7 @@ export class GameState {
         this.ammoPacks = [];
         this.weaponPacks = [];
         this.powerups = [];
+        this.armorPickups = [];      // Green, blue and bonus armour on the floor
         
         // World state
         this.gameMap = null;
@@ -207,8 +253,16 @@ export class GameState {
         // has something to raise. Recomputed every frame in updateEnemies().
         this.corpsesPersist = false;
 
-        // Coordinate display cheat
+        // Position readout, toggled by IDMYPOS
         this.showCoordinates = false;
+
+        // IDDT's map cheat, cycled by each use: 0 off, 1 the whole level on the
+        // minimap, 2 the level and every thing on it. Doom keeps it until it is
+        // cycled back off, across levels.
+        this.mapCheat = 0;
+
+        // The message line in the top-left corner (see postMessage)
+        this.hudMessage = null;
 
         // Performance panel, toggled with F3. Off by default: it is a tool for
         // working on the renderer, not part of the game.
@@ -240,6 +294,8 @@ export class GameState {
         this.gameOver = false;
         this.nextMiniBossSpawnLevel = 0;
         this.runStats = this.freshRunStats();
+        this.mapCheat = 0;
+        this.hudMessage = null;
 
         // Create player at default position
         this.player = new Player(400, 300); // Will be repositioned by level init
@@ -297,6 +353,7 @@ export class GameState {
         this.updateUIElements();
         this.spawnLevelEntities();
         this.placeLevelAmmo();
+        this.placeLevelArmor();
         this.spawnSecretLoot();
         this.armTraps();
 
@@ -402,6 +459,11 @@ export class GameState {
             // Pistol and Knife stayed at their level-1 damage for the whole run.
             this.player.refreshWeaponDamage();
 
+            // Power-ups end with the level they were found on, as Doom's did
+            // (G_PlayerFinishLevel). God mode and no-clipping are cheats, not
+            // power-ups, and carry on.
+            this.player.clearPowers?.();
+
             // Reset keys for non-boss levels
             if (!this.isBossLevel) {
                 this.player.keysCollected = { red: false, yellow: false, blue: false };
@@ -420,14 +482,10 @@ export class GameState {
         this.player?.updateKeyUI();
         this.player?.updateWeaponUI();
         this.player?.updateHealthDisplay();
+        this.player?.updateArmorDisplay?.();
         this.player?.updateScoreDisplay();
-        
-        // Update level display
-        const waveDisplay = document.getElementById('waveDisplay');
-        if (waveDisplay) {
-            waveDisplay.textContent = this.currentLevel;
-        }
-        
+        // The level number is not on the status bar: the canvas draws it, top left.
+
         // Seed lighting so the first rendered frame is already lit correctly
         if (this.player && this.gameMap) {
             updateLighting(this);
@@ -446,6 +504,7 @@ export class GameState {
         this.ammoPacks = [];
         this.weaponPacks = [];
         this.powerups = [];
+        this.armorPickups = [];
         this.explosions = [];
         this.temporaryVisualEffects = [];
         
@@ -744,8 +803,9 @@ export class GameState {
         this.isLevelCompleting = true;
         console.log(`GameState: Level ${this.currentLevel} completed`);
 
-        // Play level completion sound
-        playLevelCompleteSound();
+        // No sound of its own. There used to be one, Doom's switch, but the
+        // tally opens on this same frame, so it was a sound the menu made, and
+        // the menus are silent (setOverlay silences the game).
 
         // Stop game loop during transition
         this.gameRunning = false;
@@ -834,6 +894,23 @@ export class GameState {
     }
 
     /**
+     * Puts a line of text on the HUD message line, Doom's top-left corner
+     * message, replacing whatever was there. The renderer shows it for
+     * HUD_MESSAGE.DURATION_MS.
+     *
+     * Timed on the wall clock rather than in game frames, so a message posted
+     * as the level changes is still read out over the next one rather than
+     * waiting on a loop that has stopped.
+     *
+     * @param {string} text - What to say
+     */
+    postMessage(text) {
+        const now = (typeof performance !== 'undefined' && performance.now)
+            ? performance.now() : Date.now();
+        this.hudMessage = { text, postedAt: now };
+    }
+
+    /**
      * Shows game over screen
      */
     showGameOverScreen() {
@@ -844,8 +921,9 @@ export class GameState {
         this.gameRunning = false;
         this.clearLevelTransition();
 
-        // Play game over sound
-        playGameOverSound();
+        // The death cry was played here, a beat after the death itself, which
+        // made it the Game Over screen's sound. It plays as the marine falls
+        // now (beginPlayerDeath), and the screen is silent like every menu.
 
         this.setOverlay({
             title: "Game Over",
@@ -868,8 +946,13 @@ export class GameState {
     showStartScreen() {
         console.log("GameState: Showing start screen");
 
+        // Quitting from the pause menu lands here. The run is abandoned, not
+        // held: nothing may resume it, and the renderer stops showing it.
+        this.paused = false;
+
         this.setOverlay({
             title: "Top-Down Doom-like",
+            logo: true,
             text: "Pick a difficulty and start your mission.",
             primary: 'start',
             primaryLabel: 'Start Game',
@@ -949,7 +1032,8 @@ export class GameState {
     /**
      * The player picked something up.
      *
-     * @param {string} [kind] - 'key', 'weapon', 'health' or 'ammo'; unused for now
+     * @param {string} [kind] - 'key', 'weapon', 'health', 'ammo', 'armor' or
+     *                        'powerup'; unused for now
      */
     recordItem(kind) {
         this.levelStats.items++;
@@ -1063,6 +1147,8 @@ export class GameState {
      *
      * @param {Object} options
      * @param {string} options.title - The heading
+     * @param {boolean} [options.logo] - Show the TDDL logo in place of the
+     *        heading; the logo spells out the name itself
      * @param {string} [options.text] - A line under it; hidden when empty
      * @param {Array|null} [options.rows] - Tally rows for renderSummary(), or none
      * @param {string} [options.primary] - 'start' | 'restart' (the restart button),
@@ -1071,19 +1157,29 @@ export class GameState {
      * @param {boolean} [options.showDifficulty] - Show the difficulty picker
      * @param {boolean} [options.showInstructions] - Show the Instructions button
      * @param {boolean} [options.showMainMenu] - Show the Main Menu button
-     * @param {string} [options.hint] - Small print under the buttons
+     * @param {string} [options.hint] - Small print under the buttons; keyboard
+     *        hints, so left blank while the touch controls are in use
      */
-    setOverlay({ title, text = '', rows = null, primary = 'none', primaryLabel = '',
+    setOverlay({ title, logo = false, text = '', rows = null, primary = 'none', primaryLabel = '',
                  showDifficulty = false, showInstructions = false, showMainMenu = false,
                  hint = '' }) {
+        // Every one of these screens is a menu, and the menus are silent. First,
+        // before anything else this frame can play: the tally opens mid-update,
+        // with the rest of the frame's monsters still to move and cry out.
+        setMenuSilence(true);
+
         const el = (id) => document.getElementById(id);
         const show = (id, on, mode = 'block') => {
             const element = el(id);
             if (element) element.style.display = on ? mode : 'none';
         };
 
+        show('titleLogo', logo);
         const titleEl = el('messageTitle');
-        if (titleEl) titleEl.textContent = title;
+        if (titleEl) {
+            titleEl.textContent = title;
+            titleEl.style.display = logo ? 'none' : '';
+        }
 
         const textEl = el('messageText');
         if (textEl) {
@@ -1108,8 +1204,12 @@ export class GameState {
             if (primaryLabel) restart.textContent = primaryLabel;
         }
 
+        // Every hint names a key, which is no help on a phone with no keyboard;
+        // the buttons above it are the whole instruction there.
+        const touchUi = typeof document !== 'undefined' &&
+            document.body?.classList?.contains('touch-ui');
         const hintEl = el('overlayHint');
-        if (hintEl) hintEl.textContent = hint;
+        if (hintEl) hintEl.textContent = touchUi ? '' : hint;
 
         const overlay = el('messageOverlay');
         if (overlay) {
@@ -1132,11 +1232,33 @@ export class GameState {
         if (this.gameLoopId) {
             cancelAnimationFrame(this.gameLoopId);
         }
+
+        // Every way into play comes through here -- a new game, Continue from
+        // the tally, Resume from the pause menu -- so this is where the sound
+        // that the menu silenced comes back.
+        setMenuSilence(false);
+
+        // Time spent in a menu, paused or with the tab hidden is not owed to
+        // the simulation: start counting afresh, with the first step at once.
+        this.lastStepAt = null;
+        this.stepDebt = 0;
         this.gameLoop();
     }
 
     /**
-     * Main game loop: one simulation step per animation frame.
+     * @returns {number} The simulation's clock, in milliseconds. A method so
+     *   the tests can drive the loop on a clock of their own.
+     */
+    simulationNow() {
+        return (typeof performance !== 'undefined' && performance.now)
+            ? performance.now() : Date.now();
+    }
+
+    /**
+     * Main game loop: as many fixed simulation steps as the time since the last
+     * frame calls for (SIMULATION_STEPS_PER_SECOND), so the game runs at the
+     * same speed on a 60 Hz monitor, a 120 Hz phone and a machine struggling to
+     * draw 30 frames a second.
      *
      * Update only. Drawing is GameController's render loop, which runs on its own
      * requestAnimationFrame so a thrown frame of simulation cannot stop the
@@ -1144,14 +1266,30 @@ export class GameState {
      * hook kept for that reason -- see it.
      */
     gameLoop() {
-        this.frameCount++;
-        
         if (!this.gameRunning || this.gameOver || this.isLevelCompleting) {
             return;
         }
-        
+
         try {
-            this.update();
+            const now = this.simulationNow();
+            if (this.lastStepAt == null) this.lastStepAt = now - STEP_MS;
+            this.stepDebt = Math.min((this.stepDebt || 0) + (now - this.lastStepAt),
+                                     STEP_MS * MAX_CATCH_UP_STEPS);
+            this.lastStepAt = now;
+
+            while (this.stepDebt >= STEP_MS - STEP_SLACK_MS) {
+                // Slack taken now is paid back later, but never banked beyond
+                // it: a display a hair slower than 60 Hz runs one step a frame
+                // rather than eventually skipping one.
+                this.stepDebt = Math.max(this.stepDebt - STEP_MS, -STEP_SLACK_MS);
+
+                // Counts steps, not frames: monster hearing and spawn timing
+                // are measured in it.
+                this.frameCount++;
+                this.update();
+                if (!this.gameRunning || this.gameOver || this.isLevelCompleting) break;
+            }
+
             this.render();
             this.gameLoopId = requestAnimationFrame(() => this.gameLoop());
         } catch (error) {
@@ -1167,6 +1305,7 @@ export class GameState {
      * @param {Error} error - The error that occurred
      */
     showCriticalError(error) {
+        setMenuSilence(true);
         const messageOverlay = document.getElementById('messageOverlay');
         const messageTitle = document.getElementById('messageTitle');
         const messageText = document.getElementById('messageText');
@@ -1244,6 +1383,9 @@ export class GameState {
         // once the animation has played. Until then isPlayerDying() is what marks
         // the player as done for.
         this.playerDeathTimer = PLAYER_DEATH_BEAT;
+
+        // Doom's scream comes as the marine falls, not with the screen after
+        playPlayerDeathSound();
     }
 
     /**
@@ -1395,8 +1537,30 @@ export class GameState {
             }
         }
 
-        // Powerups. A soulsphere at 200 health stays on the floor; a backpack is
-        // always worth something.
+        // Armour. A green armour is refused at 100 points or more and a
+        // MegaArmor at 200, and stays on the floor (P_GiveArmor); a bonus is
+        // always taken, as in Doom, where a line of them is cleared by walking
+        // it whatever the player is wearing.
+        const armor = this.armorPickups || [];
+        for (let i = armor.length - 1; i >= 0; i--) {
+            const item = armor[i];
+            if (Math.hypot(this.player.x - item.x, this.player.y - item.y) >= this.player.radius + item.radius) continue;
+
+            let taken = false;
+            if (item.kind === 'bonus') taken = this.player.addArmorBonus();
+            else if (item.kind === 'blue') taken = this.player.giveArmor(ARMOR.BLUE);
+            else taken = this.player.giveArmor(ARMOR.GREEN);
+            if (taken) {
+                playArmorPickupSound();
+                this.recordItem('armor');
+                armor[i] = armor[armor.length - 1];
+                armor.pop();
+            }
+        }
+
+        // Powerups. A soulsphere at 200 health stays on the floor, and so does a
+        // megasphere with nothing left to give; a backpack is always worth
+        // something.
         for (let i = this.powerups.length - 1; i >= 0; i--) {
             const item = this.powerups[i];
             if (Math.hypot(this.player.x - item.x, this.player.y - item.y) >= this.player.radius + item.radius) continue;
@@ -1404,6 +1568,14 @@ export class GameState {
             let taken = false;
             if (item.kind === 'soulsphere') {
                 taken = this.player.gainHealth(100, { cap: 200, silent: true });
+            } else if (item.kind === 'megasphere') {
+                // Doom II's: health to 200 and a MegaArmor, both at once. Doom
+                // takes it unconditionally; here, as with the soulsphere, it
+                // stays on the floor only when it would change nothing.
+                const healed = this.player.gainHealth(ARMOR.MEGASPHERE_HEALTH,
+                    { cap: ARMOR.MEGASPHERE_HEALTH, silent: true });
+                const armored = this.player.giveArmor(ARMOR.BLUE);
+                taken = healed || armored;
             } else if (item.kind === 'backpack') {
                 this.player.addBackpack();
                 taken = true;
@@ -1750,6 +1922,93 @@ export class GameState {
     }
 
     /**
+     * Lays armour out through the level's rooms (see ARMOR_PLACEMENT): a green
+     * armour on most levels, a rare MegaArmor late on, and a few short rows of
+     * armour bonuses. As with the ammo, the player's own room gets none of it,
+     * and nothing lands on or beside the start square.
+     */
+    placeLevelArmor() {
+        if (!this.gameMap || !this.rooms || this.rooms.length === 0) return;
+
+        const rooms = this.rooms.filter(room => room && !this.isPlayerStartRoom(room));
+        if (rooms.length === 0) return;
+        const anyRoom = () => rooms[Math.floor(Math.random() * rooms.length)];
+        const level = this.currentLevel;
+
+        const placeOne = (kind) => {
+            // A few rooms may be too cluttered to take it; try another.
+            for (let attempt = 0; attempt < 6; attempt++) {
+                const spot = this.freeTileIn(anyRoom());
+                if (spot) {
+                    this.armorPickups.push(new ArmorPickup(
+                        (spot.c + 0.5) * TILE_SIZE, (spot.r + 0.5) * TILE_SIZE, kind));
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (level === 1 || Math.random() < ARMOR_PLACEMENT.GREEN_CHANCE) placeOne('green');
+        if (level >= ARMOR_PLACEMENT.BLUE_FROM_LEVEL && Math.random() < ARMOR_PLACEMENT.BLUE_CHANCE) {
+            placeOne('blue');
+        }
+
+        const lines = ARMOR_PLACEMENT.BONUS_LINES_MIN + Math.floor(Math.random() *
+            (ARMOR_PLACEMENT.BONUS_LINES_MAX - ARMOR_PLACEMENT.BONUS_LINES_MIN + 1));
+        for (let i = 0; i < lines; i++) {
+            this.placeArmorBonusLine(anyRoom());
+        }
+    }
+
+    /**
+     * A short row of armour bonuses across a room, along its longer side more
+     * often than not. A row stops at the first thing in its way -- a prop, a
+     * pool, another pickup -- and one that would be a single bonus is tried
+     * again somewhere else, since a lone bonus is no row.
+     *
+     * @param {{x: number, y: number, width: number, height: number}} room - Tile bounds
+     * @returns {number} How many bonuses were placed
+     */
+    placeArmorBonusLine(room) {
+        if (!room) return 0;
+        for (let attempt = 0; attempt < 8; attempt++) {
+            const across = room.width >= room.height ? Math.random() < 0.75 : Math.random() < 0.25;
+            const span = across ? room.width : room.height;
+            const want = ARMOR_PLACEMENT.BONUS_LINE_MIN + Math.floor(Math.random() *
+                (ARMOR_PLACEMENT.BONUS_LINE_MAX - ARMOR_PLACEMENT.BONUS_LINE_MIN + 1));
+            const length = Math.min(span, want);
+            if (length < 2) return 0;
+
+            const c0 = room.x + Math.floor(Math.random() * (room.width - (across ? length - 1 : 0)));
+            const r0 = room.y + Math.floor(Math.random() * (room.height - (across ? 0 : length - 1)));
+            const tiles = [];
+            for (let i = 0; i < length; i++) {
+                const c = c0 + (across ? i : 0);
+                const r = r0 + (across ? 0 : i);
+                if (!this.isPickupTileFree(c, r)) break;
+                tiles.push({ c, r });
+            }
+            if (tiles.length < 2) continue;
+
+            for (const { c, r } of tiles) {
+                this.armorPickups.push(new ArmorPickup((c + 0.5) * TILE_SIZE, (r + 0.5) * TILE_SIZE, 'bonus'));
+            }
+            return tiles.length;
+        }
+        return 0;
+    }
+
+    /**
+     * @param {{x: number, y: number, width: number, height: number}} room - Tile bounds
+     * @returns {boolean} True if the player starts the level inside this room
+     */
+    isPlayerStartRoom(room) {
+        const start = this.playerSpawn;
+        return !!start && start.c >= room.x && start.c < room.x + room.width &&
+            start.r >= room.y && start.r < room.y + room.height;
+    }
+
+    /**
      * A random tile in a room that a pickup can sit on: bare floor, no prop on
      * it, and not the player's own square.
      *
@@ -1775,7 +2034,7 @@ export class GameState {
         if (!this.gameMap[r] || this.gameMap[r][c] !== TILE_EMPTY) return false;
         if (this.decor && isSolidDecor(this.decor[r * MAP_COLS + c])) return false;
         if (this.playerSpawn && Math.abs(this.playerSpawn.c - c) <= 1 && Math.abs(this.playerSpawn.r - r) <= 1) return false;
-        for (const pack of this.ammoPacks) {
+        for (const pack of [...this.ammoPacks, ...(this.armorPickups || [])]) {
             if (Math.floor(pack.x / TILE_SIZE) === c && Math.floor(pack.y / TILE_SIZE) === r) return false;
         }
         return true;
@@ -1783,8 +2042,8 @@ export class GameState {
 
     /**
      * Spawns the entity half of the secret rooms' loot. Weapons and medikits in
-     * a secret are map tiles the generator laid down; ammo and powerups are
-     * entities, so they wait until the level's arrays exist.
+     * a secret are map tiles the generator laid down; ammo, armour and powerups
+     * are entities, so they wait until the level's arrays exist.
      */
     spawnSecretLoot() {
         for (const suite of this.secretSuites || []) {
@@ -1795,6 +2054,8 @@ export class GameState {
                     this.ammoPacks.push(makeAmmoPack(x, y, item.type, !!item.big));
                 } else if (item.kind === 'powerup') {
                     this.powerups.push(new Powerup(x, y, item.powerup));
+                } else if (item.kind === 'armor') {
+                    this.armorPickups.push(new ArmorPickup(x, y, item.armor));
                 }
             }
         }
@@ -1835,6 +2096,7 @@ export class GameState {
     reset() {
         this.gameRunning = false;
         this.gameOver = false;
+        this.paused = false;
         this.isLevelCompleting = false;
         this.awaitingContinue = false;
         this.levelStats = this.freshLevelStats();
@@ -1851,11 +2113,14 @@ export class GameState {
         this.ammoPacks = [];
         this.weaponPacks = [];
         this.powerups = [];
+        this.armorPickups = [];
         this.gameMap = null;
         this.tileStyles = null;
         this.lightMap = null;
         this.exploredMap = null;
         this.visionMap = null;
+        this.mapCheat = 0;
+        this.hudMessage = null;
 
         // Level-type and spawn bookkeeping leaked across restarts: a run that ended
         // on a mini-boss level carried nextMiniBossSpawnLevel into the new game.
@@ -1880,22 +2145,42 @@ export class GameState {
     }
 
     /**
-     * Pauses the game
+     * Holds the level where it is: the simulation stops, and so does the
+     * sound. Only a level being played can be paused -- not a menu, the tally
+     * or Game Over, where there is nothing running to hold.
+     *
+     * Releasing held input is the pause menu's job (js/pause-menu.js), since
+     * the touch sticks belong to the page rather than to the game.
+     *
+     * @returns {boolean} True if the game was running and is now paused
      */
     pause() {
+        if (!this.gameRunning || this.gameOver || this.paused) return false;
+
+        this.paused = true;
         this.gameRunning = false;
         if (this.gameLoopId) {
             cancelAnimationFrame(this.gameLoopId);
+            this.gameLoopId = null;
         }
+        setMenuSilence(true);
+        return true;
     }
 
     /**
-     * Resumes the game
+     * Picks the paused level up again. Does nothing unless pause() is what
+     * stopped it: this used to restart the loop whatever the state, so a stray
+     * call on the start screen would have run an abandoned level behind it.
+     *
+     * @returns {boolean} True if play resumed
      */
     resume() {
-        if (!this.gameOver) {
-            this.gameRunning = true;
-            this.startGameLoop();
-        }
+        if (!this.paused) return false;
+        this.paused = false;
+        if (this.gameOver) return false;
+
+        this.gameRunning = true;
+        this.startGameLoop();
+        return true;
     }
 }

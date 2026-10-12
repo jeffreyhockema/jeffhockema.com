@@ -59,7 +59,7 @@ import { isGlowingTerrain } from './terrain.js';
 import { DOORS, getDoors, isDoorOpen, isKeyedDoorTile } from './doors.js';
 import { collectDecorLights } from './decor.js';
 import { SWITCHES, getSlides, isSlideOpen } from './switches.js';
-import { hasSectors, updateSectors, ambientForTile } from './sectors.js';
+import { hasAmbient, updateSectors, ambientForTile, setFullBright } from './sectors.js';
 
 // =============================================================================
 // TUNING
@@ -1875,7 +1875,12 @@ export function updateLighting(gameState) {
     // (js/sectors.js). Gated on the sight polygon exactly as a terrain glow is,
     // so a lit room is lit the moment you can see into it and black until then
     // -- the light tells you what is there, it does not hand you the map.
-    if (hasSectors()) {
+    //
+    // Light amplification is decided here, once a frame, from the player's
+    // power-ups: everything downstream (this pass, and the renderer's light
+    // mask) reads the same flag, so the lit grid and the lit picture agree.
+    setFullBright(Boolean(gameState.player?.isPowerShowing?.('infrared')));
+    if (hasAmbient()) {
         updateSectors(currentTimeMs());
         for (let r = 0; r < MAP_ROWS; r++) {
             const lightRow = lightMap[r];

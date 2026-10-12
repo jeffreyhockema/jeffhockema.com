@@ -147,6 +147,11 @@ export function generateMaze(cols, rows, isMainBossLevelLayout) {
     // populated and then played through by the verifier; only a level that is
     // genuinely completable AND genuinely gated by every one of its keys ships.
     for (let attempt = 0; attempt < MAP_GEN_CONFIG.REGULAR_LEVEL_ATTEMPTS; attempt++) {
+        // A failed attempt's secrets belong to a map that is thrown away. Kept,
+        // their loot was spawned at the same coordinates on the map that
+        // shipped -- ammo and armour inside solid rock, and a second "prize"
+        // with no weapon -- on the occasional level that took a retry.
+        secretSuites = [];
         const layout = buildDoomLayout(cols, rows, {
             keyCount: keyCountForLevel(),
             styleCount: WALL_STYLES.length,
@@ -247,6 +252,7 @@ export function generateMaze(cols, rows, isMainBossLevelLayout) {
     }
 
     console.warn("generateMaze: falling back to the legacy scatter-and-connect layout");
+    secretSuites = [];
     return generateLegacyMaze(cols, rows);
 }
 
@@ -1982,12 +1988,13 @@ function ammoKindsAtLevel(level) {
  * offers:
  *
  *   - a weapon one tier ahead of what the level would place, at the far end;
- *   - a soulsphere or a backpack, or failing those a medikit;
+ *   - a soulsphere or a backpack, or failing those a medikit -- and from
+ *     level 3 possibly a MegaArmor, from level 8 a megasphere (prizeSecretItem);
  *   - a box of ammo per chamber;
  *   - a third chamber earns a second medikit.
  *
- * Weapons and medikits are map tiles and go straight in; ammo and powerups are
- * entities, recorded for the game state to spawn.
+ * Weapons and medikits are map tiles and go straight in; ammo, armour and
+ * powerups are entities, recorded for the game state to spawn.
  *
  * @param {Array} map - 2D map array
  * @param {Object} suite - The suite record; its loot list is filled in
@@ -2002,11 +2009,10 @@ function stockPrizeSuite(map, suite) {
     const weaponSpot = take(true);
     if (weapon && weaponSpot) map[weaponSpot.r][weaponSpot.c] = weapon;
 
-    const roll = Math.random();
     const prize = take(true);
     if (prize) {
-        if (roll < 0.5) loot.push({ kind: 'powerup', powerup: 'soulsphere', c: prize.c, r: prize.r });
-        else if (roll < 0.85) loot.push({ kind: 'powerup', powerup: 'backpack', c: prize.c, r: prize.r });
+        const item = prizeSecretItem(level, Math.random());
+        if (item) loot.push({ ...item, c: prize.c, r: prize.r });
         else map[prize.r][prize.c] = TILE_HEALTH_PACK;
     }
 
@@ -2024,11 +2030,46 @@ function stockPrizeSuite(map, suite) {
 }
 
 /**
+ * The prize secret's big find, from a roll in [0, 1).
+ *
+ * Doom keeps its best armour where its spheres are: the MegaArmor is almost
+ * always behind a secret wall, and the megasphere is a Doom II thing, so it
+ * waits for the later levels. Each joins the draw by taking a share from the
+ * soulsphere; the backpack and the medikit keep theirs.
+ *
+ *   level 1-2   soulsphere 50%  backpack 35%                           medikit 15%
+ *   level 3-7   soulsphere 35%  backpack 25%  MegaArmor 25%              medikit 15%
+ *   level 8+    soulsphere 20%  backpack 25%  MegaArmor 25%  megasphere 15%  medikit 15%
+ *
+ * @param {number} level - Current level
+ * @param {number} roll - Uniform random number in [0, 1)
+ * @returns {Object|null} A loot entry without its position, or null for a medikit
+ */
+function prizeSecretItem(level, roll) {
+    const table = level >= 8
+        ? [['soulsphere', 0.20], ['megasphere', 0.15], ['backpack', 0.25], ['blue', 0.25]]
+        : level >= 3
+            ? [['soulsphere', 0.35], ['backpack', 0.25], ['blue', 0.25]]
+            : [['soulsphere', 0.50], ['backpack', 0.35]];
+
+    for (const [name, share] of table) {
+        if (roll < share) {
+            return name === 'blue'
+                ? { kind: 'armor', armor: 'blue' }
+                : { kind: 'powerup', powerup: name };
+        }
+        roll -= share;
+    }
+    return null;
+}
+
+/**
  * Stocks one of the level's other secrets: a small room with a small bonus.
- * Most of the time a single pickup -- a clip, a handful of shells, or a
- * medikit; sometimes a box of ammo with a medikit beside it. Never a weapon,
- * never a sphere: those are the prize secret's, so that a level with six
- * hidden rooms is still a level with one big find.
+ * Most of the time a single pickup -- a clip, a handful of shells, a medikit
+ * or, from level 2, now and then a green armour; sometimes a box of ammo with
+ * a medikit beside it. Never a weapon, never a sphere, never the MegaArmor:
+ * those are the prize secret's, so that a level with six hidden rooms is
+ * still a level with one big find.
  *
  * @param {Array} map - 2D map array
  * @param {Object} suite - The suite record; its loot list is filled in
@@ -2041,7 +2082,9 @@ function stockMinorSecret(map, suite) {
     if (Math.random() < 0.55) {
         const spot = take(false);
         if (!spot) return;
-        if (Math.random() < 0.4) map[spot.r][spot.c] = TILE_HEALTH_PACK;
+        const roll = Math.random();
+        if (roll < 0.4) map[spot.r][spot.c] = TILE_HEALTH_PACK;
+        else if (level >= 2 && roll < 0.55) suite.loot.push({ kind: 'armor', armor: 'green', c: spot.c, r: spot.r });
         else suite.loot.push({ kind: 'ammo', type: randomChoice(kinds), big: false, c: spot.c, r: spot.r });
         return;
     }

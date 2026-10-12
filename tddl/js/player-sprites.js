@@ -26,6 +26,8 @@
  * whatever is equipped. `death` is the one animation with no weapon.
  */
 
+import { whenImageReady } from './asset-preloader.js';
+
 /** Animation kinds present in the atlases. */
 export const PLAYER_ANIM = {
     IDLE: 'idle',
@@ -145,6 +147,27 @@ export function getPlayerAtlas(slug) {
 
     atlasImages.set(slug, image);
     return image;
+}
+
+/**
+ * Starts every character's atlas loading and reports when each is drawable.
+ *
+ * getPlayerAtlas() on its own only starts a download the first time the player
+ * is drawn -- after the level is already on screen, which is what left the
+ * marine as a blue dot for a moment on slow connections. The loading screen
+ * calls this as soon as the manifest is in, and holds the start menu until
+ * every one of these has settled. The images are the same cached elements
+ * getPlayerAtlas() hands the renderer, so nothing is fetched twice.
+ *
+ * @returns {Array<{name: string, ready: Promise<boolean>}>} One entry per
+ *          character; `ready` resolves true once that atlas is decoded, false
+ *          if it failed (the player then falls back to a shape)
+ */
+export function preloadPlayerAtlases() {
+    return slugList.map((slug) => ({
+        name: slug,
+        ready: whenImageReady(getPlayerAtlas(slug)),
+    }));
 }
 
 /**

@@ -12,8 +12,12 @@
  * art later is a matter of baking a new icon and naming it here.
  *
  * Icons are small (a few KB each), so unlike the character atlases they are all
- * fetched as soon as the manifest lands rather than on first use.
+ * fetched as soon as the manifest lands rather than on first use, and the
+ * loading screen waits on preloadItemIcons() so they are decoded before the
+ * first level is drawn.
  */
+
+import { whenImageReady } from './asset-preloader.js';
 
 /** Where the manifest and icons live, relative to the page. */
 const ICON_ROOT = 'sprites/items/';
@@ -65,6 +69,23 @@ export async function loadItemIcons(url = `${ICON_ROOT}manifest.json`) {
         images.clear();
         return false;
     }
+}
+
+/**
+ * Reports when each icon fetched by loadItemIcons() is drawable.
+ *
+ * Call after loadItemIcons() resolves; before that there are no images to wait
+ * for and this returns an empty list.
+ *
+ * @returns {Array<{name: string, ready: Promise<boolean>}>} One entry per icon;
+ *          `ready` resolves true once it is decoded, false if it failed (that
+ *          pickup then falls back to its lettered badge)
+ */
+export function preloadItemIcons() {
+    return [...images].map(([name, image]) => ({
+        name,
+        ready: whenImageReady(image),
+    }));
 }
 
 /**

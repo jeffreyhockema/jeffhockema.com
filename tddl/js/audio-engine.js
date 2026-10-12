@@ -105,6 +105,20 @@ const MASTER_SHELF_DB = -5;
  */
 const REVERB_HIGHPASS_HZ = 300;
 
+/**
+ * How quickly the mix fades out when a menu comes up, as a setTargetAtTime
+ * time constant: about a tenth of a second to silence. Quick enough that
+ * nothing is heard over the menu, slow enough not to click.
+ */
+const SILENCE_FADE = 0.025;
+
+/**
+ * How long after a menu comes up the sounds still playing are cut off, in
+ * milliseconds. By then the fade has taken them to nothing; cutting them means
+ * a death cry that was mid-scream does not pick up again when play resumes.
+ */
+const SILENCE_CUT_MS = 200;
+
 // =============================================================================
 // ENGINE STATE
 // =============================================================================
@@ -123,6 +137,9 @@ let driveCurves = {};           // Cached waveshaper curves by drive amount
 let activeVoices = 0;           // Voice budget accounting
 let userVolume = 0.9;           // Last requested master volume
 let muted = false;
+let silenced = false;           // A menu is up; see setSilenced()
+let silenceCutTimer = null;     // Pending cut of the voices a menu faded out
+const liveVoices = new Set();   // Every voice still sounding, for that cut
 
 // =============================================================================
 // CONTEXT LIFECYCLE
@@ -186,10 +203,18 @@ export async function startAudio() {
 }
 
 /**
+ * Whether a sound may start right now.
+ *
+ * False while a menu has the mix silenced (setSilenced), as well as before
+ * audio has started. Every voice, sample and cooldown goes through here, so
+ * that one check is what keeps a menu silent: nothing played behind it --
+ * a monster's last cry in the frame the tally opened, the low-health
+ * heartbeat -- even reaches the mix to be faded out.
+ *
  * @returns {boolean} True when it is safe to schedule sound right now
  */
 export function isReady() {
-    return !!ctx && ctx.state === 'running' && !!masterGain;
+    return !!ctx && ctx.state === 'running' && !!masterGain && !silenced;
 }
 
 /**
@@ -242,7 +267,7 @@ export function nowMs() {
  */
 function buildGraph() {
     masterGain = ctx.createGain();
-    masterGain.gain.value = muted ? 0 : userVolume;
+    masterGain.gain.value = masterLevel();
     masterGain.connect(ctx.destination);
 
     duckGain = ctx.createGain();
@@ -588,8 +613,10 @@ export function voice(options) {
     }
 
     activeVoices++;
+    liveVoices.add(out);
     setTimeout(() => {
         activeVoices = Math.max(0, activeVoices - 1);
+        liveVoices.delete(out);
         try { out.disconnect(); } catch (error) { /* already gone */ }
     }, Math.max(0, dur * 1000 + 120));
 
@@ -1018,6 +1045,16 @@ export function sustainedVoice(opts) {
 const samples = {};
 
 /**
+ * Loads still in flight, by name.
+ *
+ * The loading screen asks for each sample individually so it can count them
+ * towards its progress bar, while initializeAudio() has usually already asked
+ * for the whole set. Sharing the in-flight promise means the second request
+ * waits on the first rather than downloading every sound twice.
+ */
+const pendingSamples = {};
+
+/**
  * Fetches and decodes one sample.
  *
  * Decoding needs a context but not a running one, so this can be called at page
@@ -1028,8 +1065,24 @@ const samples = {};
  * @param {string} url - Where to fetch it from
  * @returns {Promise<boolean>} True if the sample is now playable
  */
-export async function loadSample(name, url) {
-    if (samples[name]) return true;
+export function loadSample(name, url) {
+    if (samples[name]) return Promise.resolve(true);
+    if (!pendingSamples[name]) {
+        pendingSamples[name] = fetchSample(name, url).finally(() => {
+            delete pendingSamples[name];
+        });
+    }
+    return pendingSamples[name];
+}
+
+/**
+ * The fetch and decode behind loadSample(), without the de-duplication.
+ *
+ * @param {string} name - Key the sample is played back by
+ * @param {string} url - Where to fetch it from
+ * @returns {Promise<boolean>} True if the sample is now playable
+ */
+async function fetchSample(name, url) {
     if (typeof fetch !== 'function' || !ensureContext()) return false;
 
     try {
@@ -1162,9 +1215,19 @@ export function duck(amount, hold, recover) {
  */
 export function setMasterVolume(value) {
     userVolume = Math.max(0, Math.min(1, value));
-    if (masterGain && !muted) {
+    if (masterGain && !muted && !silenced) {
         masterGain.gain.setTargetAtTime(userVolume, ctx.currentTime, 0.02);
     }
+}
+
+/**
+ * The level the master gain should sit at: the user's volume, or nothing
+ * while muted or while a menu is up.
+ *
+ * @returns {number}
+ */
+function masterLevel() {
+    return (muted || silenced) ? 0 : userVolume;
 }
 
 /**
@@ -1182,7 +1245,7 @@ export function getMasterVolume() {
 export function setMuted(value) {
     muted = !!value;
     if (masterGain) {
-        masterGain.gain.setTargetAtTime(muted ? 0 : userVolume, ctx.currentTime, 0.02);
+        masterGain.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.02);
     }
     return muted;
 }
@@ -1192,6 +1255,72 @@ export function setMuted(value) {
  */
 export function isMuted() {
     return muted;
+}
+
+/**
+ * Silences the game behind a menu, or lets it be heard again.
+ *
+ * Separate from setMuted(), which is the player's own choice and must survive
+ * every menu: a player who muted the game does not want unpausing to unmute
+ * it. Both hold the master at zero; the sound comes back only when neither
+ * does.
+ *
+ * Silencing does three things, so that a menu is silent from the moment it
+ * opens to the moment it closes:
+ *   - no new sound may start (isReady() is false);
+ *   - the master fades out over about a tenth of a second, taking whatever is
+ *     still ringing -- a death cry, an explosion, the reverb's tail -- with it;
+ *   - once that fade is done, the voices still playing are cut off, so a
+ *     sound that was mid-way through when the menu opened does not carry on
+ *     from where it was when play resumes.
+ *
+ * The AudioContext itself keeps running. Suspending it would also freeze those
+ * half-played sounds rather than end them, and resuming it again needs a user
+ * gesture that a resume by code may not have.
+ *
+ * @param {boolean} value - True while a menu is up
+ * @returns {boolean} The new silenced state
+ */
+export function setSilenced(value) {
+    const next = !!value;
+    if (next === silenced) return silenced;
+    silenced = next;
+
+    clearTimeout(silenceCutTimer);
+    silenceCutTimer = null;
+
+    if (masterGain && ctx) {
+        try {
+            masterGain.gain.setTargetAtTime(masterLevel(), ctx.currentTime, silenced ? SILENCE_FADE : 0.02);
+        } catch (error) { /* context went away mid-schedule */ }
+    }
+
+    if (silenced) {
+        silenceCutTimer = setTimeout(() => {
+            silenceCutTimer = null;
+            if (silenced) cutLiveVoices();
+        }, SILENCE_CUT_MS);
+    }
+    return silenced;
+}
+
+/**
+ * @returns {boolean} True while a menu has the game silenced
+ */
+export function isSilenced() {
+    return silenced;
+}
+
+/**
+ * Disconnects every voice still sounding. Their sources play on into nothing
+ * and are collected when they end; their own cleanup timers still run and
+ * still settle the voice budget.
+ */
+function cutLiveVoices() {
+    for (const out of liveVoices) {
+        try { out.disconnect(); } catch (error) { /* already gone */ }
+    }
+    liveVoices.clear();
 }
 
 /**
@@ -1213,6 +1342,9 @@ export function disposeEngine() {
     buses = {};
     noiseBuffers = {};
     activeVoices = 0;
+    liveVoices.clear();
+    clearTimeout(silenceCutTimer);
+    silenceCutTimer = null;
 }
 
 /**
@@ -1228,6 +1360,7 @@ export function engineStats() {
         samples: Object.keys(samples).length,
         volume: userVolume,
         muted,
+        silenced,
         sampleRate: ctx ? ctx.sampleRate : 0,
     };
 }

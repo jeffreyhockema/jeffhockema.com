@@ -545,7 +545,9 @@ export class Explosion {
         // Doom's marine could rocket-jump, and paid for it.
         if (gameState.player && gameState.player.health > 0) {
             const amount = blastDamage(gameState.player);
-            if (amount > 0) gameState.player.takeDamage(amount);
+            // The blast's centre goes along so the status bar's face can
+            // flinch from the right side.
+            if (amount > 0) gameState.player.takeDamage(amount, this);
         }
     }
 
@@ -764,11 +766,16 @@ export class WeaponPack {
  *
  *   soulsphere  +100 health, up to 200. The one thing that takes a marine past
  *               a full bar, and the reason to hunt for the hidden wall.
+ *   megasphere  Doom II's: health to 200 and a MegaArmor at once. Only the
+ *               later levels' prize secrets hold one.
  *   backpack    Doubles the ammo the player can carry, and comes with a clip
  *               of everything.
  */
 export const POWERUPS = {
     soulsphere: { color: '#3c6cff', rim: '#c8d8ff' },
+    // Pale gold rather than the soulsphere's blue, so the two orbs are told
+    // apart from across a room -- Doom's megasphere is the paler one too.
+    megasphere: { color: '#c9a640', rim: '#fff3c4' },
     backpack: { color: '#8a5a2b', rim: '#d9b482' },
 };
 
@@ -829,6 +836,189 @@ export class Powerup {
         ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
         ctx.fill();
     }
+}
+
+// =============================================================================
+// ARMOUR
+// =============================================================================
+
+/**
+ * How each armour pickup looks. What each one does is Player.giveArmor() and
+ * Player.addArmorBonus(), with Doom's numbers in ARMOR (constants.js).
+ *
+ *   green   a vest in the green of Doom's security armour
+ *   blue    the same vest in the MegaArmor's blue
+ *   bonus   a small helmet that flickers between the two, as Doom's armour
+ *           bonus cycles its colours
+ *
+ * `body` is the fill, `shade` the outline and seams, `light` the lit edge of
+ * the chest plates, `glow` the pool of light under it.
+ */
+export const ARMOR_PICKUPS = {
+    green: {
+        sizing: 'armor',
+        body: '#3fae3a', shade: '#174d16', light: '#a4f09c', glow: '#3fd13a',
+    },
+    blue: {
+        sizing: 'armor',
+        body: '#3d6df2', shade: '#14266b', light: '#b4c8ff', glow: '#4a7dff',
+    },
+    bonus: {
+        sizing: 'armorBonus',
+        body: '#4cbf74', shade: '#16452c', light: '#c4f5d4', glow: '#45d08a',
+        // The second colour of its flicker
+        alt: { body: '#4f86e8', shade: '#172e66', light: '#c8d8ff', glow: '#5a8cff' },
+    },
+};
+
+/**
+ * Armour lying on the floor: a green armour, a MegaArmor or an armour bonus.
+ *
+ * An entity rather than a map tile, like ammo, so a line of bonuses can sit
+ * on any free floor and the level can be laid out after the map is built.
+ * There is no armour in the sprite pack, so it is drawn here; it sits on a
+ * faint pool of its own colour, as the powerups do, because these rooms are
+ * dark and a green vest on a dark floor is otherwise nearly invisible.
+ */
+export class ArmorPickup {
+    /**
+     * @param {number} x - World X position
+     * @param {number} y - World Y position
+     * @param {string} kind - An ARMOR_PICKUPS key: 'green', 'blue' or 'bonus'
+     */
+    constructor(x, y, kind) {
+        this.x = x;
+        this.y = y;
+        this.kind = ARMOR_PICKUPS[kind] ? kind : 'green';
+        this.sizing = ITEM_DRAW_SIZE[ARMOR_PICKUPS[this.kind].sizing];
+        this.radius = this.sizing.weight / 2;     // Walk onto it to take it
+        this.phase = Math.random() * Math.PI * 2;
+    }
+
+    /**
+     * Renders the vest or helmet over its pool of light.
+     *
+     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+     */
+    draw(ctx) {
+        let look = ARMOR_PICKUPS[this.kind];
+        // Doom's bonus helmet runs through its colours about three times a
+        // second; two steps of it are enough to read as the same shimmer.
+        if (look.alt && Math.sin(Date.now() / 160 + this.phase) < 0) {
+            look = { ...look, ...look.alt };
+        }
+        const size = this.sizing.weight;
+
+        ctx.save();
+        const glowRadius = size * 0.95;
+        const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowRadius);
+        glow.addColorStop(0, look.glow);
+        glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.globalAlpha = 0.32;
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        if (this.kind === 'bonus') {
+            drawHelmet(ctx, this.x, this.y, size, look);
+        } else {
+            drawVest(ctx, this.x, this.y, size, look);
+        }
+        ctx.restore();
+    }
+}
+
+/**
+ * A sleeveless armoured vest, front on: two shoulder straps either side of a
+ * scooped neck, cut-away armholes, a hem that dips at the middle, and two
+ * chest plates either side of a seam. At 18 pixels across the shape is what
+ * reads, so it is kept to a silhouette with a couple of lines on it.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+ * @param {number} cx - Centre X
+ * @param {number} cy - Centre Y
+ * @param {number} size - Height of the vest; it is a little narrower
+ * @param {{body: string, shade: string, light: string}} look - Colours
+ */
+function drawVest(ctx, cx, cy, size, look) {
+    const w = size * 0.92;
+    const h = size;
+    // Unit square -> vest: x in [-0.5, 0.5] across, y in [-0.5, 0.5] down
+    const px = (u) => cx + u * w;
+    const py = (v) => cy + v * h;
+
+    ctx.beginPath();
+    ctx.moveTo(px(-0.30), py(-0.50));                                // left strap
+    ctx.lineTo(px(-0.13), py(-0.50));
+    ctx.quadraticCurveTo(px(0), py(-0.18), px(0.13), py(-0.50));      // neck
+    ctx.lineTo(px(0.30), py(-0.50));                                 // right strap
+    ctx.quadraticCurveTo(px(0.31), py(-0.17), px(0.50), py(-0.12));  // armhole
+    ctx.lineTo(px(0.50), py(0.40));
+    ctx.quadraticCurveTo(px(0.25), py(0.44), px(0), py(0.50));       // hem
+    ctx.quadraticCurveTo(px(-0.25), py(0.44), px(-0.50), py(0.40));
+    ctx.lineTo(px(-0.50), py(-0.12));
+    ctx.quadraticCurveTo(px(-0.31), py(-0.17), px(-0.30), py(-0.50));
+    ctx.closePath();
+
+    ctx.fillStyle = look.body;
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, size * 0.07);
+    ctx.strokeStyle = look.shade;
+    ctx.stroke();
+
+    // The seam down the front, from the neck to the hem
+    ctx.beginPath();
+    ctx.moveTo(px(0), py(-0.30));
+    ctx.lineTo(px(0), py(0.48));
+    ctx.lineWidth = Math.max(0.75, size * 0.05);
+    ctx.stroke();
+
+    // A lit edge along the top of each chest plate
+    ctx.beginPath();
+    ctx.moveTo(px(-0.38), py(-0.02));
+    ctx.quadraticCurveTo(px(-0.22), py(-0.10), px(-0.07), py(-0.04));
+    ctx.moveTo(px(0.38), py(-0.02));
+    ctx.quadraticCurveTo(px(0.22), py(-0.10), px(0.07), py(-0.04));
+    ctx.strokeStyle = look.light;
+    ctx.lineWidth = Math.max(0.75, size * 0.06);
+    ctx.stroke();
+}
+
+/**
+ * The armour bonus: a small round helmet with a brim, side on, so that it
+ * reads as a different thing from the vests and not as a smaller one.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+ * @param {number} cx - Centre X
+ * @param {number} cy - Centre Y
+ * @param {number} size - Width of the helmet
+ * @param {{body: string, shade: string, light: string}} look - Colours
+ */
+function drawHelmet(ctx, cx, cy, size, look) {
+    const r = size * 0.5;
+    const baseY = cy + r * 0.35;
+
+    // The dome, with the brim as a band along its bottom
+    ctx.beginPath();
+    ctx.arc(cx, baseY, r, Math.PI, 0);
+    ctx.closePath();
+    ctx.fillStyle = look.body;
+    ctx.fill();
+    ctx.lineWidth = Math.max(0.75, size * 0.08);
+    ctx.strokeStyle = look.shade;
+    ctx.stroke();
+
+    ctx.fillStyle = look.shade;
+    ctx.fillRect(cx - r * 1.1, baseY - r * 0.12, r * 2.2, r * 0.3);
+
+    // A glint on the crown
+    ctx.beginPath();
+    ctx.arc(cx, baseY, r * 0.62, Math.PI * 1.15, Math.PI * 1.5);
+    ctx.strokeStyle = look.light;
+    ctx.lineWidth = Math.max(0.75, size * 0.09);
+    ctx.stroke();
 }
 
 // =============================================================================
